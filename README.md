@@ -11,6 +11,9 @@ A personal Android app for tracking your stock portfolio with real-time price up
 - **Currency Toggle** - Switch between USD and KRW display
 - **Weight Analysis** - See each holding's percentage of total portfolio
 - **Aggregated View** - View all accounts combined or filter by account
+- **Input Validation** - Enforced bounds for quantity and price entries
+- **Delete Confirmation** - Confirmation dialog before removing holdings
+- **Error Notifications** - Snackbar alerts for operation failures
 
 ## Tech Stack
 
