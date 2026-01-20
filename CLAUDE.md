@@ -1,31 +1,34 @@
 # Stock Portfolio Manager
 
-A personal Android app for viewing and tracking your stock portfolio synced from your brokerage.
+A personal Android app for manually tracking your stock portfolio with real-time price updates.
 
-## Vision
+## Current Features
 
-A portfolio viewer that connects to your securities company API to fetch real holdings data. Display portfolio value, performance, and analytics in a clean interface.
+### Portfolio Management
+- **Multiple Accounts**: Create and manage multiple portfolio accounts (e.g., "Retirement", "Trading")
+- **Manual Holdings Entry**: Add stocks with symbol, quantity, average price, and currency
+- **Edit/Delete Holdings**: Modify or remove existing holdings
+- **Duplicate Prevention**: Same stock symbol cannot be added twice in the same account
 
-## Core Features
-
-### Portfolio Sync
-- Fetch current holdings from securities company API
-- Auto-refresh or manual sync
-- Support for multiple brokerages (future)
+### Dashboard
+- **Portfolio Summary**: Total value, invested amount, gain/loss with percentage
+- **Period Returns**: Selectable time periods (1D, 1W, 1M, 6M, 1Y) showing weighted portfolio returns
+- **Currency Toggle**: View totals in USD or KRW
+- **Holdings List**: Stock cards sorted by weight (largest positions first)
+- **Weight Display**: Each stock shows its percentage of total portfolio
+- **Account Filter**: View all accounts aggregated or filter by specific account
 
 ### Stock Data
-- Current prices from brokerage API or free APIs
-- Multi-market support: US, Korea
+- **Real-time Prices**: Fetched from Yahoo Finance API
+- **Multi-market Support**: US stocks (AAPL) and Korean stocks (005930.KS)
+- **Day Change**: Shows daily price change and percentage
+- **Name Resolution**: Uses longName → shortName → symbol fallback
 
-### Analytics
-- Portfolio performance charts
-- Total value and gain/loss tracking
-- Dividend tracking
-- Currency conversion
-
-### History
-- Track portfolio value over time
-- View past performance
+### UI/UX
+- **Material 3 Design**: Modern Android design language
+- **Pull to Refresh**: Manual price refresh
+- **Swipe Actions**: Edit and delete holdings
+- **Reorderable Accounts**: Drag to reorder account priority
 
 ## Tech Stack
 
@@ -34,10 +37,9 @@ A portfolio viewer that connects to your securities company API to fetch real ho
 - **UI**: Jetpack Compose + Material 3
 - **Architecture**: MVVM + Clean Architecture
 - **DI**: Hilt
-- **Database**: Room (cache holdings, store history)
+- **Database**: Room
 - **Networking**: Retrofit + OkHttp + Kotlin Serialization
 - **Async**: Coroutines + Flow
-- **Charts**: Vico or MPAndroidChart
 - **Build**: Gradle Kotlin DSL
 
 ## Architecture
@@ -45,48 +47,50 @@ A portfolio viewer that connects to your securities company API to fetch real ho
 ```
 app/src/main/java/com/portfolio/manager/
 ├── data/
-│   ├── local/          # Room DB, DAOs, Entities
-│   ├── remote/         # Brokerage API, price APIs
-│   └── repository/     # Repository implementations
+│   ├── local/              # Room DB, DAOs, Entities
+│   │   ├── AppDatabase.kt
+│   │   ├── AccountDao.kt, AccountEntity.kt
+│   │   └── HoldingDao.kt, HoldingEntity.kt
+│   ├── remote/             # Yahoo Finance API
+│   │   ├── YahooFinanceApi.kt
+│   │   └── dto/            # Response DTOs
+│   └── repository/         # Repository implementations
 ├── domain/
-│   ├── model/          # Domain models
-│   ├── repository/     # Repository interfaces
-│   └── usecase/        # Business logic
+│   ├── model/              # Stock, PeriodReturn, TimePeriod
+│   └── repository/         # Repository interfaces
 ├── presentation/
-│   ├── screen/         # Composable screens
-│   ├── component/      # Reusable UI components
-│   ├── viewmodel/      # ViewModels
-│   └── navigation/     # Nav graph
-├── di/                 # Hilt modules
-└── util/               # Extensions, helpers
+│   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen
+│   ├── component/          # PortfolioSummary, StockCard
+│   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AccountsViewModel
+│   ├── navigation/         # NavGraph
+│   ├── theme/              # Color, Theme
+│   └── util/               # CurrencyFormatter
+├── di/                     # Hilt modules (Database, Network, Repository)
+└── util/                   # AppConstants, StockExtensions
 ```
-
-## Data Sources
-
-### Brokerage API
-- Securities company API for holdings data
-- API credentials stored securely on device
-
-### Price APIs (Free)
-- Alpha Vantage / Yahoo Finance as backup
-- Korean market: KRX/Naver Finance
-
-### Local Storage
-- Room database for caching and historical data
 
 ## Key Screens
 
-1. **Dashboard**: Total value, holdings list, daily change
-2. **Stock Detail**: Price chart, holding info, dividends
-3. **Settings**: API credentials, currency, sync preferences
+1. **Dashboard**: Portfolio summary, period returns selector, holdings list with account filter
+2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection
+3. **Accounts**: Manage accounts with add, edit, delete, and reorder
+
+## Data Flow
+
+```
+Yahoo Finance API → StockRepository → DashboardViewModel → DashboardScreen
+                                                        ↓
+Room Database → HoldingsRepository ──────────────────────┘
+             → AccountRepository
+```
 
 ## Code Conventions
 
 - Kotlin idiomatic code with null safety
 - Stateless Composables with state hoisting
-- ViewModels expose `StateFlow<UiState>`
-- Sealed classes for UI states and events
+- ViewModels expose `StateFlow<UiState>` (sealed interface pattern)
 - Repository pattern for data access
+- Use `takeIf`/`takeUnless` for conditional nullability
 
 ## Build Environment (WSL2)
 
@@ -112,16 +116,11 @@ export ANDROID_HOME=/home/jinchan/android-sdk
 # Build
 ./gradlew assembleDebug      # Build debug APK
 ./gradlew test               # Run unit tests
+./gradlew test koverVerify   # Run tests and verify 100% coverage
 
 # Install to device (requires ADB setup above)
 export ADB_SERVER_SOCKET=tcp:$(ip route | grep default | awk '{print $3}'):5037
 $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
-$ANDROID_HOME/platform-tools/adb shell am start -n com.portfolio.manager/.MainActivity
-
-# Other commands
-./gradlew connectedAndroidTest  # Run instrumented tests
-./gradlew koverHtmlReport    # Generate coverage report
-./gradlew koverVerify        # Verify 100% coverage
 ```
 
 ## Testing Strategy (100% Coverage)
@@ -129,134 +128,39 @@ $ANDROID_HOME/platform-tools/adb shell am start -n com.portfolio.manager/.MainAc
 ### Test Structure
 
 ```
-app/src/test/java/com/portfolio/manager/     # Unit tests (JVM)
-├── data/                                     # Repository, API, DAO tests
-├── domain/                                   # Model and UseCase tests
-├── presentation/viewmodel/                   # ViewModel tests
-└── util/                                     # Utility tests
-
-app/src/androidTest/java/com/portfolio/manager/  # Instrumented tests
-├── data/local/                               # Room integration tests
-└── presentation/screen/                      # Compose UI tests
+app/src/test/java/com/portfolio/manager/
+├── data/repository/          # Repository tests
+├── domain/model/             # Model tests
+├── presentation/
+│   ├── viewmodel/            # ViewModel tests
+│   └── util/                 # Utility tests
+└── util/                     # Extension tests
 ```
 
-### Test Dependencies
-
-```kotlin
-// build.gradle.kts (app module)
-dependencies {
-    // Unit Testing
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-    testImplementation("io.mockk:mockk:1.13.8")
-    testImplementation("app.cash.turbine:turbine:1.0.0")
-    testImplementation("com.google.truth:truth:1.1.5")
-    testImplementation("androidx.arch.core:core-testing:2.2.0")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
-    testImplementation("androidx.room:room-testing:2.6.1")
-    testImplementation("com.google.dagger:hilt-android-testing:2.48")
-    kaptTest("com.google.dagger:hilt-android-compiler:2.48")
-
-    // Instrumented Testing
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("com.google.dagger:hilt-android-testing:2.48")
-    kaptAndroidTest("com.google.dagger:hilt-android-compiler:2.48")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-}
-```
-
-### Coverage Configuration (Kover)
-
-```kotlin
-// build.gradle.kts (project root)
-plugins {
-    id("org.jetbrains.kotlinx.kover") version "0.7.4"
-}
-
-// build.gradle.kts (app module)
-kover {
-    reports {
-        verify {
-            rule { minBound(100) }
-        }
-        filters {
-            excludes {
-                classes("*_Factory", "*_HiltModules*", "*Hilt_*", "*_Impl",
-                        "*BuildConfig", "*_MembersInjector", "*.di.*")
-                packages("dagger.hilt.*")
-            }
-        }
-    }
-}
-```
-
-### Testing by Layer
-
-| Layer | Test Type | Tools | What to Test |
-|-------|-----------|-------|--------------|
-| Domain models | Unit | Truth | Computed properties, validation, edge cases |
-| UseCases | Unit | MockK, runTest | Business logic with mocked repositories |
-| Repositories | Unit | Fakes | Data flow between local/remote sources |
-| APIs | Unit | MockWebServer | Response parsing, error handling |
-| DAOs | Instrumented | Room in-memory | CRUD operations, Flow emissions |
-| ViewModels | Unit | Turbine, MockK | State transitions, event handling |
-| Composables | Instrumented | Compose Test | User interactions, navigation |
-
-### Test Patterns
-
-```kotlin
-// Domain model test
-@Test
-fun `totalValue calculates quantity times price`() {
-    val stock = Stock(symbol = "AAPL", quantity = 10, currentPrice = 150.0)
-    assertThat(stock.totalValue).isEqualTo(1500.0)
-}
-
-// UseCase test with coroutines
-@Test
-fun `returns portfolio when repository succeeds`() = runTest {
-    coEvery { repository.getPortfolio() } returns flowOf(Result.success(portfolio))
-    val result = useCase().first()
-    assertThat(result.isSuccess).isTrue()
-}
-
-// ViewModel test with Turbine
-@Test
-fun `emits Loading then Success`() = runTest {
-    viewModel.uiState.test {
-        assertThat(awaitItem()).isEqualTo(UiState.Loading)
-        assertThat(awaitItem()).isEqualTo(UiState.Success(data))
-    }
-}
-
-// MainDispatcherRule (required for ViewModel tests)
-class MainDispatcherRule(
-    private val dispatcher: TestDispatcher = UnconfinedTestDispatcher()
-) : TestWatcher() {
-    override fun starting(description: Description) = Dispatchers.setMain(dispatcher)
-    override fun finished(description: Description) = Dispatchers.resetMain()
-}
-```
+### Test Tools
+- **JUnit 4**: Test framework
+- **MockK**: Mocking library
+- **Truth**: Assertions
+- **Coroutines Test**: `runTest`, `UnconfinedTestDispatcher`
+- **Kover**: Coverage verification (100% required)
 
 ### Test Naming
 
 Use backticks: `` `subject - scenario - expected result` ``
 ```kotlin
-@Test fun `calculateGain - price exceeds purchase - returns positive`()
-@Test fun `sync - network unavailable - returns cached data`()
+@Test fun `saveHolding - duplicate symbol - returns false`()
+@Test fun `selectPeriod - calculates weighted return`()
 ```
 
 ### Coverage Rules
 
 **Must have 100% coverage:**
-- Domain models and UseCases
+- Domain models
 - Repository implementations
 - ViewModels
 - Utility functions
 
-**Excluded (generated code only):**
+**Excluded (Kover config):**
 - Hilt/Dagger generated classes
 - BuildConfig
 - DI modules
@@ -265,6 +169,5 @@ Use backticks: `` `subject - scenario - expected result` ``
 
 - Commit after every change without asking
 - Always use `git commit -s` (sign-off) for all commits
-- Commit message format: `FILENAME: description` (filename without extension, e.g., `README: add project title`)
-- Follow TDD (Test-Driven Development): write tests first, then implement code to pass the tests
+- Commit message format: `scope: description` (e.g., `app: add period returns display`)
 - Before every commit: run `./gradlew test koverVerify` to ensure all tests pass and coverage is 100%
