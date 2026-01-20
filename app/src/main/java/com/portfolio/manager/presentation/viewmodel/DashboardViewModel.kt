@@ -143,7 +143,7 @@ class DashboardViewModel @Inject constructor(
                             currency = holding.currency
                         )
                     }
-                }
+                }.sortedByDescending { it.totalValueInUsd }
                 _uiState.value = DashboardUiState.Success(
                     stocks = stocks,
                     accounts = accounts,
