@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Local configuration
+local.properties
+*.local
+
+# Generated files
+app/build/
+app/release/
+
+# Signing
+*.jks
+*.keystore
+
+# Logs
+*.log

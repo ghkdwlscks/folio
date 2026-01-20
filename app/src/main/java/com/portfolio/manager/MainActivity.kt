@@ -1,0 +1,64 @@
+package com.portfolio.manager
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.portfolio.manager.data.remote.YahooFinanceApi
+import com.portfolio.manager.data.repository.StockRepositoryImpl
+import com.portfolio.manager.presentation.screen.DashboardScreen
+import com.portfolio.manager.presentation.theme.PortfolioManagerTheme
+import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import java.util.concurrent.TimeUnit
+
+class MainActivity : ComponentActivity() {
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    private val headersInterceptor = Interceptor { chain ->
+        val request = chain.request().newBuilder()
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            .header("Accept", "application/json")
+            .build()
+        chain.proceed(request)
+    }
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(headersInterceptor)
+        .addInterceptor(HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        })
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    private val retrofit = Retrofit.Builder()
+        .baseUrl(YahooFinanceApi.BASE_URL)
+        .client(okHttpClient)
+        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+        .build()
+
+    private val api = retrofit.create(YahooFinanceApi::class.java)
+    private val repository = StockRepositoryImpl(api)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            PortfolioManagerTheme {
+                val viewModel = viewModel {
+                    DashboardViewModel(repository)
+                }
+                DashboardScreen(viewModel = viewModel)
+            }
+        }
+    }
+}
