@@ -41,4 +41,10 @@ data class Stock(
 
     val totalCostInUsd: Double
         get() = if (currency == "KRW") totalCost / KRW_TO_USD_RATE else totalCost
+
+    val totalValueInKrw: Double
+        get() = if (currency == "KRW") totalValue else totalValue * KRW_TO_USD_RATE
+
+    val totalCostInKrw: Double
+        get() = if (currency == "KRW") totalCost else totalCost * KRW_TO_USD_RATE
 }

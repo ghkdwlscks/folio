@@ -23,6 +23,13 @@ object CurrencyFormatter {
         return NumberFormat.getCurrencyInstance(Locale.US).format(amount)
     }
 
+    fun formatKrw(amount: Double): String {
+        val format = NumberFormat.getNumberInstance(Locale.KOREA).apply {
+            maximumFractionDigits = 0
+        }
+        return "₩${format.format(amount)}"
+    }
+
     fun formatPercent(value: Double): String {
         return NumberFormat.getNumberInstance(Locale.US).apply {
             minimumFractionDigits = 2

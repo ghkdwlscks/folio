@@ -70,4 +70,22 @@ class CurrencyFormatterTest {
         val result = CurrencyFormatter.formatPercent(5.1)
         assertThat(result).isEqualTo("5.10")
     }
+
+    @Test
+    fun `formatKrw - formats amount with won sign`() {
+        val result = CurrencyFormatter.formatKrw(72000.0)
+        assertThat(result).isEqualTo("₩72,000")
+    }
+
+    @Test
+    fun `formatKrw - large amount - formats with commas`() {
+        val result = CurrencyFormatter.formatKrw(2450000.0)
+        assertThat(result).isEqualTo("₩2,450,000")
+    }
+
+    @Test
+    fun `formatKrw - zero amount - formats correctly`() {
+        val result = CurrencyFormatter.formatKrw(0.0)
+        assertThat(result).isEqualTo("₩0")
+    }
 }

@@ -289,4 +289,66 @@ class StockTest {
         // 700,000 KRW / 1400 = 500.0 USD
         assertThat(stock.totalCostInUsd).isWithin(0.01).of(500.0)
     }
+
+    @Test
+    fun `totalValueInKrw - KRW stock returns same value`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "005930.KS",
+            name = "Samsung Electronics",
+            quantity = 10,
+            averagePrice = 70000.0,
+            currentPrice = 78000.0,
+            currency = "KRW"
+        )
+
+        assertThat(stock.totalValueInKrw).isEqualTo(780000.0)
+    }
+
+    @Test
+    fun `totalValueInKrw - USD stock converts to KRW`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        // 1750 USD * 1400 = 2,450,000 KRW
+        assertThat(stock.totalValueInKrw).isEqualTo(2450000.0)
+    }
+
+    @Test
+    fun `totalCostInKrw - KRW stock returns same value`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "005930.KS",
+            name = "Samsung Electronics",
+            quantity = 10,
+            averagePrice = 70000.0,
+            currentPrice = 78000.0,
+            currency = "KRW"
+        )
+
+        assertThat(stock.totalCostInKrw).isEqualTo(700000.0)
+    }
+
+    @Test
+    fun `totalCostInKrw - USD stock converts to KRW`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        // 1500 USD * 1400 = 2,100,000 KRW
+        assertThat(stock.totalCostInKrw).isEqualTo(2100000.0)
+    }
 }

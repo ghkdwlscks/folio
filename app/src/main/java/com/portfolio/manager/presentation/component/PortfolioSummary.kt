@@ -1,6 +1,7 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,14 +42,27 @@ fun PortfolioSummary(
     stocks: List<Stock>,
     modifier: Modifier = Modifier
 ) {
-    val totalValue = stocks.sumOf { it.totalValueInUsd }
-    val totalCost = stocks.sumOf { it.totalCostInUsd }
+    var showInKrw by remember { mutableStateOf(false) }
+
+    val totalValueUsd = stocks.sumOf { it.totalValueInUsd }
+    val totalCostUsd = stocks.sumOf { it.totalCostInUsd }
+    val totalValueKrw = stocks.sumOf { it.totalValueInKrw }
+    val totalCostKrw = stocks.sumOf { it.totalCostInKrw }
+
+    val totalValue = if (showInKrw) totalValueKrw else totalValueUsd
+    val totalCost = if (showInKrw) totalCostKrw else totalCostUsd
     val totalGainLoss = totalValue - totalCost
     val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
 
     val isGain = totalGainLoss >= 0
     val trendIcon = if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
     val trendColor = if (isGain) GainGreenPastel else LossRedPastel
+
+    val formatValue: (Double) -> String = if (showInKrw) {
+        { CurrencyFormatter.formatKrw(it) }
+    } else {
+        { CurrencyFormatter.formatUsd(it) }
+    }
 
     Box(
         modifier = modifier
@@ -59,6 +77,14 @@ fun PortfolioSummary(
                 )
             )
     ) {
+        CurrencyToggle(
+            showInKrw = showInKrw,
+            onToggle = { showInKrw = !showInKrw },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -74,7 +100,7 @@ fun PortfolioSummary(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = CurrencyFormatter.formatUsd(totalValue),
+                text = formatValue(totalValue),
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = 36.sp,
                     letterSpacing = (-1).sp
@@ -101,7 +127,7 @@ fun PortfolioSummary(
                         tint = trendColor
                     )
                     Text(
-                        text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatUsd(totalGainLoss)}",
+                        text = "${if (isGain) "+" else ""}${formatValue(totalGainLoss)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
@@ -129,7 +155,7 @@ fun PortfolioSummary(
             ) {
                 StatItem(
                     label = "Invested",
-                    value = CurrencyFormatter.formatUsd(totalCost)
+                    value = formatValue(totalCost)
                 )
                 StatItem(
                     label = "Stocks",
@@ -140,6 +166,38 @@ fun PortfolioSummary(
                     value = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent / 10)}%"
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CurrencyToggle(
+    showInKrw: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color.White.copy(alpha = 0.2f),
+        modifier = modifier.clickable(onClick = onToggle)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = "USD",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (!showInKrw) FontWeight.Bold else FontWeight.Normal,
+                color = if (!showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+            Text(
+                text = "KRW",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (showInKrw) FontWeight.Bold else FontWeight.Normal,
+                color = if (showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            )
         }
     }
 }
