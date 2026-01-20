@@ -1,8 +1,10 @@
 package com.portfolio.manager.presentation.viewmodel
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
+import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import io.mockk.coEvery
@@ -25,13 +27,23 @@ class DashboardViewModelTest {
 
     private lateinit var stockRepository: StockRepository
     private lateinit var holdingsRepository: HoldingsRepository
+    private lateinit var accountRepository: AccountRepository
     private val testDispatcher = UnconfinedTestDispatcher()
+
+    private val defaultAccount = AccountEntity(1, "Default", 1000L)
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         stockRepository = mockk()
         holdingsRepository = mockk()
+        accountRepository = mockk()
+
+        // Default account setup
+        coEvery { accountRepository.getAccountCount() } returns 1
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(defaultAccount))
+        coEvery { holdingsRepository.getHoldingsCountByAccount(any()) } returns 0
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
     }
 
     @After
@@ -43,17 +55,19 @@ class DashboardViewModelTest {
     fun `empty holdings - returns empty success`() = runTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
 
         assertThat(viewModel.uiState.value).isInstanceOf(DashboardUiState.Success::class.java)
         val state = viewModel.uiState.value as DashboardUiState.Success
         assertThat(state.stocks).isEmpty()
+        assertThat(state.accounts).hasSize(1)
+        assertThat(state.selectedAccountId).isEqualTo(ALL_ACCOUNTS_ID)
     }
 
     @Test
     fun `loadPrices - success - updates stocks with real prices`() = runTest {
         val holdings = listOf(
-            HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
         )
         val quotes = listOf(
             QuoteResult(
@@ -68,7 +82,7 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
         assertThat(state.stocks).hasSize(1)
@@ -82,12 +96,12 @@ class DashboardViewModelTest {
     @Test
     fun `loadPrices - failure - emits Error state`() = runTest {
         val holdings = listOf(
-            HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
         )
         every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
         coEvery { stockRepository.getQuotes(any()) } returns Result.failure(IOException("Network error"))
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
 
         assertThat(viewModel.uiState.value).isInstanceOf(DashboardUiState.Error::class.java)
         val errorState = viewModel.uiState.value as DashboardUiState.Error
@@ -97,7 +111,7 @@ class DashboardViewModelTest {
     @Test
     fun `refresh - reloads prices`() = runTest {
         val holdings = listOf(
-            HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
         )
         val initialQuotes = listOf(
             QuoteResult(symbol = "AAPL", regularMarketPrice = 175.00)
@@ -111,7 +125,7 @@ class DashboardViewModelTest {
             Result.success(refreshedQuotes)
         )
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
         viewModel.refresh()
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -122,7 +136,7 @@ class DashboardViewModelTest {
     @Test
     fun `loadPrices - korean stocks - uses korean name from holdings`() = runTest {
         val holdings = listOf(
-            HoldingEntity(1, "005930.KS", "삼성전자", 50, 72000.0, "KRW")
+            HoldingEntity(1, 1L, "005930.KS", "삼성전자", 50, 72000.0, "KRW")
         )
         val quotes = listOf(
             QuoteResult(
@@ -137,7 +151,7 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
         val samsungStock = state.stocks.find { it.symbol == "005930.KS" }
@@ -145,5 +159,27 @@ class DashboardViewModelTest {
         assertThat(samsungStock?.name).isEqualTo("삼성전자")
         assertThat(samsungStock?.currency).isEqualTo("KRW")
         assertThat(samsungStock?.currentPrice).isEqualTo(78500.0)
+    }
+
+    @Test
+    fun `selectAccount - switches to different account`() = runTest {
+        val account1 = AccountEntity(1, "Default", 1000L)
+        val account2 = AccountEntity(2, "Trading", 2000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1, account2))
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        every { holdingsRepository.getHoldingsByAccount(2L) } returns flowOf(
+            listOf(HoldingEntity(1, 2L, "TSLA", "Tesla", 5, 200.0, "USD"))
+        )
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "TSLA", regularMarketPrice = 250.0))
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        viewModel.selectAccount(2L)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.selectedAccountId).isEqualTo(2L)
+        assertThat(state.stocks).hasSize(1)
+        assertThat(state.stocks.first().symbol).isEqualTo("TSLA")
     }
 }

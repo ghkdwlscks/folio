@@ -8,7 +8,8 @@ import com.portfolio.manager.domain.repository.HoldingsRepository
 import kotlinx.coroutines.launch
 
 class AddHoldingViewModel(
-    private val repository: HoldingsRepository
+    private val repository: HoldingsRepository,
+    private val accountId: Long
 ) : ViewModel() {
 
     val symbol = mutableStateOf("")
@@ -28,6 +29,7 @@ class AddHoldingViewModel(
         }
 
         val holding = HoldingEntity(
+            accountId = accountId,
             symbol = symbolValue,
             name = nameValue.ifEmpty { symbolValue },
             quantity = quantityValue,

@@ -25,14 +25,15 @@ class HoldingsRepositoryImplTest {
     }
 
     @Test
-    fun `getAllHoldings - returns flow from dao`() = runTest {
+    fun `getHoldingsByAccount - returns flow from dao`() = runTest {
+        val accountId = 1L
         val holdings = listOf(
-            HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
-            HoldingEntity(2, "005930.KS", "삼성전자", 50, 72000.0, "KRW")
+            HoldingEntity(1, accountId, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
+            HoldingEntity(2, accountId, "005930.KS", "삼성전자", 50, 72000.0, "KRW")
         )
-        every { dao.getAllHoldings() } returns flowOf(holdings)
+        every { dao.getHoldingsByAccount(accountId) } returns flowOf(holdings)
 
-        val result = repository.getAllHoldings().first()
+        val result = repository.getHoldingsByAccount(accountId).first()
 
         assertThat(result).hasSize(2)
         assertThat(result[0].symbol).isEqualTo("AAPL")
@@ -40,8 +41,23 @@ class HoldingsRepositoryImplTest {
     }
 
     @Test
+    fun `getAllHoldings - returns flow from dao`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
+            HoldingEntity(2, 2L, "TSLA", "Tesla", 5, 200.0, "USD")
+        )
+        every { dao.getAllHoldings() } returns flowOf(holdings)
+
+        val result = repository.getAllHoldings().first()
+
+        assertThat(result).hasSize(2)
+        assertThat(result[0].symbol).isEqualTo("AAPL")
+        assertThat(result[1].symbol).isEqualTo("TSLA")
+    }
+
+    @Test
     fun `getHoldingById - returns holding from dao`() = runTest {
-        val holding = HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        val holding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
         coEvery { dao.getHoldingById(1) } returns holding
 
         val result = repository.getHoldingById(1)
@@ -61,7 +77,7 @@ class HoldingsRepositoryImplTest {
 
     @Test
     fun `addHolding - calls dao insert`() = runTest {
-        val holding = HoldingEntity(0, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        val holding = HoldingEntity(0, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
         coEvery { dao.insert(holding) } returns 1L
 
         val id = repository.addHolding(holding)
@@ -72,7 +88,7 @@ class HoldingsRepositoryImplTest {
 
     @Test
     fun `updateHolding - calls dao update`() = runTest {
-        val holding = HoldingEntity(1, "AAPL", "Apple Inc.", 20, 160.0, "USD")
+        val holding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 20, 160.0, "USD")
         coEvery { dao.update(holding) } returns Unit
 
         repository.updateHolding(holding)
@@ -87,5 +103,14 @@ class HoldingsRepositoryImplTest {
         repository.deleteHolding(1)
 
         coVerify { dao.deleteById(1) }
+    }
+
+    @Test
+    fun `getHoldingsCountByAccount - returns count from dao`() = runTest {
+        coEvery { dao.getHoldingsCountByAccount(1L) } returns 5
+
+        val count = repository.getHoldingsCountByAccount(1L)
+
+        assertThat(count).isEqualTo(5)
     }
 }

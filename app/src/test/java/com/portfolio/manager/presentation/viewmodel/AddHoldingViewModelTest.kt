@@ -35,7 +35,7 @@ class AddHoldingViewModelTest {
 
     @Test
     fun `initial state is empty`() = runTest {
-        val viewModel = AddHoldingViewModel(repository)
+        val viewModel = AddHoldingViewModel(repository, 1L)
 
         assertThat(viewModel.symbol.value).isEmpty()
         assertThat(viewModel.name.value).isEmpty()
@@ -47,7 +47,7 @@ class AddHoldingViewModelTest {
     @Test
     fun `saveHolding - valid input - saves and returns success`() = runTest {
         coEvery { repository.addHolding(any()) } returns 1L
-        val viewModel = AddHoldingViewModel(repository)
+        val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "AAPL"
         viewModel.name.value = "Apple Inc."
@@ -60,6 +60,7 @@ class AddHoldingViewModelTest {
         assertThat(result).isTrue()
         coVerify {
             repository.addHolding(match {
+                it.accountId == 1L &&
                 it.symbol == "AAPL" &&
                 it.name == "Apple Inc." &&
                 it.quantity == 10 &&
@@ -71,7 +72,7 @@ class AddHoldingViewModelTest {
 
     @Test
     fun `saveHolding - empty symbol - returns false`() = runTest {
-        val viewModel = AddHoldingViewModel(repository)
+        val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = ""
         viewModel.name.value = "Apple Inc."
@@ -85,7 +86,7 @@ class AddHoldingViewModelTest {
 
     @Test
     fun `saveHolding - invalid quantity - returns false`() = runTest {
-        val viewModel = AddHoldingViewModel(repository)
+        val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "AAPL"
         viewModel.name.value = "Apple Inc."
@@ -99,7 +100,7 @@ class AddHoldingViewModelTest {
 
     @Test
     fun `saveHolding - invalid price - returns false`() = runTest {
-        val viewModel = AddHoldingViewModel(repository)
+        val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "AAPL"
         viewModel.name.value = "Apple Inc."
@@ -114,7 +115,7 @@ class AddHoldingViewModelTest {
     @Test
     fun `saveHolding - KRW currency - saves correctly`() = runTest {
         coEvery { repository.addHolding(any()) } returns 1L
-        val viewModel = AddHoldingViewModel(repository)
+        val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "005930.KS"
         viewModel.name.value = "삼성전자"
@@ -127,6 +128,7 @@ class AddHoldingViewModelTest {
         assertThat(result).isTrue()
         coVerify {
             repository.addHolding(match {
+                it.accountId == 1L &&
                 it.symbol == "005930.KS" &&
                 it.currency == "KRW" &&
                 it.averagePrice == 72000.0

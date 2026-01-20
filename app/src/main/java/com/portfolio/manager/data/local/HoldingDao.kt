@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HoldingDao {
+    @Query("SELECT * FROM holdings WHERE accountId = :accountId ORDER BY symbol ASC")
+    fun getHoldingsByAccount(accountId: Long): Flow<List<HoldingEntity>>
+
     @Query("SELECT * FROM holdings ORDER BY symbol ASC")
     fun getAllHoldings(): Flow<List<HoldingEntity>>
 
@@ -27,4 +30,7 @@ interface HoldingDao {
 
     @Query("DELETE FROM holdings WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("SELECT COUNT(*) FROM holdings WHERE accountId = :accountId")
+    suspend fun getHoldingsCountByAccount(accountId: Long): Int
 }

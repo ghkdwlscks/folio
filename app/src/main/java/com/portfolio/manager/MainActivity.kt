@@ -10,10 +10,12 @@ import androidx.room.Room
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.portfolio.manager.data.local.AppDatabase
 import com.portfolio.manager.data.remote.YahooFinanceApi
+import com.portfolio.manager.data.repository.AccountRepositoryImpl
 import com.portfolio.manager.data.repository.HoldingsRepositoryImpl
 import com.portfolio.manager.data.repository.StockRepositoryImpl
 import com.portfolio.manager.presentation.navigation.NavGraph
 import com.portfolio.manager.presentation.theme.PortfolioManagerTheme
+import com.portfolio.manager.presentation.viewmodel.AccountsViewModel
 import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 import kotlinx.serialization.json.Json
@@ -59,11 +61,17 @@ class MainActivity : ComponentActivity() {
             applicationContext,
             AppDatabase::class.java,
             "portfolio_database"
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .build()
     }
 
     private val holdingsRepository by lazy {
         HoldingsRepositoryImpl(database.holdingDao())
+    }
+
+    private val accountRepository by lazy {
+        AccountRepositoryImpl(database.accountDao())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,12 +81,17 @@ class MainActivity : ComponentActivity() {
             PortfolioManagerTheme {
                 val navController = rememberNavController()
                 val dashboardViewModel = viewModel {
-                    DashboardViewModel(stockRepository, holdingsRepository)
+                    DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
                 }
                 NavGraph(
                     navController = navController,
                     dashboardViewModel = dashboardViewModel,
-                    addHoldingViewModelProvider = { AddHoldingViewModel(holdingsRepository) }
+                    addHoldingViewModelProvider = { accountId ->
+                        AddHoldingViewModel(holdingsRepository, accountId)
+                    },
+                    accountsViewModelProvider = {
+                        AccountsViewModel(accountRepository)
+                    }
                 )
             }
         }

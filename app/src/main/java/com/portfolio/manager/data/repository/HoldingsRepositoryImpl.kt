@@ -9,6 +9,10 @@ class HoldingsRepositoryImpl(
     private val dao: HoldingDao
 ) : HoldingsRepository {
 
+    override fun getHoldingsByAccount(accountId: Long): Flow<List<HoldingEntity>> {
+        return dao.getHoldingsByAccount(accountId)
+    }
+
     override fun getAllHoldings(): Flow<List<HoldingEntity>> {
         return dao.getAllHoldings()
     }
@@ -27,5 +31,9 @@ class HoldingsRepositoryImpl(
 
     override suspend fun deleteHolding(id: Long) {
         dao.deleteById(id)
+    }
+
+    override suspend fun getHoldingsCountByAccount(accountId: Long): Int {
+        return dao.getHoldingsCountByAccount(accountId)
     }
 }
