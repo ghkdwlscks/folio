@@ -12,6 +12,7 @@ import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
+import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -38,7 +39,8 @@ sealed interface DashboardUiState {
         val periodReturns: Map<TimePeriod, Double> = emptyMap(),
         val selectedPeriod: TimePeriod = TimePeriod.ONE_DAY,
         val isLoadingPeriodReturns: Boolean = false,
-        val isRefreshing: Boolean = false
+        val isRefreshing: Boolean = false,
+        val exchangeRate: Double = KRW_TO_USD_RATE
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -55,11 +57,16 @@ class DashboardViewModel @Inject constructor(
 
     private var selectedAccountId: Long = ALL_ACCOUNTS_ID
     private var holdingsJob: Job? = null
+    private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
     init {
         viewModelScope.launch {
             // Ensure default account exists (atomic operation to prevent race condition)
             accountRepository.getOrCreateDefaultAccount(DEFAULT_ACCOUNT_NAME)
+            // Fetch exchange rate
+            stockRepository.getExchangeRate("USD", "KRW").onSuccess { rate ->
+                currentExchangeRate = rate
+            }
             observeHoldings()
         }
     }
@@ -102,7 +109,7 @@ class DashboardViewModel @Inject constructor(
                 _uiState.value = currentState.copy(isLoadingPeriodReturns = true)
             }
 
-            val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd }
+            val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
             if (totalPortfolioValue <= 0) {
                 updatePeriodReturn(period, 0.0)
                 return@launch
@@ -124,7 +131,7 @@ class DashboardViewModel @Inject constructor(
 
             // Calculate weighted portfolio return
             val weightedReturn = stocks.sumOf { stock ->
-                val weight = stock.totalValueInUsd / totalPortfolioValue
+                val weight = stock.totalValueInUsd(currentExchangeRate) / totalPortfolioValue
                 val stockReturn = returnsBySymbol[stock.symbol] ?: 0.0
                 weight * stockReturn
             }
@@ -181,7 +188,8 @@ class DashboardViewModel @Inject constructor(
             _uiState.value = DashboardUiState.Success(
                 stocks = emptyList(),
                 accounts = accounts,
-                selectedAccountId = selectedAccountId
+                selectedAccountId = selectedAccountId,
+                exchangeRate = currentExchangeRate
             )
             return
         }
@@ -217,7 +225,7 @@ class DashboardViewModel @Inject constructor(
                             currency = holding.currency
                         )
                     }
-                }.sortedByDescending { it.totalValueInUsd }
+                }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
                 val previousReturns = if (currentState is DashboardUiState.Success) {
                     currentState.periodReturns
                 } else {
@@ -234,7 +242,8 @@ class DashboardViewModel @Inject constructor(
                     selectedAccountId = selectedAccountId,
                     periodReturns = previousReturns,
                     selectedPeriod = selectedPeriod,
-                    isRefreshing = false
+                    isRefreshing = false,
+                    exchangeRate = currentExchangeRate
                 )
                 // Load period returns for the selected period
                 loadPeriodReturns(stocks, selectedPeriod)

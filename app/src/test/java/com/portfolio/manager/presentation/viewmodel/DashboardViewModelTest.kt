@@ -48,6 +48,8 @@ class DashboardViewModelTest {
         every { accountRepository.getAllAccounts() } returns flowOf(listOf(defaultAccount))
         every { holdingsRepository.getHoldingsCountByAccountFlow() } returns flowOf(emptyMap())
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        // Default exchange rate mock
+        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
         // Default period returns mock
         coEvery { stockRepository.getPeriodReturn(any(), any()) } answers {
             val symbol = firstArg<String>()
@@ -361,5 +363,43 @@ class DashboardViewModelTest {
 
         val state = viewModel.uiState.value as DashboardUiState.Success
         assertThat(state.periodReturns[TimePeriod.SIX_MONTHS]).isEqualTo(0.0)
+    }
+
+    @Test
+    fun `init - fetches exchange rate on startup`() = runTest {
+        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1350.0)
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+
+        coVerify { stockRepository.getExchangeRate("USD", "KRW") }
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.exchangeRate).isEqualTo(1350.0)
+    }
+
+    @Test
+    fun `init - exchange rate failure - uses default rate`() = runTest {
+        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.failure(IOException("Network error"))
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.exchangeRate).isEqualTo(1400.0) // Default KRW_TO_USD_RATE
+    }
+
+    @Test
+    fun `success state includes exchange rate`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 180.0))
+        )
+        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1300.0)
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.exchangeRate).isEqualTo(1300.0)
     }
 }

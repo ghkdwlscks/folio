@@ -240,7 +240,7 @@ class StockTest {
             currency = "USD"
         )
 
-        assertThat(stock.totalValueInUsd).isEqualTo(1750.0)
+        assertThat(stock.totalValueInUsd()).isEqualTo(1750.0)
     }
 
     @Test
@@ -256,7 +256,23 @@ class StockTest {
         )
 
         // 780,000 KRW / 1400 = 557.14 USD (approximately)
-        assertThat(stock.totalValueInUsd).isWithin(0.01).of(557.14)
+        assertThat(stock.totalValueInUsd()).isWithin(0.01).of(557.14)
+    }
+
+    @Test
+    fun `totalValueInUsd - uses custom exchange rate`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "005930.KS",
+            name = "Samsung Electronics",
+            quantity = 10,
+            averagePrice = 72000.0,
+            currentPrice = 78000.0,
+            currency = "KRW"
+        )
+
+        // 780,000 KRW / 1300 = 600.0 USD
+        assertThat(stock.totalValueInUsd(1300.0)).isEqualTo(600.0)
     }
 
     @Test
@@ -271,7 +287,7 @@ class StockTest {
             currency = "USD"
         )
 
-        assertThat(stock.totalCostInUsd).isEqualTo(1500.0)
+        assertThat(stock.totalCostInUsd()).isEqualTo(1500.0)
     }
 
     @Test
@@ -287,7 +303,23 @@ class StockTest {
         )
 
         // 700,000 KRW / 1400 = 500.0 USD
-        assertThat(stock.totalCostInUsd).isWithin(0.01).of(500.0)
+        assertThat(stock.totalCostInUsd()).isWithin(0.01).of(500.0)
+    }
+
+    @Test
+    fun `totalCostInUsd - uses custom exchange rate`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "005930.KS",
+            name = "Samsung Electronics",
+            quantity = 10,
+            averagePrice = 70000.0,
+            currentPrice = 78000.0,
+            currency = "KRW"
+        )
+
+        // 700,000 KRW / 1400 = 500.0 USD with default, but with 1000 rate: 700.0 USD
+        assertThat(stock.totalCostInUsd(1000.0)).isEqualTo(700.0)
     }
 
     @Test
@@ -302,7 +334,7 @@ class StockTest {
             currency = "KRW"
         )
 
-        assertThat(stock.totalValueInKrw).isEqualTo(780000.0)
+        assertThat(stock.totalValueInKrw()).isEqualTo(780000.0)
     }
 
     @Test
@@ -318,7 +350,23 @@ class StockTest {
         )
 
         // 1750 USD * 1400 = 2,450,000 KRW
-        assertThat(stock.totalValueInKrw).isEqualTo(2450000.0)
+        assertThat(stock.totalValueInKrw()).isEqualTo(2450000.0)
+    }
+
+    @Test
+    fun `totalValueInKrw - uses custom exchange rate`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        // 1750 USD * 1300 = 2,275,000 KRW
+        assertThat(stock.totalValueInKrw(1300.0)).isEqualTo(2275000.0)
     }
 
     @Test
@@ -333,7 +381,7 @@ class StockTest {
             currency = "KRW"
         )
 
-        assertThat(stock.totalCostInKrw).isEqualTo(700000.0)
+        assertThat(stock.totalCostInKrw()).isEqualTo(700000.0)
     }
 
     @Test
@@ -349,6 +397,22 @@ class StockTest {
         )
 
         // 1500 USD * 1400 = 2,100,000 KRW
-        assertThat(stock.totalCostInKrw).isEqualTo(2100000.0)
+        assertThat(stock.totalCostInKrw()).isEqualTo(2100000.0)
+    }
+
+    @Test
+    fun `totalCostInKrw - uses custom exchange rate`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        // 1500 USD * 1300 = 1,950,000 KRW
+        assertThat(stock.totalCostInKrw(1300.0)).isEqualTo(1950000.0)
     }
 }

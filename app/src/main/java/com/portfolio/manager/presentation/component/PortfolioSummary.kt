@@ -41,6 +41,7 @@ import com.portfolio.manager.presentation.util.CurrencyFormatter
 @Composable
 fun PortfolioSummary(
     stocks: List<Stock>,
+    exchangeRate: Double,
     periodReturns: Map<TimePeriod, Double> = emptyMap(),
     selectedPeriod: TimePeriod = TimePeriod.ONE_DAY,
     isLoadingPeriodReturns: Boolean = false,
@@ -49,10 +50,10 @@ fun PortfolioSummary(
 ) {
     var showInKrw by remember { mutableStateOf(false) }
 
-    val totalValueUsd = stocks.sumOf { it.totalValueInUsd }
-    val totalCostUsd = stocks.sumOf { it.totalCostInUsd }
-    val totalValueKrw = stocks.sumOf { it.totalValueInKrw }
-    val totalCostKrw = stocks.sumOf { it.totalCostInKrw }
+    val totalValueUsd = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
+    val totalCostUsd = stocks.sumOf { it.totalCostInUsd(exchangeRate) }
+    val totalValueKrw = stocks.sumOf { it.totalValueInKrw(exchangeRate) }
+    val totalCostKrw = stocks.sumOf { it.totalCostInKrw(exchangeRate) }
 
     val totalValue = if (showInKrw) totalValueKrw else totalValueUsd
     val totalCost = if (showInKrw) totalCostKrw else totalCostUsd

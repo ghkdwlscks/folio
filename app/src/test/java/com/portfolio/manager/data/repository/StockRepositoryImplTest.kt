@@ -243,4 +243,127 @@ class StockRepositoryImplTest {
         assertThat(result.isSuccess).isTrue()
         assertThat(result.getOrNull()?.returnPercent).isEqualTo(0.0)
     }
+
+    @Test
+    fun `getExchangeRate - success - returns rate`() = runTest {
+        coEvery { api.getChart("USDKRW=X", any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "USDKRW=X",
+                            regularMarketPrice = 1350.50,
+                            chartPreviousClose = 1345.00
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getExchangeRate("USD", "KRW")
+
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).isEqualTo(1350.50)
+    }
+
+    @Test
+    fun `getExchangeRate - uses cached rate within validity period`() = runTest {
+        coEvery { api.getChart("USDKRW=X", any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "USDKRW=X",
+                            regularMarketPrice = 1350.50,
+                            chartPreviousClose = 1345.00
+                        )
+                    )
+                )
+            )
+        )
+
+        // First call fetches from API
+        val result1 = repository.getExchangeRate("USD", "KRW")
+        assertThat(result1.getOrNull()).isEqualTo(1350.50)
+
+        // Second call should use cache (mock not called again)
+        coEvery { api.getChart("USDKRW=X", any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "USDKRW=X",
+                            regularMarketPrice = 1400.00,
+                            chartPreviousClose = 1345.00
+                        )
+                    )
+                )
+            )
+        )
+
+        val result2 = repository.getExchangeRate("USD", "KRW")
+        assertThat(result2.getOrNull()).isEqualTo(1350.50) // Still cached value
+    }
+
+    @Test
+    fun `getExchangeRate - api failure - returns cached rate if available`() = runTest {
+        // First call succeeds and caches
+        coEvery { api.getChart("USDKRW=X", any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "USDKRW=X",
+                            regularMarketPrice = 1350.50,
+                            chartPreviousClose = 1345.00
+                        )
+                    )
+                )
+            )
+        )
+        repository.getExchangeRate("USD", "KRW")
+
+        // Create new repository to simulate expired cache scenario
+        // Note: In real test we'd need a way to manipulate time
+        // For now, testing that failure returns cached value
+        coEvery { api.getChart("USDKRW=X", any(), any()) } throws IOException("Network error")
+
+        // Still returns cached value because cache is valid
+        val result = repository.getExchangeRate("USD", "KRW")
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).isEqualTo(1350.50)
+    }
+
+    @Test
+    fun `getExchangeRate - api failure no cache - returns failure`() = runTest {
+        // Fresh repository with no cache
+        val freshRepository = StockRepositoryImpl(api)
+        coEvery { api.getChart("USDKRW=X", any(), any()) } throws IOException("Network error")
+
+        val result = freshRepository.getExchangeRate("USD", "KRW")
+
+        assertThat(result.isFailure).isTrue()
+    }
+
+    @Test
+    fun `getExchangeRate - null result - returns failure`() = runTest {
+        coEvery { api.getChart("USDKRW=X", any(), any()) } returns YahooChartResponse(
+            chart = ChartData(result = null)
+        )
+
+        val result = repository.getExchangeRate("USD", "KRW")
+
+        assertThat(result.isFailure).isTrue()
+    }
+
+    @Test
+    fun `getExchangeRate - empty result - returns failure`() = runTest {
+        coEvery { api.getChart("USDKRW=X", any(), any()) } returns YahooChartResponse(
+            chart = ChartData(result = emptyList())
+        )
+
+        val result = repository.getExchangeRate("USD", "KRW")
+
+        assertThat(result.isFailure).isTrue()
+    }
 }

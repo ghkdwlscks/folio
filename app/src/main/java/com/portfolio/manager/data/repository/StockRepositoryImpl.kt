@@ -13,6 +13,11 @@ class StockRepositoryImpl(
     private val api: YahooFinanceApi
 ) : StockRepository {
 
+    // Exchange rate cache
+    private var cachedExchangeRate: Double? = null
+    private var cacheTimestamp: Long = 0
+    private val cacheValidityMs = 60 * 60 * 1000L // 1 hour
+
     override suspend fun getQuotes(symbols: List<String>): Result<List<QuoteResult>> {
         if (symbols.isEmpty()) {
             return Result.success(emptyList())
@@ -74,6 +79,31 @@ class StockRepositoryImpl(
             Result.success(PeriodReturn(symbol, period, returnPercent))
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override suspend fun getExchangeRate(from: String, to: String): Result<Double> {
+        // Check cache validity
+        val now = System.currentTimeMillis()
+        val cached = cachedExchangeRate
+        if (cached != null && (now - cacheTimestamp) < cacheValidityMs) {
+            return Result.success(cached)
+        }
+
+        return try {
+            val symbol = "$from$to=X"
+            val response = api.getChart(symbol)
+            val rate = response.chart.result?.firstOrNull()?.meta?.regularMarketPrice
+                ?: return Result.failure(Exception("No exchange rate data"))
+
+            // Update cache
+            cachedExchangeRate = rate
+            cacheTimestamp = now
+
+            Result.success(rate)
+        } catch (e: Exception) {
+            // Return cached value if available, even if expired
+            cached?.let { Result.success(it) } ?: Result.failure(e)
         }
     }
 }

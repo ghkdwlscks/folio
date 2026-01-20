@@ -35,15 +35,15 @@ data class Stock(
     val gainLossPercent: Double
         get() = if (averagePrice == 0.0) 0.0 else ((currentPrice - averagePrice) / averagePrice) * 100
 
-    val totalValueInUsd: Double
-        get() = if (currency == "KRW") totalValue / AppConstants.KRW_TO_USD_RATE else totalValue
+    fun totalValueInUsd(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        if (currency == "KRW") totalValue / krwToUsdRate else totalValue
 
-    val totalCostInUsd: Double
-        get() = if (currency == "KRW") totalCost / AppConstants.KRW_TO_USD_RATE else totalCost
+    fun totalCostInUsd(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        if (currency == "KRW") totalCost / krwToUsdRate else totalCost
 
-    val totalValueInKrw: Double
-        get() = if (currency == "KRW") totalValue else totalValue * AppConstants.KRW_TO_USD_RATE
+    fun totalValueInKrw(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        if (currency == "KRW") totalValue else totalValue * krwToUsdRate
 
-    val totalCostInKrw: Double
-        get() = if (currency == "KRW") totalCost else totalCost * AppConstants.KRW_TO_USD_RATE
+    fun totalCostInKrw(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        if (currency == "KRW") totalCost else totalCost * krwToUsdRate
 }

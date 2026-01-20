@@ -121,6 +121,7 @@ fun DashboardScreen(
             is DashboardUiState.Success -> {
                 DashboardContent(
                     stocks = state.stocks,
+                    exchangeRate = state.exchangeRate,
                     periodReturns = state.periodReturns,
                     selectedPeriod = state.selectedPeriod,
                     isLoadingPeriodReturns = state.isLoadingPeriodReturns,
@@ -229,6 +230,7 @@ private fun ErrorContent(
 @Composable
 private fun DashboardContent(
     stocks: List<Stock>,
+    exchangeRate: Double,
     periodReturns: Map<TimePeriod, Double>,
     selectedPeriod: TimePeriod,
     isLoadingPeriodReturns: Boolean,
@@ -237,7 +239,7 @@ private fun DashboardContent(
     onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd }
+    val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -247,6 +249,7 @@ private fun DashboardContent(
         item {
             PortfolioSummary(
                 stocks = stocks,
+                exchangeRate = exchangeRate,
                 periodReturns = periodReturns,
                 selectedPeriod = selectedPeriod,
                 isLoadingPeriodReturns = isLoadingPeriodReturns,
@@ -268,7 +271,7 @@ private fun DashboardContent(
         ) { stock ->
             val isAggregated = stock.accountDetails.isNotEmpty()
             val weightPercent = if (totalPortfolioValue > 0) {
-                (stock.totalValueInUsd / totalPortfolioValue) * 100
+                (stock.totalValueInUsd(exchangeRate) / totalPortfolioValue) * 100
             } else {
                 0.0
             }
