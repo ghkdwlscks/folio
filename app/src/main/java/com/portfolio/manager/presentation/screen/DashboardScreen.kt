@@ -187,6 +187,8 @@ private fun DashboardContent(
     onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -211,8 +213,14 @@ private fun DashboardContent(
             key = { it.id }
         ) { stock ->
             val isAggregated = stock.accountDetails.isNotEmpty()
+            val weightPercent = if (totalPortfolioValue > 0) {
+                (stock.totalValueInUsd / totalPortfolioValue) * 100
+            } else {
+                0.0
+            }
             StockCard(
                 stock = stock,
+                weightPercent = weightPercent,
                 onDelete = if (!isAggregated) { { onDeleteHolding(stock.id) } } else null,
                 onDeleteAccountHolding = if (isAggregated) onDeleteHolding else null,
                 onEdit = if (!isAggregated) { { onEditHolding(stock.id) } } else null,

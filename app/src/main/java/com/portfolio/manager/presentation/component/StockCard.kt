@@ -49,6 +49,7 @@ import com.portfolio.manager.presentation.util.CurrencyFormatter
 @Composable
 fun StockCard(
     stock: Stock,
+    weightPercent: Double? = null,
     onDelete: (() -> Unit)? = null,
     onDeleteAccountHolding: ((Long) -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
@@ -117,6 +118,20 @@ fun StockCard(
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        if (weightPercent != null) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "${CurrencyFormatter.formatPercent(weightPercent)}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                         if (canExpand) {
                             Icon(
                                 imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
