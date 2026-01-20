@@ -20,6 +20,10 @@ data class Stock(
     val currency: String = "USD",
     val accountDetails: List<StockAccountDetail> = emptyList()
 ) {
+    companion object {
+        const val KRW_TO_USD_RATE = 1400.0
+    }
+
     val totalValue: Double
         get() = quantity * currentPrice
 
@@ -31,4 +35,10 @@ data class Stock(
 
     val gainLossPercent: Double
         get() = if (averagePrice == 0.0) 0.0 else ((currentPrice - averagePrice) / averagePrice) * 100
+
+    val totalValueInUsd: Double
+        get() = if (currency == "KRW") totalValue / KRW_TO_USD_RATE else totalValue
+
+    val totalCostInUsd: Double
+        get() = if (currency == "KRW") totalCost / KRW_TO_USD_RATE else totalCost
 }

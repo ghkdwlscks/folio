@@ -131,10 +131,15 @@ class DashboardViewModel @Inject constructor(
                     // Normal view for single account
                     holdings.map { holding ->
                         val quote = quotes.find { it.symbol == holding.symbol }
+                        val stockName = if (holding.symbol.isKoreanStock()) {
+                            quote?.longName ?: quote?.shortName ?: holding.name
+                        } else {
+                            quote?.shortName ?: quote?.longName ?: holding.name
+                        }
                         Stock(
                             id = holding.id,
                             symbol = holding.symbol,
-                            name = if (holding.symbol.isKoreanStock()) holding.name else (quote?.shortName ?: quote?.longName ?: holding.name),
+                            name = stockName,
                             quantity = holding.quantity,
                             averagePrice = holding.averagePrice,
                             currentPrice = quote?.regularMarketPrice ?: holding.averagePrice,
@@ -184,10 +189,16 @@ class DashboardViewModel @Inject constructor(
                 )
             }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
 
+            val stockName = if (symbol.isKoreanStock()) {
+                quote?.longName ?: quote?.shortName ?: firstHolding.name
+            } else {
+                quote?.shortName ?: quote?.longName ?: firstHolding.name
+            }
+
             Stock(
                 id = firstHolding.id,
                 symbol = symbol,
-                name = if (symbol.isKoreanStock()) firstHolding.name else (quote?.shortName ?: quote?.longName ?: firstHolding.name),
+                name = stockName,
                 quantity = totalQuantity,
                 averagePrice = weightedAvgPrice,
                 currentPrice = quote?.regularMarketPrice ?: weightedAvgPrice,

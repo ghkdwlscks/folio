@@ -37,8 +37,8 @@ fun PortfolioSummary(
     stocks: List<Stock>,
     modifier: Modifier = Modifier
 ) {
-    val totalValue = stocks.sumOf { it.totalValue }
-    val totalCost = stocks.sumOf { it.totalCost }
+    val totalValue = stocks.sumOf { it.totalValueInUsd }
+    val totalCost = stocks.sumOf { it.totalCostInUsd }
     val totalGainLoss = totalValue - totalCost
     val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
 

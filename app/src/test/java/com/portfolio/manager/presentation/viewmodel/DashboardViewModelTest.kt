@@ -136,14 +136,15 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `loadPrices - korean stocks - uses korean name from holdings`() = runTest {
+    fun `loadPrices - korean stocks - uses longName from API`() = runTest {
         val holdings = listOf(
-            HoldingEntity(1, 1L, "005930.KS", "삼성전자", 50, 72000.0, "KRW")
+            HoldingEntity(1, 1L, "005930.KS", "005930.KS", 50, 72000.0, "KRW")
         )
         val quotes = listOf(
             QuoteResult(
                 symbol = "005930.KS",
                 shortName = "Samsung Electronics",
+                longName = "삼성전자",
                 regularMarketPrice = 78500.0,
                 regularMarketChange = 500.0,
                 regularMarketChangePercent = 0.64,

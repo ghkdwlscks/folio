@@ -227,4 +227,66 @@ class StockTest {
         assertThat(stock.accountDetails[1].accountName).isEqualTo("Trading")
         assertThat(stock.accountDetails[1].quantity).isEqualTo(5)
     }
+
+    @Test
+    fun `totalValueInUsd - USD stock returns same value`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        assertThat(stock.totalValueInUsd).isEqualTo(1750.0)
+    }
+
+    @Test
+    fun `totalValueInUsd - KRW stock converts to USD`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "005930.KS",
+            name = "Samsung Electronics",
+            quantity = 10,
+            averagePrice = 72000.0,
+            currentPrice = 78000.0,
+            currency = "KRW"
+        )
+
+        // 780,000 KRW / 1400 = 557.14 USD (approximately)
+        assertThat(stock.totalValueInUsd).isWithin(0.01).of(557.14)
+    }
+
+    @Test
+    fun `totalCostInUsd - USD stock returns same value`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        assertThat(stock.totalCostInUsd).isEqualTo(1500.0)
+    }
+
+    @Test
+    fun `totalCostInUsd - KRW stock converts to USD`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "005930.KS",
+            name = "Samsung Electronics",
+            quantity = 10,
+            averagePrice = 70000.0,
+            currentPrice = 78000.0,
+            currency = "KRW"
+        )
+
+        // 700,000 KRW / 1400 = 500.0 USD
+        assertThat(stock.totalCostInUsd).isWithin(0.01).of(500.0)
+    }
 }
