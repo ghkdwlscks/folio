@@ -86,8 +86,8 @@ class MainActivity : ComponentActivity() {
                 NavGraph(
                     navController = navController,
                     dashboardViewModel = dashboardViewModel,
-                    addHoldingViewModelProvider = { accountId ->
-                        AddHoldingViewModel(holdingsRepository, accountId)
+                    addHoldingViewModelProvider = { accountId, accounts, holdingId ->
+                        AddHoldingViewModel(holdingsRepository, accountId, accounts, holdingId)
                     },
                     accountsViewModelProvider = {
                         AccountsViewModel(accountRepository)

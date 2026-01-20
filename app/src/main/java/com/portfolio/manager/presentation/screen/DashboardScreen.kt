@@ -61,6 +61,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel,
     onAddHolding: () -> Unit,
     onManageAccounts: () -> Unit,
+    onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -106,6 +107,8 @@ fun DashboardScreen(
             is DashboardUiState.Success -> {
                 DashboardContent(
                     stocks = state.stocks,
+                    onDeleteHolding = { viewModel.deleteHolding(it) },
+                    onEditHolding = onEditHolding,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
@@ -181,6 +184,8 @@ private fun ErrorContent(
 @Composable
 private fun DashboardContent(
     stocks: List<Stock>,
+    onDeleteHolding: (Long) -> Unit,
+    onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -206,7 +211,13 @@ private fun DashboardContent(
             items = stocks,
             key = { it.id }
         ) { stock ->
-            StockCard(stock = stock)
+            StockCard(
+                stock = stock,
+                onDelete = if (stock.accountDetails.isEmpty()) {{ onDeleteHolding(stock.id) }} else null,
+                onDeleteAccountHolding = if (stock.accountDetails.isNotEmpty()) onDeleteHolding else null,
+                onEdit = if (stock.accountDetails.isEmpty()) {{ onEditHolding(stock.id) }} else null,
+                onEditAccountHolding = if (stock.accountDetails.isNotEmpty()) onEditHolding else null
+            )
         }
     }
 }

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.TrendingDown
@@ -23,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,6 +64,10 @@ private fun formatCurrency(amount: Double, currency: String): String {
 @Composable
 fun StockCard(
     stock: Stock,
+    onDelete: (() -> Unit)? = null,
+    onDeleteAccountHolding: ((Long) -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
+    onEditAccountHolding: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isGain = stock.gainLoss >= 0
@@ -69,6 +76,7 @@ fun StockCard(
     val trendIcon = if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
     var expanded by remember { mutableStateOf(false) }
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
+    val canExpand = hasAccountDetails || onDelete != null || onEdit != null
 
     val percentFormat = NumberFormat.getNumberInstance(Locale.US).apply {
         minimumFractionDigits = 2
@@ -88,7 +96,7 @@ fun StockCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(
-                        if (hasAccountDetails) {
+                        if (canExpand) {
                             Modifier.clickable { expanded = !expanded }
                         } else {
                             Modifier
@@ -129,7 +137,7 @@ fun StockCard(
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        if (hasAccountDetails) {
+                        if (canExpand) {
                             Icon(
                                 imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                                 contentDescription = if (expanded) "Collapse" else "Expand",
@@ -193,9 +201,9 @@ fun StockCard(
                 }
             }
 
-            // Expandable account details
+            // Expandable section
             AnimatedVisibility(
-                visible = expanded && hasAccountDetails,
+                visible = expanded && canExpand,
                 enter = expandVertically(),
                 exit = shrinkVertically()
             ) {
@@ -204,34 +212,92 @@ fun StockCard(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Per Account",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        stock.accountDetails.forEach { detail ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = detail.accountName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${detail.quantity} @ ${formatCurrency(detail.averagePrice, stock.currency)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+
+                    if (hasAccountDetails) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Per Account",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            stock.accountDetails.forEach { detail ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = detail.accountName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = "${detail.quantity} @ ${formatCurrency(detail.averagePrice, stock.currency)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (onEditAccountHolding != null) {
+                                        IconButton(
+                                            onClick = { onEditAccountHolding(detail.holdingId) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Edit,
+                                                contentDescription = "Edit in ${detail.accountName}",
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    }
+                                    if (onDeleteAccountHolding != null) {
+                                        IconButton(
+                                            onClick = { onDeleteAccountHolding(detail.holdingId) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Delete,
+                                                contentDescription = "Delete from ${detail.accountName}",
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (onEdit != null || onDelete != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            if (onEdit != null) {
+                                IconButton(onClick = onEdit) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Edit,
+                                        contentDescription = "Edit",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            if (onDelete != null) {
+                                IconButton(onClick = onDelete) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }

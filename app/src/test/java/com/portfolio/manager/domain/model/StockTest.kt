@@ -196,12 +196,14 @@ class StockTest {
     fun `accountDetails - stores provided values`() {
         val accountDetails = listOf(
             StockAccountDetail(
+                holdingId = 1L,
                 accountId = 1L,
                 accountName = "Default",
                 quantity = 10,
                 averagePrice = 150.0
             ),
             StockAccountDetail(
+                holdingId = 2L,
                 accountId = 2L,
                 accountName = "Trading",
                 quantity = 5,

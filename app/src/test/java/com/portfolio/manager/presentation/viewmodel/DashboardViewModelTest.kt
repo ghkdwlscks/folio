@@ -8,6 +8,7 @@ import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -260,5 +261,16 @@ class DashboardViewModelTest {
         assertThat(state.stocks).hasSize(1)
         val appleStock = state.stocks.first()
         assertThat(appleStock.accountDetails).isEmpty()
+    }
+
+    @Test
+    fun `deleteHolding - calls repository delete`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        coEvery { holdingsRepository.deleteHolding(any()) } returns Unit
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        viewModel.deleteHolding(1L)
+
+        coVerify { holdingsRepository.deleteHolding(1L) }
     }
 }

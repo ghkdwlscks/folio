@@ -68,6 +68,12 @@ class DashboardViewModel(
 
     fun getSelectedAccountId(): Long = selectedAccountId
 
+    fun deleteHolding(holdingId: Long) {
+        viewModelScope.launch {
+            holdingsRepository.deleteHolding(holdingId)
+        }
+    }
+
     private fun observeHoldings() {
         holdingsJob?.cancel()
         holdingsJob = viewModelScope.launch {
@@ -169,6 +175,7 @@ class DashboardViewModel(
 
             val accountDetails = holdingGroup.map { holding ->
                 StockAccountDetail(
+                    holdingId = holding.id,
                     accountId = holding.accountId,
                     accountName = accountMap[holding.accountId]?.name ?: "Unknown",
                     quantity = holding.quantity,

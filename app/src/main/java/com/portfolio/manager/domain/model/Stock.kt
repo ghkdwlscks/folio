@@ -1,6 +1,7 @@
 package com.portfolio.manager.domain.model
 
 data class StockAccountDetail(
+    val holdingId: Long,
     val accountId: Long,
     val accountName: String,
     val quantity: Int,

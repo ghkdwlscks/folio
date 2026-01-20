@@ -2,6 +2,8 @@ package com.portfolio.manager.presentation.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddHoldingScreen(
     viewModel: AddHoldingViewModel,
@@ -42,7 +44,7 @@ fun AddHoldingScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Add Holding") },
+                title = { Text(if (viewModel.isEditMode) "Edit Holding" else "Add Holding") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -61,27 +63,40 @@ fun AddHoldingScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (viewModel.needsAccountSelection) {
+                Text(
+                    text = "Account",
+                    style = MaterialTheme.typography.labelLarge
+                )
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    viewModel.accounts.forEach { account ->
+                        FilterChip(
+                            selected = viewModel.selectedAccountId.value == account.id,
+                            onClick = { viewModel.selectAccount(account.id) },
+                            label = { Text(account.name) }
+                        )
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = viewModel.symbol.value,
                 onValueChange = {
-                    viewModel.symbol.value = it.uppercase()
-                    viewModel.errorMessage.value = null
+                    if (!viewModel.isEditMode) {
+                        viewModel.symbol.value = it.uppercase()
+                        viewModel.errorMessage.value = null
+                    }
                 },
                 label = { Text("Symbol") },
                 placeholder = { Text("e.g., AAPL or 005930.KS") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                enabled = !viewModel.isEditMode,
                 isError = viewModel.errorMessage.value != null,
                 supportingText = viewModel.errorMessage.value?.let { { Text(it) } }
-            )
-
-            OutlinedTextField(
-                value = viewModel.name.value,
-                onValueChange = { viewModel.name.value = it },
-                label = { Text("Name (optional)") },
-                placeholder = { Text("e.g., Apple Inc.") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
             )
 
             OutlinedTextField(
@@ -136,7 +151,7 @@ fun AddHoldingScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save Holding")
+                Text(if (viewModel.isEditMode) "Update" else "Add Holding")
             }
         }
     }

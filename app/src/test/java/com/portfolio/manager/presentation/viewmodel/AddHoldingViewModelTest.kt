@@ -1,6 +1,7 @@
 package com.portfolio.manager.presentation.viewmodel
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import io.mockk.coEvery
@@ -38,7 +39,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 1L)
 
         assertThat(viewModel.symbol.value).isEmpty()
-        assertThat(viewModel.name.value).isEmpty()
         assertThat(viewModel.quantity.value).isEmpty()
         assertThat(viewModel.averagePrice.value).isEmpty()
         assertThat(viewModel.currency.value).isEqualTo("USD")
@@ -51,7 +51,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "AAPL"
-        viewModel.name.value = "Apple Inc."
         viewModel.quantity.value = "10"
         viewModel.averagePrice.value = "150.00"
         viewModel.currency.value = "USD"
@@ -63,7 +62,7 @@ class AddHoldingViewModelTest {
             repository.addHolding(match {
                 it.accountId == 1L &&
                 it.symbol == "AAPL" &&
-                it.name == "Apple Inc." &&
+                it.name == "AAPL" &&
                 it.quantity == 10 &&
                 it.averagePrice == 150.0 &&
                 it.currency == "USD"
@@ -76,7 +75,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = ""
-        viewModel.name.value = "Apple Inc."
         viewModel.quantity.value = "10"
         viewModel.averagePrice.value = "150.00"
 
@@ -90,7 +88,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "AAPL"
-        viewModel.name.value = "Apple Inc."
         viewModel.quantity.value = "abc"
         viewModel.averagePrice.value = "150.00"
 
@@ -104,7 +101,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "AAPL"
-        viewModel.name.value = "Apple Inc."
         viewModel.quantity.value = "10"
         viewModel.averagePrice.value = "invalid"
 
@@ -120,7 +116,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "005930.KS"
-        viewModel.name.value = "삼성전자"
         viewModel.quantity.value = "50"
         viewModel.averagePrice.value = "72000"
         viewModel.currency.value = "KRW"
@@ -145,7 +140,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 1L)
 
         viewModel.symbol.value = "AAPL"
-        viewModel.name.value = "Apple Inc."
         viewModel.quantity.value = "10"
         viewModel.averagePrice.value = "150.00"
 
@@ -163,7 +157,6 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, 2L)
 
         viewModel.symbol.value = "AAPL"
-        viewModel.name.value = "Apple Inc."
         viewModel.quantity.value = "10"
         viewModel.averagePrice.value = "150.00"
 
@@ -171,5 +164,60 @@ class AddHoldingViewModelTest {
 
         assertThat(result).isTrue()
         coVerify { repository.addHolding(any()) }
+    }
+
+    @Test
+    fun `needsAccountSelection - true when ALL_ACCOUNTS_ID with accounts`() = runTest {
+        val accounts = listOf(
+            AccountEntity(1, "Default", 1000L),
+            AccountEntity(2, "Trading", 2000L)
+        )
+        val viewModel = AddHoldingViewModel(repository, ALL_ACCOUNTS_ID, accounts)
+
+        assertThat(viewModel.needsAccountSelection).isTrue()
+        assertThat(viewModel.selectedAccountId.value).isEqualTo(1L)
+    }
+
+    @Test
+    fun `needsAccountSelection - false when specific account`() = runTest {
+        val viewModel = AddHoldingViewModel(repository, 1L)
+
+        assertThat(viewModel.needsAccountSelection).isFalse()
+    }
+
+    @Test
+    fun `selectAccount - updates selectedAccountId`() = runTest {
+        val accounts = listOf(
+            AccountEntity(1, "Default", 1000L),
+            AccountEntity(2, "Trading", 2000L)
+        )
+        val viewModel = AddHoldingViewModel(repository, ALL_ACCOUNTS_ID, accounts)
+
+        viewModel.selectAccount(2L)
+
+        assertThat(viewModel.selectedAccountId.value).isEqualTo(2L)
+    }
+
+    @Test
+    fun `saveHolding - uses selected account when ALL_ACCOUNTS_ID`() = runTest {
+        val accounts = listOf(
+            AccountEntity(1, "Default", 1000L),
+            AccountEntity(2, "Trading", 2000L)
+        )
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val viewModel = AddHoldingViewModel(repository, ALL_ACCOUNTS_ID, accounts)
+
+        viewModel.selectAccount(2L)
+        viewModel.symbol.value = "AAPL"
+        viewModel.quantity.value = "10"
+        viewModel.averagePrice.value = "150.00"
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match { it.accountId == 2L })
+        }
     }
 }
