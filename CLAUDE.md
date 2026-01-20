@@ -7,8 +7,9 @@ A personal Android app for manually tracking your stock portfolio with real-time
 ### Portfolio Management
 - **Multiple Accounts**: Create and manage multiple portfolio accounts (e.g., "Retirement", "Trading")
 - **Manual Holdings Entry**: Add stocks with symbol, quantity, average price, and currency
-- **Edit/Delete Holdings**: Modify or remove existing holdings
-- **Duplicate Prevention**: Same stock symbol cannot be added twice in the same account
+- **Edit/Delete Holdings**: Modify or remove existing holdings with confirmation dialog
+- **Duplicate Prevention**: Same stock symbol cannot be added twice in the same account (checked in both add and edit modes)
+- **Input Validation**: Quantity (1-1,000,000) and price (0.0001-1,000,000,000) bounds enforced
 
 ### Dashboard
 - **Portfolio Summary**: Total value, invested amount, gain/loss with percentage
@@ -17,18 +18,22 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Holdings List**: Stock cards sorted by weight (largest positions first)
 - **Weight Display**: Each stock shows its percentage of total portfolio
 - **Account Filter**: View all accounts aggregated or filter by specific account
+- **Delete Confirmation**: Dialog confirms before deleting any holding
+- **Refresh Indicator**: Loading spinner in refresh button during price updates
 
 ### Stock Data
 - **Real-time Prices**: Fetched from Yahoo Finance API
 - **Multi-market Support**: US stocks (AAPL) and Korean stocks (005930.KS)
 - **Day Change**: Shows daily price change and percentage
 - **Name Resolution**: Uses longName → shortName → symbol fallback
+- **Dynamic Exchange Rate**: Live USD/KRW rate from Yahoo Finance API (1-hour cache, fallback to AppConstants)
 
 ### UI/UX
 - **Material 3 Design**: Modern Android design language
-- **Pull to Refresh**: Manual price refresh
+- **Pull to Refresh**: Manual price refresh with loading indicator
 - **Swipe Actions**: Edit and delete holdings
 - **Reorderable Accounts**: Drag to reorder account priority
+- **Error Handling**: Snackbar notifications for operation failures
 
 ## Tech Stack
 
@@ -50,13 +55,13 @@ app/src/main/java/com/portfolio/manager/
 │   ├── local/              # Room DB, DAOs, Entities
 │   │   ├── AppDatabase.kt
 │   │   ├── AccountDao.kt, AccountEntity.kt
-│   │   └── HoldingDao.kt, HoldingEntity.kt
+│   │   └── HoldingDao.kt, HoldingEntity.kt, AccountHoldingCount
 │   ├── remote/             # Yahoo Finance API
 │   │   ├── YahooFinanceApi.kt
 │   │   └── dto/            # Response DTOs
 │   └── repository/         # Repository implementations
 ├── domain/
-│   ├── model/              # Stock, PeriodReturn, TimePeriod
+│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod
 │   └── repository/         # Repository interfaces
 ├── presentation/
 │   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen
@@ -71,9 +76,9 @@ app/src/main/java/com/portfolio/manager/
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary, period returns selector, holdings list with account filter
-2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection
-3. **Accounts**: Manage accounts with add, edit, delete, and reorder
+1. **Dashboard**: Portfolio summary, period returns selector, holdings list with account filter, delete confirmation
+2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation
+3. **Accounts**: Manage accounts with add, edit, delete, reorder, and error snackbar
 
 ## Data Flow
 
@@ -91,6 +96,23 @@ Room Database → HoldingsRepository ──────────────�
 - ViewModels expose `StateFlow<UiState>` (sealed interface pattern)
 - Repository pattern for data access
 - Use `takeIf`/`takeUnless` for conditional nullability
+- Error handling with try-catch in ViewModel operations
+- Batch queries to avoid N+1 problems (e.g., `getHoldingsCountByAccountFlow`)
+- Room `@Transaction` for atomic operations
+
+## AppConstants
+
+```kotlin
+object AppConstants {
+    const val ALL_ACCOUNTS_ID = -1L
+    const val KRW_TO_USD_RATE = 1400.0  // Fallback when API unavailable
+    const val MIN_QUANTITY = 1
+    const val MAX_QUANTITY = 1_000_000
+    const val MIN_PRICE = 0.0001
+    const val MAX_PRICE = 1_000_000_000.0
+    const val DEFAULT_ACCOUNT_NAME = "Default"
+}
+```
 
 ## Build Environment (WSL2)
 
