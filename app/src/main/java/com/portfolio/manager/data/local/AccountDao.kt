@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -36,4 +37,18 @@ interface AccountDao {
 
     @Query("SELECT COALESCE(MAX(orderIndex), 0) FROM accounts")
     suspend fun getMaxOrderIndex(): Int
+
+    @Query("SELECT * FROM accounts LIMIT 1")
+    suspend fun getFirstAccount(): AccountEntity?
+
+    @Transaction
+    suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity {
+        val existing = getFirstAccount()
+        if (existing != null) {
+            return existing
+        }
+        val newAccount = AccountEntity(name = defaultName, orderIndex = 0)
+        val id = insert(newAccount)
+        return newAccount.copy(id = id)
+    }
 }

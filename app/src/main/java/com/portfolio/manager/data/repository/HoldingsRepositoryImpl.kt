@@ -4,6 +4,7 @@ import com.portfolio.manager.data.local.HoldingDao
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class HoldingsRepositoryImpl(
     private val dao: HoldingDao
@@ -39,5 +40,11 @@ class HoldingsRepositoryImpl(
 
     override suspend fun getHoldingsCountByAccount(accountId: Long): Int {
         return dao.getHoldingsCountByAccount(accountId)
+    }
+
+    override fun getHoldingsCountByAccountFlow(): Flow<Map<Long, Int>> {
+        return dao.getHoldingsCountByAccountFlow().map { counts ->
+            counts.associate { it.accountId to it.count }
+        }
     }
 }

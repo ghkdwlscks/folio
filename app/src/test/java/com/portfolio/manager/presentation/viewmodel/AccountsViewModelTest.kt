@@ -149,4 +149,76 @@ class AccountsViewModelTest {
             })
         }
     }
+
+    @Test
+    fun `addAccount - exception - shows error message`() = runTest {
+        every { repository.getAllAccounts() } returns flowOf(emptyList())
+        coEvery { repository.getMaxOrderIndex() } throws RuntimeException("Database error")
+
+        val viewModel = AccountsViewModel(repository)
+        viewModel.addAccount("New Account")
+
+        val state = viewModel.uiState.value as AccountsUiState.Success
+        assertThat(state.errorMessage).contains("Failed to add account")
+    }
+
+    @Test
+    fun `deleteAccount - exception - shows error message`() = runTest {
+        val accounts = listOf(AccountEntity(1, "Default", 1000L))
+        every { repository.getAllAccounts() } returns flowOf(accounts)
+        coEvery { repository.deleteAccount(1L) } throws RuntimeException("Delete failed")
+
+        val viewModel = AccountsViewModel(repository)
+        viewModel.deleteAccount(1L)
+
+        val state = viewModel.uiState.value as AccountsUiState.Success
+        assertThat(state.errorMessage).contains("Failed to delete account")
+    }
+
+    @Test
+    fun `renameAccount - exception - shows error message`() = runTest {
+        val account = AccountEntity(1, "Default", 1000L)
+        every { repository.getAllAccounts() } returns flowOf(listOf(account))
+        coEvery { repository.getAccountById(1L) } returns account
+        coEvery { repository.updateAccount(any()) } throws RuntimeException("Update failed")
+
+        val viewModel = AccountsViewModel(repository)
+        viewModel.renameAccount(1L, "New Name")
+
+        val state = viewModel.uiState.value as AccountsUiState.Success
+        assertThat(state.errorMessage).contains("Failed to rename account")
+    }
+
+    @Test
+    fun `reorderAccounts - exception - shows error message`() = runTest {
+        val accounts = listOf(
+            AccountEntity(1, "First", 1000L, 0),
+            AccountEntity(2, "Second", 2000L, 1)
+        )
+        every { repository.getAllAccounts() } returns flowOf(accounts)
+        coEvery { repository.updateAccounts(any()) } throws RuntimeException("Reorder failed")
+
+        val viewModel = AccountsViewModel(repository)
+        viewModel.reorderAccounts(listOf(accounts[1], accounts[0]))
+
+        val state = viewModel.uiState.value as AccountsUiState.Success
+        assertThat(state.errorMessage).contains("Failed to reorder accounts")
+    }
+
+    @Test
+    fun `clearError - clears error message in Success state`() = runTest {
+        every { repository.getAllAccounts() } returns flowOf(emptyList())
+        coEvery { repository.getMaxOrderIndex() } throws RuntimeException("Database error")
+
+        val viewModel = AccountsViewModel(repository)
+        viewModel.addAccount("New Account")
+
+        var state = viewModel.uiState.value as AccountsUiState.Success
+        assertThat(state.errorMessage).isNotNull()
+
+        viewModel.clearError()
+
+        state = viewModel.uiState.value as AccountsUiState.Success
+        assertThat(state.errorMessage).isNull()
+    }
 }

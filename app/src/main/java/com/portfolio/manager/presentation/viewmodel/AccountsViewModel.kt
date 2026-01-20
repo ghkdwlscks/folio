@@ -14,7 +14,11 @@ import javax.inject.Inject
 
 sealed interface AccountsUiState {
     data object Loading : AccountsUiState
-    data class Success(val accounts: List<AccountEntity>) : AccountsUiState
+    data class Success(
+        val accounts: List<AccountEntity>,
+        val errorMessage: String? = null
+    ) : AccountsUiState
+    data class Error(val message: String) : AccountsUiState
 }
 
 @HiltViewModel
@@ -35,33 +39,65 @@ class AccountsViewModel @Inject constructor(
 
     fun addAccount(name: String) {
         viewModelScope.launch {
-            val maxOrder = repository.getMaxOrderIndex()
-            val account = AccountEntity(name = name, orderIndex = maxOrder + 1)
-            repository.addAccount(account)
+            try {
+                val maxOrder = repository.getMaxOrderIndex()
+                val account = AccountEntity(name = name, orderIndex = maxOrder + 1)
+                repository.addAccount(account)
+            } catch (e: Exception) {
+                showError("Failed to add account: ${e.message}")
+            }
         }
     }
 
     fun deleteAccount(accountId: Long) {
         viewModelScope.launch {
-            repository.deleteAccount(accountId)
+            try {
+                repository.deleteAccount(accountId)
+            } catch (e: Exception) {
+                showError("Failed to delete account: ${e.message}")
+            }
         }
     }
 
     fun renameAccount(accountId: Long, newName: String) {
         viewModelScope.launch {
-            val account = repository.getAccountById(accountId)
-            if (account != null) {
-                repository.updateAccount(account.copy(name = newName))
+            try {
+                val account = repository.getAccountById(accountId)
+                if (account != null) {
+                    repository.updateAccount(account.copy(name = newName))
+                }
+            } catch (e: Exception) {
+                showError("Failed to rename account: ${e.message}")
             }
         }
     }
 
     fun reorderAccounts(reorderedAccounts: List<AccountEntity>) {
         viewModelScope.launch {
-            val updatedAccounts = reorderedAccounts.mapIndexed { index, account ->
-                account.copy(orderIndex = index)
+            try {
+                val updatedAccounts = reorderedAccounts.mapIndexed { index, account ->
+                    account.copy(orderIndex = index)
+                }
+                repository.updateAccounts(updatedAccounts)
+            } catch (e: Exception) {
+                showError("Failed to reorder accounts: ${e.message}")
             }
-            repository.updateAccounts(updatedAccounts)
+        }
+    }
+
+    fun clearError() {
+        val current = _uiState.value
+        if (current is AccountsUiState.Success) {
+            _uiState.value = current.copy(errorMessage = null)
+        }
+    }
+
+    private fun showError(message: String) {
+        val current = _uiState.value
+        if (current is AccountsUiState.Success) {
+            _uiState.value = current.copy(errorMessage = message)
+        } else {
+            _uiState.value = AccountsUiState.Error(message)
         }
     }
 }

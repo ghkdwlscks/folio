@@ -11,6 +11,7 @@ import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
+import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -36,7 +37,8 @@ sealed interface DashboardUiState {
         val selectedAccountId: Long = 1L,
         val periodReturns: Map<TimePeriod, Double> = emptyMap(),
         val selectedPeriod: TimePeriod = TimePeriod.ONE_DAY,
-        val isLoadingPeriodReturns: Boolean = false
+        val isLoadingPeriodReturns: Boolean = false,
+        val isRefreshing: Boolean = false
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -56,10 +58,8 @@ class DashboardViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // Ensure default account exists
-            if (accountRepository.getAccountCount() == 0) {
-                accountRepository.addAccount(AccountEntity(name = "Default"))
-            }
+            // Ensure default account exists (atomic operation to prevent race condition)
+            accountRepository.getOrCreateDefaultAccount(DEFAULT_ACCOUNT_NAME)
             observeHoldings()
         }
     }
@@ -70,6 +70,10 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun refresh() {
+        val currentState = _uiState.value
+        if (currentState is DashboardUiState.Success) {
+            _uiState.value = currentState.copy(isRefreshing = true)
+        }
         observeHoldings()
     }
 
@@ -152,14 +156,15 @@ class DashboardViewModel @Inject constructor(
 
             combine(
                 holdingsFlow,
-                accountRepository.getAllAccounts()
-            ) { holdings, accounts ->
-                Pair(holdings, accounts)
-            }.collectLatest { (holdings, accounts) ->
+                accountRepository.getAllAccounts(),
+                holdingsRepository.getHoldingsCountByAccountFlow()
+            ) { holdings, accounts, countMap ->
+                Triple(holdings, accounts, countMap)
+            }.collectLatest { (holdings, accounts, countMap) ->
                 val accountsWithCount = accounts.map { account ->
                     AccountWithCount(
                         account = account,
-                        holdingsCount = holdingsRepository.getHoldingsCountByAccount(account.id)
+                        holdingsCount = countMap[account.id] ?: 0
                     )
                 }
                 loadPricesForHoldings(holdings, accountsWithCount, accounts)
@@ -181,7 +186,11 @@ class DashboardViewModel @Inject constructor(
             return
         }
 
-        _uiState.value = DashboardUiState.Loading
+        val currentState = _uiState.value
+        val isRefreshing = currentState is DashboardUiState.Success && currentState.isRefreshing
+        if (!isRefreshing) {
+            _uiState.value = DashboardUiState.Loading
+        }
 
         val symbols = holdings.map { it.symbol }.distinct()
         val result = stockRepository.getQuotes(symbols)
@@ -209,7 +218,6 @@ class DashboardViewModel @Inject constructor(
                         )
                     }
                 }.sortedByDescending { it.totalValueInUsd }
-                val currentState = _uiState.value
                 val previousReturns = if (currentState is DashboardUiState.Success) {
                     currentState.periodReturns
                 } else {
@@ -225,7 +233,8 @@ class DashboardViewModel @Inject constructor(
                     accounts = accounts,
                     selectedAccountId = selectedAccountId,
                     periodReturns = previousReturns,
-                    selectedPeriod = selectedPeriod
+                    selectedPeriod = selectedPeriod,
+                    isRefreshing = false
                 )
                 // Load period returns for the selected period
                 loadPeriodReturns(stocks, selectedPeriod)

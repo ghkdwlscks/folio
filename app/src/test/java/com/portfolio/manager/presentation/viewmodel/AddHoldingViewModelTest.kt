@@ -260,6 +260,7 @@ class AddHoldingViewModelTest {
     fun `edit mode - updates existing holding`() = runTest {
         val existingHolding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
         coEvery { repository.getHoldingById(1L) } returns existingHolding
+        coEvery { repository.getHoldingByAccountAndSymbol(1L, "AAPL") } returns existingHolding
         coEvery { repository.updateHolding(any()) } returns Unit
         val savedStateHandle = createSavedStateHandle(holdingId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
@@ -336,5 +337,94 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("GOOGL")
 
         assertThat(viewModel.uiState.value.symbol).isEqualTo("AAPL")
+    }
+
+    @Test
+    fun `saveHolding - quantity below minimum - returns error`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("0")
+        viewModel.updateAveragePrice("150.0")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.uiState.value.errorMessage).contains("Quantity must be between")
+    }
+
+    @Test
+    fun `saveHolding - quantity above maximum - returns error`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("1000001")
+        viewModel.updateAveragePrice("150.0")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.uiState.value.errorMessage).contains("Quantity must be between")
+    }
+
+    @Test
+    fun `saveHolding - price below minimum - returns error`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("0.00001")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.uiState.value.errorMessage).contains("Price must be between")
+    }
+
+    @Test
+    fun `saveHolding - price above maximum - returns error`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("1000000001.0")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.uiState.value.errorMessage).contains("Price must be between")
+    }
+
+    @Test
+    fun `edit mode - duplicate symbol check with different holding - returns error`() = runTest {
+        val existingHolding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        val differentHolding = HoldingEntity(2, 1L, "AAPL", "Apple Inc.", 5, 160.0, "USD")
+        coEvery { repository.getHoldingById(1L) } returns existingHolding
+        coEvery { repository.getHoldingByAccountAndSymbol(1L, "AAPL") } returns differentHolding
+        val savedStateHandle = createSavedStateHandle(holdingId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.uiState.value.errorMessage).contains("already exists")
+    }
+
+    @Test
+    fun `edit mode - no duplicate check if symbol not found - succeeds`() = runTest {
+        val existingHolding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        coEvery { repository.getHoldingById(1L) } returns existingHolding
+        coEvery { repository.getHoldingByAccountAndSymbol(1L, "AAPL") } returns null
+        coEvery { repository.updateHolding(any()) } returns Unit
+        val savedStateHandle = createSavedStateHandle(holdingId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
     }
 }

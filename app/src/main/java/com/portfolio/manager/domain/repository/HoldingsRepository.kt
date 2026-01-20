@@ -12,4 +12,5 @@ interface HoldingsRepository {
     suspend fun updateHolding(holding: HoldingEntity)
     suspend fun deleteHolding(id: Long)
     suspend fun getHoldingsCountByAccount(accountId: Long): Int
+    fun getHoldingsCountByAccountFlow(): Flow<Map<Long, Int>>
 }

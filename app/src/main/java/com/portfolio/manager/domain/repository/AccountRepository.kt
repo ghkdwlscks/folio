@@ -12,4 +12,5 @@ interface AccountRepository {
     suspend fun deleteAccount(id: Long)
     suspend fun getAccountCount(): Int
     suspend fun getMaxOrderIndex(): Int
+    suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity
 }

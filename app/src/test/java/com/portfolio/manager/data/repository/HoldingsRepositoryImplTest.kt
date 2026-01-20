@@ -1,6 +1,7 @@
 package com.portfolio.manager.data.repository
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.data.local.AccountHoldingCount
 import com.portfolio.manager.data.local.HoldingDao
 import com.portfolio.manager.data.local.HoldingEntity
 import io.mockk.coEvery
@@ -132,5 +133,29 @@ class HoldingsRepositoryImplTest {
         val count = repository.getHoldingsCountByAccount(1L)
 
         assertThat(count).isEqualTo(5)
+    }
+
+    @Test
+    fun `getHoldingsCountByAccountFlow - returns map from dao`() = runTest {
+        val counts = listOf(
+            AccountHoldingCount(1L, 3),
+            AccountHoldingCount(2L, 5)
+        )
+        every { dao.getHoldingsCountByAccountFlow() } returns flowOf(counts)
+
+        val result = repository.getHoldingsCountByAccountFlow().first()
+
+        assertThat(result).hasSize(2)
+        assertThat(result[1L]).isEqualTo(3)
+        assertThat(result[2L]).isEqualTo(5)
+    }
+
+    @Test
+    fun `getHoldingsCountByAccountFlow - empty list returns empty map`() = runTest {
+        every { dao.getHoldingsCountByAccountFlow() } returns flowOf(emptyList())
+
+        val result = repository.getHoldingsCountByAccountFlow().first()
+
+        assertThat(result).isEmpty()
     }
 }

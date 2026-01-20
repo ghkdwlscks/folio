@@ -119,4 +119,15 @@ class AccountRepositoryImplTest {
 
         assertThat(max).isEqualTo(10)
     }
+
+    @Test
+    fun `getOrCreateDefaultAccount - delegates to dao`() = runTest {
+        val defaultAccount = AccountEntity(1, "Default", 1000L)
+        coEvery { dao.getOrCreateDefaultAccount("Default") } returns defaultAccount
+
+        val result = repository.getOrCreateDefaultAccount("Default")
+
+        assertThat(result).isEqualTo(defaultAccount)
+        coVerify { dao.getOrCreateDefaultAccount("Default") }
+    }
 }

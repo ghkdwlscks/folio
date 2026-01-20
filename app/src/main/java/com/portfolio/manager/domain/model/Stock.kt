@@ -1,5 +1,7 @@
 package com.portfolio.manager.domain.model
 
+import com.portfolio.manager.util.AppConstants
+
 data class StockAccountDetail(
     val holdingId: Long,
     val accountId: Long,
@@ -20,9 +22,6 @@ data class Stock(
     val currency: String = "USD",
     val accountDetails: List<StockAccountDetail> = emptyList()
 ) {
-    companion object {
-        const val KRW_TO_USD_RATE = 1400.0
-    }
 
     val totalValue: Double
         get() = quantity * currentPrice
@@ -37,14 +36,14 @@ data class Stock(
         get() = if (averagePrice == 0.0) 0.0 else ((currentPrice - averagePrice) / averagePrice) * 100
 
     val totalValueInUsd: Double
-        get() = if (currency == "KRW") totalValue / KRW_TO_USD_RATE else totalValue
+        get() = if (currency == "KRW") totalValue / AppConstants.KRW_TO_USD_RATE else totalValue
 
     val totalCostInUsd: Double
-        get() = if (currency == "KRW") totalCost / KRW_TO_USD_RATE else totalCost
+        get() = if (currency == "KRW") totalCost / AppConstants.KRW_TO_USD_RATE else totalCost
 
     val totalValueInKrw: Double
-        get() = if (currency == "KRW") totalValue else totalValue * KRW_TO_USD_RATE
+        get() = if (currency == "KRW") totalValue else totalValue * AppConstants.KRW_TO_USD_RATE
 
     val totalCostInKrw: Double
-        get() = if (currency == "KRW") totalCost else totalCost * KRW_TO_USD_RATE
+        get() = if (currency == "KRW") totalCost else totalCost * AppConstants.KRW_TO_USD_RATE
 }

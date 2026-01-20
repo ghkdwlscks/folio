@@ -40,4 +40,8 @@ class AccountRepositoryImpl(
     override suspend fun getMaxOrderIndex(): Int {
         return dao.getMaxOrderIndex()
     }
+
+    override suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity {
+        return dao.getOrCreateDefaultAccount(defaultName)
+    }
 }

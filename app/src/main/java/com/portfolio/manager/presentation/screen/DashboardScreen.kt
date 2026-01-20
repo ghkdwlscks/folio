@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -31,6 +32,7 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
@@ -55,6 +57,12 @@ import com.portfolio.manager.presentation.viewmodel.DashboardUiState
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 
+private data class DeleteConfirmation(
+    val holdingId: Long,
+    val symbol: String,
+    val quantity: Int
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -66,6 +74,7 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
 
     val accounts = when (val state = uiState) {
         is DashboardUiState.Success -> state.accounts
@@ -74,6 +83,10 @@ fun DashboardScreen(
     val selectedAccountId = when (val state = uiState) {
         is DashboardUiState.Success -> state.selectedAccountId
         else -> 1L
+    }
+    val isRefreshing = when (val state = uiState) {
+        is DashboardUiState.Success -> state.isRefreshing
+        else -> false
     }
 
     Scaffold(
@@ -85,6 +98,7 @@ fun DashboardScreen(
                 scrollBehavior = scrollBehavior,
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
+                isRefreshing = isRefreshing,
                 onAccountSelected = { viewModel.selectAccount(it) },
                 onManageAccounts = onManageAccounts,
                 onRefresh = { viewModel.refresh() }
@@ -111,7 +125,9 @@ fun DashboardScreen(
                     selectedPeriod = state.selectedPeriod,
                     isLoadingPeriodReturns = state.isLoadingPeriodReturns,
                     onPeriodSelected = { viewModel.selectPeriod(it) },
-                    onDeleteHolding = { viewModel.deleteHolding(it) },
+                    onDeleteHolding = { id, symbol, quantity ->
+                        deleteConfirmation = DeleteConfirmation(id, symbol, quantity)
+                    },
                     onEditHolding = onEditHolding,
                     modifier = Modifier.padding(paddingValues)
                 )
@@ -124,6 +140,31 @@ fun DashboardScreen(
                 )
             }
         }
+    }
+
+    deleteConfirmation?.let { confirmation ->
+        AlertDialog(
+            onDismissRequest = { deleteConfirmation = null },
+            title = { Text("Delete Holding") },
+            text = {
+                Text("Are you sure you want to delete ${confirmation.symbol} (${confirmation.quantity} shares)?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteHolding(confirmation.holdingId)
+                        deleteConfirmation = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmation = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -192,7 +233,7 @@ private fun DashboardContent(
     selectedPeriod: TimePeriod,
     isLoadingPeriodReturns: Boolean,
     onPeriodSelected: (TimePeriod) -> Unit,
-    onDeleteHolding: (Long) -> Unit,
+    onDeleteHolding: (Long, String, Int) -> Unit,
     onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -234,8 +275,13 @@ private fun DashboardContent(
             StockCard(
                 stock = stock,
                 weightPercent = weightPercent,
-                onDelete = { onDeleteHolding(stock.id) }.takeIf { !isAggregated },
-                onDeleteAccountHolding = onDeleteHolding.takeIf { isAggregated },
+                onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated },
+                onDeleteAccountHolding = { holdingId: Long ->
+                    val detail = stock.accountDetails.find { it.holdingId == holdingId }
+                    if (detail != null) {
+                        onDeleteHolding(holdingId, stock.symbol, detail.quantity)
+                    }
+                }.takeIf { isAggregated },
                 onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated },
                 onEditAccountHolding = onEditHolding.takeIf { isAggregated }
             )
@@ -249,6 +295,7 @@ private fun DashboardTopBar(
     scrollBehavior: TopAppBarScrollBehavior,
     accounts: List<AccountWithCount>,
     selectedAccountId: Long,
+    isRefreshing: Boolean,
     onAccountSelected: (Long) -> Unit,
     onManageAccounts: () -> Unit,
     onRefresh: () -> Unit
@@ -328,11 +375,18 @@ private fun DashboardTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = "Refresh"
-                )
+            IconButton(onClick = onRefresh, enabled = !isRefreshing) {
+                if (isRefreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Refresh,
+                        contentDescription = "Refresh"
+                    )
+                }
             }
         },
         scrollBehavior = scrollBehavior,

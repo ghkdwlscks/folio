@@ -44,9 +44,9 @@ class DashboardViewModelTest {
         accountRepository = mockk()
 
         // Default account setup
-        coEvery { accountRepository.getAccountCount() } returns 1
+        coEvery { accountRepository.getOrCreateDefaultAccount(any()) } returns defaultAccount
         every { accountRepository.getAllAccounts() } returns flowOf(listOf(defaultAccount))
-        coEvery { holdingsRepository.getHoldingsCountByAccount(any()) } returns 0
+        every { holdingsRepository.getHoldingsCountByAccountFlow() } returns flowOf(emptyMap())
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
         // Default period returns mock
         coEvery { stockRepository.getPeriodReturn(any(), any()) } answers {
@@ -200,8 +200,7 @@ class DashboardViewModelTest {
         val account1 = AccountEntity(1, "Default", 1000L)
         val account2 = AccountEntity(2, "Trading", 2000L)
         every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1, account2))
-        coEvery { holdingsRepository.getHoldingsCountByAccount(1L) } returns 1
-        coEvery { holdingsRepository.getHoldingsCountByAccount(2L) } returns 1
+        every { holdingsRepository.getHoldingsCountByAccountFlow() } returns flowOf(mapOf(1L to 1, 2L to 1))
         val holdings = listOf(
             HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
             HoldingEntity(2, 2L, "AAPL", "Apple Inc.", 5, 160.0, "USD")
@@ -231,8 +230,7 @@ class DashboardViewModelTest {
         val account1 = AccountEntity(1, "Default", 1000L)
         val account2 = AccountEntity(2, "Trading", 2000L)
         every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1, account2))
-        coEvery { holdingsRepository.getHoldingsCountByAccount(1L) } returns 1
-        coEvery { holdingsRepository.getHoldingsCountByAccount(2L) } returns 1
+        every { holdingsRepository.getHoldingsCountByAccountFlow() } returns flowOf(mapOf(1L to 1, 2L to 1))
         val holdings = listOf(
             HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
             HoldingEntity(2, 2L, "TSLA", "Tesla", 5, 200.0, "USD")
@@ -256,7 +254,7 @@ class DashboardViewModelTest {
     fun `single account view - no aggregation needed`() = runTest {
         val account1 = AccountEntity(1, "Default", 1000L)
         every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1))
-        coEvery { holdingsRepository.getHoldingsCountByAccount(1L) } returns 1
+        every { holdingsRepository.getHoldingsCountByAccountFlow() } returns flowOf(mapOf(1L to 1))
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
         every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(
             listOf(HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"))

@@ -36,4 +36,12 @@ interface HoldingDao {
 
     @Query("SELECT COUNT(*) FROM holdings WHERE accountId = :accountId")
     suspend fun getHoldingsCountByAccount(accountId: Long): Int
+
+    @Query("SELECT accountId, COUNT(*) as count FROM holdings GROUP BY accountId")
+    fun getHoldingsCountByAccountFlow(): Flow<List<AccountHoldingCount>>
 }
+
+data class AccountHoldingCount(
+    val accountId: Long,
+    val count: Int
+)

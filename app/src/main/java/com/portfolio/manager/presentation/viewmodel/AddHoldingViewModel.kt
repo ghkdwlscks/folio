@@ -8,6 +8,10 @@ import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
+import com.portfolio.manager.util.AppConstants.MAX_PRICE
+import com.portfolio.manager.util.AppConstants.MAX_QUANTITY
+import com.portfolio.manager.util.AppConstants.MIN_PRICE
+import com.portfolio.manager.util.AppConstants.MIN_QUANTITY
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -108,12 +112,31 @@ class AddHoldingViewModel @Inject constructor(
             return false
         }
 
+        // Validate quantity bounds
+        if (quantityValue < MIN_QUANTITY || quantityValue > MAX_QUANTITY) {
+            _uiState.update { it.copy(errorMessage = "Quantity must be between $MIN_QUANTITY and $MAX_QUANTITY") }
+            return false
+        }
+
+        // Validate price bounds
+        if (priceValue < MIN_PRICE || priceValue > MAX_PRICE) {
+            _uiState.update { it.copy(errorMessage = "Price must be between $MIN_PRICE and $MAX_PRICE") }
+            return false
+        }
+
         if (targetAccountId == ALL_ACCOUNTS_ID) {
             _uiState.update { it.copy(errorMessage = "Please select an account") }
             return false
         }
 
         if (state.isEditMode) {
+            // Check for duplicate symbol in edit mode (if symbol changed)
+            val existingHolding = repository.getHoldingByAccountAndSymbol(targetAccountId, symbolValue)
+            if (existingHolding != null && existingHolding.id != holdingId) {
+                _uiState.update { it.copy(errorMessage = "This stock already exists in the account") }
+                return false
+            }
+
             // Update existing holding
             val holding = HoldingEntity(
                 id = holdingId!!,
