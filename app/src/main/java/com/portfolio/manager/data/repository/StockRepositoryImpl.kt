@@ -2,6 +2,8 @@ package com.portfolio.manager.data.repository
 
 import com.portfolio.manager.data.remote.YahooFinanceApi
 import com.portfolio.manager.data.remote.dto.QuoteResult
+import com.portfolio.manager.domain.model.PeriodReturn
+import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.StockRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -45,6 +47,31 @@ class StockRepositoryImpl(
                 val quotes = results.awaitAll().filterNotNull()
                 Result.success(quotes)
             }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPeriodReturn(symbol: String, period: TimePeriod): Result<PeriodReturn> {
+        return try {
+            val response = api.getChart(symbol, interval = "1d", range = period.range)
+            val result = response.chart.result?.firstOrNull()
+                ?: return Result.failure(Exception("No data for $symbol"))
+
+            val currentPrice = result.meta.regularMarketPrice
+            val closes = result.indicators?.quote?.firstOrNull()?.close?.filterNotNull()
+
+            val startPrice = if (!closes.isNullOrEmpty()) {
+                closes.first()
+            } else {
+                result.meta.chartPreviousClose
+            }
+
+            val returnPercent = if (startPrice > 0) {
+                ((currentPrice - startPrice) / startPrice) * 100
+            } else 0.0
+
+            Result.success(PeriodReturn(symbol, period, returnPercent))
         } catch (e: Exception) {
             Result.failure(e)
         }

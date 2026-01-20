@@ -4,6 +4,8 @@ import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
+import com.portfolio.manager.domain.model.PeriodReturn
+import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
@@ -46,6 +48,12 @@ class DashboardViewModelTest {
         every { accountRepository.getAllAccounts() } returns flowOf(listOf(defaultAccount))
         coEvery { holdingsRepository.getHoldingsCountByAccount(any()) } returns 0
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        // Default period returns mock
+        coEvery { stockRepository.getPeriodReturn(any(), any()) } answers {
+            val symbol = firstArg<String>()
+            val period = secondArg<TimePeriod>()
+            Result.success(PeriodReturn(symbol, period, 1.5))
+        }
     }
 
     @After
@@ -275,5 +283,85 @@ class DashboardViewModelTest {
         viewModel.deleteHolding(1L)
 
         coVerify { holdingsRepository.deleteHolding(1L) }
+    }
+
+    @Test
+    fun `selectPeriod - updates selected period and loads returns`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 180.0))
+        )
+        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_MONTH, 5.5))
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.selectedPeriod).isEqualTo(TimePeriod.ONE_MONTH)
+        assertThat(state.periodReturns[TimePeriod.ONE_MONTH]).isWithin(0.01).of(5.5)
+    }
+
+    @Test
+    fun `selectPeriod - calculates weighted return for multiple stocks`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD"),
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 200.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0),
+                QuoteResult(symbol = "GOOGL", regularMarketPrice = 200.0)
+            )
+        )
+        // AAPL: totalValue = 10 * 100 = 1000 USD
+        // GOOGL: totalValue = 5 * 200 = 1000 USD
+        // Total: 2000 USD
+        // Weights: AAPL 50%, GOOGL 50%
+        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_WEEK) } returns
+            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_WEEK, 10.0))
+        coEvery { stockRepository.getPeriodReturn("GOOGL", TimePeriod.ONE_WEEK) } returns
+            Result.success(PeriodReturn("GOOGL", TimePeriod.ONE_WEEK, 20.0))
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        viewModel.selectPeriod(TimePeriod.ONE_WEEK)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // Weighted return: 0.5 * 10% + 0.5 * 20% = 15%
+        assertThat(state.periodReturns[TimePeriod.ONE_WEEK]).isWithin(0.01).of(15.0)
+    }
+
+    @Test
+    fun `selectPeriod - empty stocks - does not load period returns`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        viewModel.selectPeriod(TimePeriod.ONE_YEAR)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.periodReturns).isEmpty()
+    }
+
+    @Test
+    fun `selectPeriod - failed period return - uses zero for that stock`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.SIX_MONTHS) } returns
+            Result.failure(Exception("No data"))
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        viewModel.selectPeriod(TimePeriod.SIX_MONTHS)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.periodReturns[TimePeriod.SIX_MONTHS]).isEqualTo(0.0)
     }
 }

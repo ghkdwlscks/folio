@@ -15,7 +15,8 @@ data class ChartData(
 
 @Serializable
 data class ChartResult(
-    val meta: ChartMeta
+    val meta: ChartMeta,
+    val indicators: ChartIndicators? = null
 )
 
 @Serializable
@@ -26,6 +27,16 @@ data class ChartMeta(
     val regularMarketPrice: Double = 0.0,
     val chartPreviousClose: Double = 0.0,
     val currency: String = "USD"
+)
+
+@Serializable
+data class ChartIndicators(
+    val quote: List<ChartQuote>? = null
+)
+
+@Serializable
+data class ChartQuote(
+    val close: List<Double?>? = null
 )
 
 @Serializable

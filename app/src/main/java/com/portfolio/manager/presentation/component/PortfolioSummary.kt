@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRedPastel
 import com.portfolio.manager.presentation.util.CurrencyFormatter
@@ -40,6 +41,10 @@ import com.portfolio.manager.presentation.util.CurrencyFormatter
 @Composable
 fun PortfolioSummary(
     stocks: List<Stock>,
+    periodReturns: Map<TimePeriod, Double> = emptyMap(),
+    selectedPeriod: TimePeriod = TimePeriod.ONE_DAY,
+    isLoadingPeriodReturns: Boolean = false,
+    onPeriodSelected: (TimePeriod) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showInKrw by remember { mutableStateOf(false) }
@@ -161,10 +166,74 @@ fun PortfolioSummary(
                     label = "Stocks",
                     value = stocks.size.toString()
                 )
-                StatItem(
-                    label = "Today",
-                    value = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent / 10)}%"
-                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            PeriodSelector(
+                periods = TimePeriod.entries,
+                selectedPeriod = selectedPeriod,
+                periodReturns = periodReturns,
+                isLoading = isLoadingPeriodReturns,
+                onPeriodSelected = onPeriodSelected
+            )
+        }
+    }
+}
+
+@Composable
+private fun PeriodSelector(
+    periods: List<TimePeriod>,
+    selectedPeriod: TimePeriod,
+    periodReturns: Map<TimePeriod, Double>,
+    isLoading: Boolean,
+    onPeriodSelected: (TimePeriod) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        periods.forEach { period ->
+            val isSelected = period == selectedPeriod
+            val returnValue = periodReturns[period]
+            val displayValue = when {
+                isLoading && isSelected -> "..."
+                returnValue != null -> {
+                    val sign = if (returnValue >= 0) "+" else ""
+                    "$sign${CurrencyFormatter.formatPercent(returnValue)}%"
+                }
+                else -> period.label
+            }
+            val returnColor = when {
+                returnValue == null -> Color.White.copy(alpha = 0.7f)
+                returnValue >= 0 -> GainGreenPastel
+                else -> LossRedPastel
+            }
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (isSelected) Color.White.copy(alpha = 0.2f) else Color.Transparent,
+                modifier = Modifier.clickable { onPeriodSelected(period) }
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = period.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
+                    )
+                    if (isSelected && returnValue != null) {
+                        Text(
+                            text = displayValue,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = returnColor
+                        )
+                    }
+                }
             }
         }
     }

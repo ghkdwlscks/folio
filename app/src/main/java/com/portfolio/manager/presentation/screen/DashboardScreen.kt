@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.component.PortfolioSummary
 import com.portfolio.manager.presentation.component.StockCard
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
@@ -106,6 +107,10 @@ fun DashboardScreen(
             is DashboardUiState.Success -> {
                 DashboardContent(
                     stocks = state.stocks,
+                    periodReturns = state.periodReturns,
+                    selectedPeriod = state.selectedPeriod,
+                    isLoadingPeriodReturns = state.isLoadingPeriodReturns,
+                    onPeriodSelected = { viewModel.selectPeriod(it) },
                     onDeleteHolding = { viewModel.deleteHolding(it) },
                     onEditHolding = onEditHolding,
                     modifier = Modifier.padding(paddingValues)
@@ -183,6 +188,10 @@ private fun ErrorContent(
 @Composable
 private fun DashboardContent(
     stocks: List<Stock>,
+    periodReturns: Map<TimePeriod, Double>,
+    selectedPeriod: TimePeriod,
+    isLoadingPeriodReturns: Boolean,
+    onPeriodSelected: (TimePeriod) -> Unit,
     onDeleteHolding: (Long) -> Unit,
     onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
@@ -197,6 +206,10 @@ private fun DashboardContent(
         item {
             PortfolioSummary(
                 stocks = stocks,
+                periodReturns = periodReturns,
+                selectedPeriod = selectedPeriod,
+                isLoadingPeriodReturns = isLoadingPeriodReturns,
+                onPeriodSelected = onPeriodSelected,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
