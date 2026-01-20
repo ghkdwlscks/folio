@@ -4,18 +4,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.domain.repository.AccountRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed interface AccountsUiState {
     data object Loading : AccountsUiState
     data class Success(val accounts: List<AccountEntity>) : AccountsUiState
 }
 
-class AccountsViewModel(
+@HiltViewModel
+class AccountsViewModel @Inject constructor(
     private val repository: AccountRepository
 ) : ViewModel() {
 
