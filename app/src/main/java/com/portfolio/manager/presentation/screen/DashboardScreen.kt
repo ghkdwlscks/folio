@@ -234,10 +234,10 @@ private fun DashboardContent(
             StockCard(
                 stock = stock,
                 weightPercent = weightPercent,
-                onDelete = if (!isAggregated) { { onDeleteHolding(stock.id) } } else null,
-                onDeleteAccountHolding = if (isAggregated) onDeleteHolding else null,
-                onEdit = if (!isAggregated) { { onEditHolding(stock.id) } } else null,
-                onEditAccountHolding = if (isAggregated) onEditHolding else null
+                onDelete = { onDeleteHolding(stock.id) }.takeIf { !isAggregated },
+                onDeleteAccountHolding = onDeleteHolding.takeIf { isAggregated },
+                onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated },
+                onEditAccountHolding = onEditHolding.takeIf { isAggregated }
             )
         }
     }

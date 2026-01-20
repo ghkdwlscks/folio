@@ -1,6 +1,5 @@
 package com.portfolio.manager.presentation.viewmodel
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,9 +9,25 @@ import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class AddHoldingUiState(
+    val symbol: String = "",
+    val quantity: String = "",
+    val averagePrice: String = "",
+    val currency: String = "USD",
+    val errorMessage: String? = null,
+    val selectedAccountId: Long = ALL_ACCOUNTS_ID,
+    val accounts: List<AccountEntity> = emptyList(),
+    val needsAccountSelection: Boolean = false,
+    val isEditMode: Boolean = false
+)
 
 @HiltViewModel
 class AddHoldingViewModel @Inject constructor(
@@ -24,63 +39,81 @@ class AddHoldingViewModel @Inject constructor(
     private val holdingId: Long? = savedStateHandle.get<Long>("holdingId")
     private val initialAccountId: Long = savedStateHandle.get<Long>("accountId") ?: ALL_ACCOUNTS_ID
 
-    val symbol = mutableStateOf("")
-    val quantity = mutableStateOf("")
-    val averagePrice = mutableStateOf("")
-    val currency = mutableStateOf("USD")
-    val errorMessage = mutableStateOf<String?>(null)
-    val selectedAccountId = mutableStateOf(initialAccountId)
-    val accounts = mutableStateOf<List<AccountEntity>>(emptyList())
-
-    val isEditMode: Boolean = holdingId != null
-    val needsAccountSelection = mutableStateOf(false)
+    private val _uiState = MutableStateFlow(AddHoldingUiState(
+        selectedAccountId = initialAccountId,
+        isEditMode = holdingId != null
+    ))
+    val uiState: StateFlow<AddHoldingUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             // Load accounts
             val accountList = accountRepository.getAllAccounts().first()
-            accounts.value = accountList
+            _uiState.update { it.copy(accounts = accountList) }
 
             // Set initial account selection
-            if (initialAccountId == ALL_ACCOUNTS_ID && accountList.isNotEmpty() && !isEditMode) {
-                selectedAccountId.value = accountList.first().id
-                needsAccountSelection.value = true
+            if (initialAccountId == ALL_ACCOUNTS_ID && accountList.isNotEmpty() && holdingId == null) {
+                _uiState.update { it.copy(
+                    selectedAccountId = accountList.first().id,
+                    needsAccountSelection = true
+                )}
             }
 
             // Load existing holding for edit mode
             if (holdingId != null) {
                 repository.getHoldingById(holdingId)?.let { holding ->
-                    symbol.value = holding.symbol
-                    quantity.value = holding.quantity.toString()
-                    averagePrice.value = holding.averagePrice.toString()
-                    currency.value = holding.currency
-                    selectedAccountId.value = holding.accountId
+                    _uiState.update { it.copy(
+                        symbol = holding.symbol,
+                        quantity = holding.quantity.toString(),
+                        averagePrice = holding.averagePrice.toString(),
+                        currency = holding.currency,
+                        selectedAccountId = holding.accountId
+                    )}
                 }
             }
         }
     }
 
+    fun updateSymbol(value: String) {
+        if (!_uiState.value.isEditMode) {
+            _uiState.update { it.copy(symbol = value.uppercase(), errorMessage = null) }
+        }
+    }
+
+    fun updateQuantity(value: String) {
+        _uiState.update { it.copy(quantity = value.filter { c -> c.isDigit() }) }
+    }
+
+    fun updateAveragePrice(value: String) {
+        _uiState.update { it.copy(averagePrice = value.filter { c -> c.isDigit() || c == '.' }) }
+    }
+
+    fun updateCurrency(value: String) {
+        _uiState.update { it.copy(currency = value) }
+    }
+
     fun selectAccount(accountId: Long) {
-        selectedAccountId.value = accountId
+        _uiState.update { it.copy(selectedAccountId = accountId) }
     }
 
     suspend fun saveHolding(): Boolean {
-        errorMessage.value = null
-        val symbolValue = symbol.value.trim().uppercase()
-        val quantityValue = quantity.value.toIntOrNull()
-        val priceValue = averagePrice.value.toDoubleOrNull()
-        val targetAccountId = selectedAccountId.value
+        _uiState.update { it.copy(errorMessage = null) }
+        val state = _uiState.value
+        val symbolValue = state.symbol.trim().uppercase()
+        val quantityValue = state.quantity.toIntOrNull()
+        val priceValue = state.averagePrice.toDoubleOrNull()
+        val targetAccountId = state.selectedAccountId
 
         if (symbolValue.isEmpty() || quantityValue == null || priceValue == null) {
             return false
         }
 
         if (targetAccountId == ALL_ACCOUNTS_ID) {
-            errorMessage.value = "Please select an account"
+            _uiState.update { it.copy(errorMessage = "Please select an account") }
             return false
         }
 
-        if (isEditMode) {
+        if (state.isEditMode) {
             // Update existing holding
             val holding = HoldingEntity(
                 id = holdingId!!,
@@ -89,14 +122,14 @@ class AddHoldingViewModel @Inject constructor(
                 name = symbolValue,
                 quantity = quantityValue,
                 averagePrice = priceValue,
-                currency = currency.value
+                currency = state.currency
             )
             repository.updateHolding(holding)
         } else {
             // Check for duplicate symbol in the same account
             val existingHolding = repository.getHoldingByAccountAndSymbol(targetAccountId, symbolValue)
             if (existingHolding != null) {
-                errorMessage.value = "This stock already exists in the account"
+                _uiState.update { it.copy(errorMessage = "This stock already exists in the account") }
                 return false
             }
 
@@ -106,7 +139,7 @@ class AddHoldingViewModel @Inject constructor(
                 name = symbolValue,
                 quantity = quantityValue,
                 averagePrice = priceValue,
-                currency = currency.value
+                currency = state.currency
             )
             repository.addHolding(holding)
         }

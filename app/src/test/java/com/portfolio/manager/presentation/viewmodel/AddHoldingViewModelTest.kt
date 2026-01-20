@@ -9,7 +9,6 @@ import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,10 +58,11 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        assertThat(viewModel.symbol.value).isEmpty()
-        assertThat(viewModel.quantity.value).isEmpty()
-        assertThat(viewModel.averagePrice.value).isEmpty()
-        assertThat(viewModel.currency.value).isEqualTo("USD")
+        val state = viewModel.uiState.value
+        assertThat(state.symbol).isEmpty()
+        assertThat(state.quantity).isEmpty()
+        assertThat(state.averagePrice).isEmpty()
+        assertThat(state.currency).isEqualTo("USD")
     }
 
     @Test
@@ -72,10 +72,10 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = "AAPL"
-        viewModel.quantity.value = "10"
-        viewModel.averagePrice.value = "150.00"
-        viewModel.currency.value = "USD"
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("150.00")
+        viewModel.updateCurrency("USD")
 
         val result = viewModel.saveHolding()
 
@@ -97,9 +97,9 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = ""
-        viewModel.quantity.value = "10"
-        viewModel.averagePrice.value = "150.00"
+        viewModel.updateSymbol("")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("150.00")
 
         val result = viewModel.saveHolding()
 
@@ -111,9 +111,9 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = "AAPL"
-        viewModel.quantity.value = "abc"
-        viewModel.averagePrice.value = "150.00"
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("abc")
+        viewModel.updateAveragePrice("150.00")
 
         val result = viewModel.saveHolding()
 
@@ -125,9 +125,9 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = "AAPL"
-        viewModel.quantity.value = "10"
-        viewModel.averagePrice.value = "invalid"
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("invalid")
 
         val result = viewModel.saveHolding()
 
@@ -141,10 +141,10 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = "005930.KS"
-        viewModel.quantity.value = "50"
-        viewModel.averagePrice.value = "72000"
-        viewModel.currency.value = "KRW"
+        viewModel.updateSymbol("005930.KS")
+        viewModel.updateQuantity("50")
+        viewModel.updateAveragePrice("72000")
+        viewModel.updateCurrency("KRW")
 
         val result = viewModel.saveHolding()
 
@@ -166,14 +166,14 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = "AAPL"
-        viewModel.quantity.value = "10"
-        viewModel.averagePrice.value = "150.00"
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("150.00")
 
         val result = viewModel.saveHolding()
 
         assertThat(result).isFalse()
-        assertThat(viewModel.errorMessage.value).isEqualTo("This stock already exists in the account")
+        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("This stock already exists in the account")
         coVerify(exactly = 0) { repository.addHolding(any()) }
     }
 
@@ -184,9 +184,9 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 2L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = "AAPL"
-        viewModel.quantity.value = "10"
-        viewModel.averagePrice.value = "150.00"
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("150.00")
 
         val result = viewModel.saveHolding()
 
@@ -199,8 +199,8 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = ALL_ACCOUNTS_ID)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        assertThat(viewModel.needsAccountSelection.value).isTrue()
-        assertThat(viewModel.selectedAccountId.value).isEqualTo(1L)
+        assertThat(viewModel.uiState.value.needsAccountSelection).isTrue()
+        assertThat(viewModel.uiState.value.selectedAccountId).isEqualTo(1L)
     }
 
     @Test
@@ -208,7 +208,7 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        assertThat(viewModel.needsAccountSelection.value).isFalse()
+        assertThat(viewModel.uiState.value.needsAccountSelection).isFalse()
     }
 
     @Test
@@ -218,7 +218,7 @@ class AddHoldingViewModelTest {
 
         viewModel.selectAccount(2L)
 
-        assertThat(viewModel.selectedAccountId.value).isEqualTo(2L)
+        assertThat(viewModel.uiState.value.selectedAccountId).isEqualTo(2L)
     }
 
     @Test
@@ -229,9 +229,9 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
         viewModel.selectAccount(2L)
-        viewModel.symbol.value = "AAPL"
-        viewModel.quantity.value = "10"
-        viewModel.averagePrice.value = "150.00"
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("150.00")
 
         val result = viewModel.saveHolding()
 
@@ -248,11 +248,12 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(holdingId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        assertThat(viewModel.isEditMode).isTrue()
-        assertThat(viewModel.symbol.value).isEqualTo("AAPL")
-        assertThat(viewModel.quantity.value).isEqualTo("10")
-        assertThat(viewModel.averagePrice.value).isEqualTo("150.0")
-        assertThat(viewModel.currency.value).isEqualTo("USD")
+        val state = viewModel.uiState.value
+        assertThat(state.isEditMode).isTrue()
+        assertThat(state.symbol).isEqualTo("AAPL")
+        assertThat(state.quantity).isEqualTo("10")
+        assertThat(state.averagePrice).isEqualTo("150.0")
+        assertThat(state.currency).isEqualTo("USD")
     }
 
     @Test
@@ -263,8 +264,8 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(holdingId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.quantity.value = "20"
-        viewModel.averagePrice.value = "160.0"
+        viewModel.updateQuantity("20")
+        viewModel.updateAveragePrice("160.0")
 
         val result = viewModel.saveHolding()
 
@@ -285,14 +286,55 @@ class AddHoldingViewModelTest {
         val savedStateHandle = createSavedStateHandle(accountId = ALL_ACCOUNTS_ID)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
-        viewModel.symbol.value = "AAPL"
-        viewModel.quantity.value = "10"
-        viewModel.averagePrice.value = "150.00"
-        viewModel.selectedAccountId.value = ALL_ACCOUNTS_ID
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("150.00")
 
         val result = viewModel.saveHolding()
 
         assertThat(result).isFalse()
-        assertThat(viewModel.errorMessage.value).isEqualTo("Please select an account")
+        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Please select an account")
+    }
+
+    @Test
+    fun `updateSymbol - filters to uppercase`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("aapl")
+
+        assertThat(viewModel.uiState.value.symbol).isEqualTo("AAPL")
+    }
+
+    @Test
+    fun `updateQuantity - filters non-digits`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateQuantity("10abc20")
+
+        assertThat(viewModel.uiState.value.quantity).isEqualTo("1020")
+    }
+
+    @Test
+    fun `updateAveragePrice - filters invalid characters`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateAveragePrice("150.50abc")
+
+        assertThat(viewModel.uiState.value.averagePrice).isEqualTo("150.50")
+    }
+
+    @Test
+    fun `updateSymbol - does not update in edit mode`() = runTest {
+        val existingHolding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        coEvery { repository.getHoldingById(1L) } returns existingHolding
+        val savedStateHandle = createSavedStateHandle(holdingId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("GOOGL")
+
+        assertThat(viewModel.uiState.value.symbol).isEqualTo("AAPL")
     }
 }

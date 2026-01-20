@@ -24,6 +24,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,12 +41,13 @@ fun AddHoldingScreen(
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(if (viewModel.isEditMode) "Edit Holding" else "Add Holding") },
+                title = { Text(if (uiState.isEditMode) "Edit Holding" else "Add Holding") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -63,7 +66,7 @@ fun AddHoldingScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (viewModel.needsAccountSelection.value) {
+            if (uiState.needsAccountSelection) {
                 Text(
                     text = "Account",
                     style = MaterialTheme.typography.labelLarge
@@ -72,9 +75,9 @@ fun AddHoldingScreen(
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    viewModel.accounts.value.forEach { account ->
+                    uiState.accounts.forEach { account ->
                         FilterChip(
-                            selected = viewModel.selectedAccountId.value == account.id,
+                            selected = uiState.selectedAccountId == account.id,
                             onClick = { viewModel.selectAccount(account.id) },
                             label = { Text(account.name) }
                         )
@@ -83,25 +86,20 @@ fun AddHoldingScreen(
             }
 
             OutlinedTextField(
-                value = viewModel.symbol.value,
-                onValueChange = {
-                    if (!viewModel.isEditMode) {
-                        viewModel.symbol.value = it.uppercase()
-                        viewModel.errorMessage.value = null
-                    }
-                },
+                value = uiState.symbol,
+                onValueChange = { viewModel.updateSymbol(it) },
                 label = { Text("Symbol") },
                 placeholder = { Text("e.g., AAPL or 005930.KS") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                enabled = !viewModel.isEditMode,
-                isError = viewModel.errorMessage.value != null,
-                supportingText = viewModel.errorMessage.value?.let { { Text(it) } }
+                enabled = !uiState.isEditMode,
+                isError = uiState.errorMessage != null,
+                supportingText = uiState.errorMessage?.let { { Text(it) } }
             )
 
             OutlinedTextField(
-                value = viewModel.quantity.value,
-                onValueChange = { viewModel.quantity.value = it.filter { c -> c.isDigit() } },
+                value = uiState.quantity,
+                onValueChange = { viewModel.updateQuantity(it) },
                 label = { Text("Quantity") },
                 placeholder = { Text("e.g., 10") },
                 modifier = Modifier.fillMaxWidth(),
@@ -110,8 +108,8 @@ fun AddHoldingScreen(
             )
 
             OutlinedTextField(
-                value = viewModel.averagePrice.value,
-                onValueChange = { viewModel.averagePrice.value = it.filter { c -> c.isDigit() || c == '.' } },
+                value = uiState.averagePrice,
+                onValueChange = { viewModel.updateAveragePrice(it) },
                 label = { Text("Average Price") },
                 placeholder = { Text("e.g., 150.00") },
                 modifier = Modifier.fillMaxWidth(),
@@ -128,13 +126,13 @@ fun AddHoldingScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
-                    selected = viewModel.currency.value == "USD",
-                    onClick = { viewModel.currency.value = "USD" },
+                    selected = uiState.currency == "USD",
+                    onClick = { viewModel.updateCurrency("USD") },
                     label = { Text("USD ($)") }
                 )
                 FilterChip(
-                    selected = viewModel.currency.value == "KRW",
-                    onClick = { viewModel.currency.value = "KRW" },
+                    selected = uiState.currency == "KRW",
+                    onClick = { viewModel.updateCurrency("KRW") },
                     label = { Text("KRW (₩)") }
                 )
             }
@@ -151,7 +149,7 @@ fun AddHoldingScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (viewModel.isEditMode) "Update" else "Add Holding")
+                Text(if (uiState.isEditMode) "Update" else "Add Holding")
             }
         }
     }
