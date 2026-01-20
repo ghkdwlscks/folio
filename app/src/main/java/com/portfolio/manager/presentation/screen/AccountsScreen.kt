@@ -132,7 +132,8 @@ fun AccountsScreen(
     }
 
     if (showAddDialog) {
-        AddAccountDialog(
+        AccountDialog(
+            mode = AccountDialogMode.ADD,
             onDismiss = { showAddDialog = false },
             onConfirm = { name ->
                 viewModel.addAccount(name)
@@ -142,8 +143,9 @@ fun AccountsScreen(
     }
 
     editingAccount?.let { account ->
-        EditAccountDialog(
-            account = account,
+        AccountDialog(
+            mode = AccountDialogMode.EDIT,
+            initialName = account.name,
             onDismiss = { editingAccount = null },
             onConfirm = { newName ->
                 viewModel.renameAccount(account.id, newName)
@@ -320,23 +322,30 @@ private fun AccountCard(
     }
 }
 
+private enum class AccountDialogMode { ADD, EDIT }
+
 @Composable
-private fun AddAccountDialog(
+private fun AccountDialog(
+    mode: AccountDialogMode,
+    initialName: String = "",
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialName) }
+    val isAddMode = mode == AccountDialogMode.ADD
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Account") },
+        title = { Text(if (isAddMode) "New Account" else "Edit Account") },
         text = {
             Column {
-                Text(
-                    text = "Enter a name for your new account",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                if (isAddMode) {
+                    Text(
+                        text = "Enter a name for your new account",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -351,43 +360,7 @@ private fun AddAccountDialog(
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank()
             ) {
-                Text("Create")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun EditAccountDialog(
-    account: AccountEntity,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var name by remember { mutableStateOf(account.name) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit Account") },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Account Name") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(name) },
-                enabled = name.isNotBlank()
-            ) {
-                Text("Save")
+                Text(if (isAddMode) "Create" else "Save")
             }
         },
         dismissButton = {

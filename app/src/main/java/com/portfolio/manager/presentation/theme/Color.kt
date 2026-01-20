@@ -20,6 +20,10 @@ val LossRed = Color(0xFFFF1744)
 val LossRedLight = Color(0xFFFFEBEE)
 val LossRedDark = Color(0xFFB71C1C)
 
+// Pastel variants for dark backgrounds
+val GainGreenPastel = Color(0xFF90EE90)
+val LossRedPastel = Color(0xFFFFB6C1)
+
 // Surface colors
 val SurfaceLight = Color(0xFFFFFBFE)
 val SurfaceDark = Color(0xFF1C1B1F)

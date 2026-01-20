@@ -63,7 +63,7 @@ fun AddHoldingScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (viewModel.needsAccountSelection) {
+            if (viewModel.needsAccountSelection.value) {
                 Text(
                     text = "Account",
                     style = MaterialTheme.typography.labelLarge
@@ -72,7 +72,7 @@ fun AddHoldingScreen(
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    viewModel.accounts.forEach { account ->
+                    viewModel.accounts.value.forEach { account ->
                         FilterChip(
                             selected = viewModel.selectedAccountId.value == account.id,
                             onClick = { viewModel.selectAccount(account.id) },

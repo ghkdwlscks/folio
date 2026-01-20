@@ -9,6 +9,9 @@ import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
+import com.portfolio.manager.util.isKoreanStock
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,13 +20,12 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class AccountWithCount(
     val account: AccountEntity,
     val holdingsCount: Int
 )
-
-const val ALL_ACCOUNTS_ID = -1L
 
 sealed interface DashboardUiState {
     data object Loading : DashboardUiState
@@ -35,7 +37,8 @@ sealed interface DashboardUiState {
     data class Error(val message: String) : DashboardUiState
 }
 
-class DashboardViewModel(
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
     private val stockRepository: StockRepository,
     private val holdingsRepository: HoldingsRepository,
     private val accountRepository: AccountRepository
@@ -128,11 +131,10 @@ class DashboardViewModel(
                     // Normal view for single account
                     holdings.map { holding ->
                         val quote = quotes.find { it.symbol == holding.symbol }
-                        val isKoreanStock = holding.symbol.endsWith(".KS") || holding.symbol.endsWith(".KQ")
                         Stock(
                             id = holding.id,
                             symbol = holding.symbol,
-                            name = if (isKoreanStock) holding.name else (quote?.shortName ?: quote?.longName ?: holding.name),
+                            name = if (holding.symbol.isKoreanStock()) holding.name else (quote?.shortName ?: quote?.longName ?: holding.name),
                             quantity = holding.quantity,
                             averagePrice = holding.averagePrice,
                             currentPrice = quote?.regularMarketPrice ?: holding.averagePrice,
@@ -166,7 +168,6 @@ class DashboardViewModel(
 
         return holdings.groupBy { it.symbol }.map { (symbol, holdingGroup) ->
             val quote = quotes.find { it.symbol == symbol }
-            val isKoreanStock = symbol.endsWith(".KS") || symbol.endsWith(".KQ")
             val firstHolding = holdingGroup.first()
 
             val totalQuantity = holdingGroup.sumOf { it.quantity }
@@ -186,7 +187,7 @@ class DashboardViewModel(
             Stock(
                 id = firstHolding.id,
                 symbol = symbol,
-                name = if (isKoreanStock) firstHolding.name else (quote?.shortName ?: quote?.longName ?: firstHolding.name),
+                name = if (symbol.isKoreanStock()) firstHolding.name else (quote?.shortName ?: quote?.longName ?: firstHolding.name),
                 quantity = totalQuantity,
                 averagePrice = weightedAvgPrice,
                 currentPrice = quote?.regularMarketPrice ?: weightedAvgPrice,

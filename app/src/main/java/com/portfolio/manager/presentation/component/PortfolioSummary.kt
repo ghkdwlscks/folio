@@ -28,10 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.portfolio.manager.domain.model.Stock
-import com.portfolio.manager.presentation.theme.GainGreen
-import com.portfolio.manager.presentation.theme.LossRed
-import java.text.NumberFormat
-import java.util.Locale
+import com.portfolio.manager.presentation.theme.GainGreenPastel
+import com.portfolio.manager.presentation.theme.LossRedPastel
+import com.portfolio.manager.presentation.util.CurrencyFormatter
 
 @Composable
 fun PortfolioSummary(
@@ -44,14 +43,8 @@ fun PortfolioSummary(
     val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
 
     val isGain = totalGainLoss >= 0
-    val trendColor = if (isGain) GainGreen else LossRed
     val trendIcon = if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
-
-    val currencyFormat = NumberFormat.getCurrencyInstance(Locale.US)
-    val percentFormat = NumberFormat.getNumberInstance(Locale.US).apply {
-        minimumFractionDigits = 2
-        maximumFractionDigits = 2
-    }
+    val trendColor = if (isGain) GainGreenPastel else LossRedPastel
 
     Box(
         modifier = modifier
@@ -81,7 +74,7 @@ fun PortfolioSummary(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = currencyFormat.format(totalValue),
+                text = CurrencyFormatter.formatUsd(totalValue),
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = 36.sp,
                     letterSpacing = (-1).sp
@@ -103,22 +96,22 @@ fun PortfolioSummary(
                 ) {
                     Icon(
                         imageVector = trendIcon,
-                        contentDescription = null,
+                        contentDescription = if (isGain) "Trending up" else "Trending down",
                         modifier = Modifier.size(20.dp),
-                        tint = if (isGain) Color(0xFF90EE90) else Color(0xFFFFB6C1)
+                        tint = trendColor
                     )
                     Text(
-                        text = "${if (isGain) "+" else ""}${currencyFormat.format(totalGainLoss)}",
+                        text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatUsd(totalGainLoss)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = if (isGain) Color(0xFF90EE90).copy(alpha = 0.3f) else Color(0xFFFFB6C1).copy(alpha = 0.3f)
+                        color = trendColor.copy(alpha = 0.3f)
                     ) {
                         Text(
-                            text = "${if (isGain) "+" else ""}${percentFormat.format(totalGainLossPercent)}%",
+                            text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent)}%",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
@@ -136,7 +129,7 @@ fun PortfolioSummary(
             ) {
                 StatItem(
                     label = "Invested",
-                    value = currencyFormat.format(totalCost)
+                    value = CurrencyFormatter.formatUsd(totalCost)
                 )
                 StatItem(
                     label = "Stocks",
@@ -144,7 +137,7 @@ fun PortfolioSummary(
                 )
                 StatItem(
                     label = "Today",
-                    value = "${if (isGain) "+" else ""}${percentFormat.format(totalGainLossPercent / 10)}%"
+                    value = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent / 10)}%"
                 )
             }
         }

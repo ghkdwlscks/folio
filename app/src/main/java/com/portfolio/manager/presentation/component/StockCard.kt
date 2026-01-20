@@ -44,22 +44,7 @@ import com.portfolio.manager.presentation.theme.GainGreen
 import com.portfolio.manager.presentation.theme.GainGreenLight
 import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.theme.LossRedLight
-import java.text.NumberFormat
-import java.util.Locale
-
-private fun formatCurrency(amount: Double, currency: String): String {
-    return when (currency) {
-        "KRW" -> {
-            val format = NumberFormat.getNumberInstance(Locale.KOREA).apply {
-                maximumFractionDigits = 0
-            }
-            "₩${format.format(amount)}"
-        }
-        else -> {
-            NumberFormat.getCurrencyInstance(Locale.US).format(amount)
-        }
-    }
-}
+import com.portfolio.manager.presentation.util.CurrencyFormatter
 
 @Composable
 fun StockCard(
@@ -77,11 +62,6 @@ fun StockCard(
     var expanded by remember { mutableStateOf(false) }
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
     val canExpand = hasAccountDetails || onDelete != null || onEdit != null
-
-    val percentFormat = NumberFormat.getNumberInstance(Locale.US).apply {
-        minimumFractionDigits = 2
-        maximumFractionDigits = 2
-    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -153,7 +133,7 @@ fun StockCard(
                         maxLines = 1
                     )
                     Text(
-                        text = "${stock.quantity} shares @ ${formatCurrency(stock.averagePrice, stock.currency)}",
+                        text = "${stock.quantity} shares @ ${CurrencyFormatter.format(stock.averagePrice, stock.currency)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -165,13 +145,13 @@ fun StockCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = formatCurrency(stock.currentPrice, stock.currency),
+                        text = CurrencyFormatter.format(stock.currentPrice, stock.currency),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Total: ${formatCurrency(stock.totalValue, stock.currency)}",
+                        text = "Total: ${CurrencyFormatter.format(stock.totalValue, stock.currency)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -186,12 +166,12 @@ fun StockCard(
                         ) {
                             Icon(
                                 imageVector = trendIcon,
-                                contentDescription = null,
+                                contentDescription = if (isGain) "Trending up" else "Trending down",
                                 modifier = Modifier.size(14.dp),
                                 tint = trendColor
                             )
                             Text(
-                                text = "${if (isGain) "+" else ""}${percentFormat.format(stock.gainLossPercent)}%",
+                                text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(stock.gainLossPercent)}%",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = trendColor
@@ -239,7 +219,7 @@ fun StockCard(
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
-                                        text = "${detail.quantity} @ ${formatCurrency(detail.averagePrice, stock.currency)}",
+                                        text = "${detail.quantity} @ ${CurrencyFormatter.format(detail.averagePrice, stock.currency)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -50,10 +49,10 @@ import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.presentation.component.PortfolioSummary
 import com.portfolio.manager.presentation.component.StockCard
-import com.portfolio.manager.presentation.viewmodel.ALL_ACCOUNTS_ID
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
+import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -211,12 +210,13 @@ private fun DashboardContent(
             items = stocks,
             key = { it.id }
         ) { stock ->
+            val isAggregated = stock.accountDetails.isNotEmpty()
             StockCard(
                 stock = stock,
-                onDelete = if (stock.accountDetails.isEmpty()) {{ onDeleteHolding(stock.id) }} else null,
-                onDeleteAccountHolding = if (stock.accountDetails.isNotEmpty()) onDeleteHolding else null,
-                onEdit = if (stock.accountDetails.isEmpty()) {{ onEditHolding(stock.id) }} else null,
-                onEditAccountHolding = if (stock.accountDetails.isNotEmpty()) onEditHolding else null
+                onDelete = if (!isAggregated) { { onDeleteHolding(stock.id) } } else null,
+                onDeleteAccountHolding = if (isAggregated) onDeleteHolding else null,
+                onEdit = if (!isAggregated) { { onEditHolding(stock.id) } } else null,
+                onEditAccountHolding = if (isAggregated) onEditHolding else null
             )
         }
     }
@@ -311,12 +311,6 @@ private fun DashboardTopBar(
                 Icon(
                     imageVector = Icons.Outlined.Refresh,
                     contentDescription = "Refresh"
-                )
-            }
-            IconButton(onClick = { }) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = "Settings"
                 )
             }
         },
