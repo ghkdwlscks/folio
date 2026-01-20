@@ -10,7 +10,6 @@ import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
-import com.portfolio.manager.util.isKoreanStock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,11 +130,7 @@ class DashboardViewModel @Inject constructor(
                     // Normal view for single account
                     holdings.map { holding ->
                         val quote = quotes.find { it.symbol == holding.symbol }
-                        val stockName = if (holding.symbol.isKoreanStock()) {
-                            quote?.longName ?: quote?.shortName ?: holding.name
-                        } else {
-                            quote?.shortName ?: quote?.longName ?: holding.name
-                        }
+                        val stockName = quote?.longName ?: quote?.shortName ?: holding.symbol
                         Stock(
                             id = holding.id,
                             symbol = holding.symbol,
@@ -189,11 +184,7 @@ class DashboardViewModel @Inject constructor(
                 )
             }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
 
-            val stockName = if (symbol.isKoreanStock()) {
-                quote?.longName ?: quote?.shortName ?: firstHolding.name
-            } else {
-                quote?.shortName ?: quote?.longName ?: firstHolding.name
-            }
+            val stockName = quote?.longName ?: quote?.shortName ?: symbol
 
             Stock(
                 id = firstHolding.id,

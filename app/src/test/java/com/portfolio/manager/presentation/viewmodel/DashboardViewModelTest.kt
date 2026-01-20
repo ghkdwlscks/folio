@@ -136,15 +136,15 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `loadPrices - korean stocks - uses longName from API`() = runTest {
+    fun `loadPrices - uses longName first then shortName then symbol`() = runTest {
         val holdings = listOf(
-            HoldingEntity(1, 1L, "005930.KS", "005930.KS", 50, 72000.0, "KRW")
+            HoldingEntity(1, 1L, "005930.KS", "Samsung", 50, 72000.0, "KRW")
         )
         val quotes = listOf(
             QuoteResult(
                 symbol = "005930.KS",
                 shortName = "Samsung Electronics",
-                longName = "삼성전자",
+                longName = "Samsung Electronics Co., Ltd.",
                 regularMarketPrice = 78500.0,
                 regularMarketChange = 500.0,
                 regularMarketChangePercent = 0.64,
@@ -159,7 +159,8 @@ class DashboardViewModelTest {
 
         val samsungStock = state.stocks.find { it.symbol == "005930.KS" }
         assertThat(samsungStock).isNotNull()
-        assertThat(samsungStock?.name).isEqualTo("삼성전자")
+        // Should use longName first
+        assertThat(samsungStock?.name).isEqualTo("Samsung Electronics Co., Ltd.")
         assertThat(samsungStock?.currency).isEqualTo("KRW")
         assertThat(samsungStock?.currentPrice).isEqualTo(78500.0)
     }
