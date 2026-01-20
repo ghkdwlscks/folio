@@ -1,0 +1,30 @@
+package com.portfolio.manager.data.local
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface HoldingDao {
+    @Query("SELECT * FROM holdings ORDER BY symbol ASC")
+    fun getAllHoldings(): Flow<List<HoldingEntity>>
+
+    @Query("SELECT * FROM holdings WHERE id = :id")
+    suspend fun getHoldingById(id: Long): HoldingEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(holding: HoldingEntity): Long
+
+    @Update
+    suspend fun update(holding: HoldingEntity)
+
+    @Delete
+    suspend fun delete(holding: HoldingEntity)
+
+    @Query("DELETE FROM holdings WHERE id = :id")
+    suspend fun deleteById(id: Long)
+}

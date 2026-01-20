@@ -5,11 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
+import androidx.room.Room
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.portfolio.manager.data.local.AppDatabase
 import com.portfolio.manager.data.remote.YahooFinanceApi
+import com.portfolio.manager.data.repository.HoldingsRepositoryImpl
 import com.portfolio.manager.data.repository.StockRepositoryImpl
-import com.portfolio.manager.presentation.screen.DashboardScreen
+import com.portfolio.manager.presentation.navigation.NavGraph
 import com.portfolio.manager.presentation.theme.PortfolioManagerTheme
+import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -47,17 +52,34 @@ class MainActivity : ComponentActivity() {
         .build()
 
     private val api = retrofit.create(YahooFinanceApi::class.java)
-    private val repository = StockRepositoryImpl(api)
+    private val stockRepository = StockRepositoryImpl(api)
+
+    private val database by lazy {
+        Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java,
+            "portfolio_database"
+        ).build()
+    }
+
+    private val holdingsRepository by lazy {
+        HoldingsRepositoryImpl(database.holdingDao())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             PortfolioManagerTheme {
-                val viewModel = viewModel {
-                    DashboardViewModel(repository)
+                val navController = rememberNavController()
+                val dashboardViewModel = viewModel {
+                    DashboardViewModel(stockRepository, holdingsRepository)
                 }
-                DashboardScreen(viewModel = viewModel)
+                NavGraph(
+                    navController = navController,
+                    dashboardViewModel = dashboardViewModel,
+                    addHoldingViewModelProvider = { AddHoldingViewModel(holdingsRepository) }
+                )
             }
         }
     }

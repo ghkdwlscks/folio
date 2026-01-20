@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -48,6 +50,7 @@ import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
+    onAddHolding: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -62,6 +65,14 @@ fun DashboardScreen(
                 scrollBehavior = scrollBehavior,
                 onRefresh = { viewModel.refresh() }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onAddHolding) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add Holding"
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) { paddingValues ->
@@ -170,7 +181,7 @@ private fun DashboardContent(
 
         items(
             items = stocks,
-            key = { it.symbol }
+            key = { it.id }
         ) { stock ->
             StockCard(stock = stock)
         }

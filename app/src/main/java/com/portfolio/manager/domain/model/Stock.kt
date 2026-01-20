@@ -1,6 +1,7 @@
 package com.portfolio.manager.domain.model
 
 data class Stock(
+    val id: Long,
     val symbol: String,
     val name: String,
     val quantity: Int,

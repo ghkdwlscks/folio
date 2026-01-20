@@ -1,12 +1,16 @@
 package com.portfolio.manager.presentation.viewmodel
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
+import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -19,13 +23,15 @@ import java.io.IOException
 @OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModelTest {
 
-    private lateinit var repository: StockRepository
+    private lateinit var stockRepository: StockRepository
+    private lateinit var holdingsRepository: HoldingsRepository
     private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        repository = mockk()
+        stockRepository = mockk()
+        holdingsRepository = mockk()
     }
 
     @After
@@ -34,17 +40,21 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `initial state is Loading`() = runTest {
-        coEvery { repository.getQuotes(any()) } returns Result.success(emptyList())
+    fun `empty holdings - returns empty success`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
 
-        val viewModel = DashboardViewModel(repository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
 
-        // After init, it should have loaded (because of UnconfinedTestDispatcher)
         assertThat(viewModel.uiState.value).isInstanceOf(DashboardUiState.Success::class.java)
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.stocks).isEmpty()
     }
 
     @Test
     fun `loadPrices - success - updates stocks with real prices`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
         val quotes = listOf(
             QuoteResult(
                 symbol = "AAPL",
@@ -55,12 +65,13 @@ class DashboardViewModelTest {
                 currency = "USD"
             )
         )
-        coEvery { repository.getQuotes(any()) } returns Result.success(quotes)
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
 
-        val viewModel = DashboardViewModel(repository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
-        assertThat(state.stocks).isNotEmpty()
+        assertThat(state.stocks).hasSize(1)
         val appleStock = state.stocks.find { it.symbol == "AAPL" }
         assertThat(appleStock).isNotNull()
         assertThat(appleStock?.currentPrice).isEqualTo(180.00)
@@ -70,9 +81,13 @@ class DashboardViewModelTest {
 
     @Test
     fun `loadPrices - failure - emits Error state`() = runTest {
-        coEvery { repository.getQuotes(any()) } returns Result.failure(IOException("Network error"))
+        val holdings = listOf(
+            HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.failure(IOException("Network error"))
 
-        val viewModel = DashboardViewModel(repository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
 
         assertThat(viewModel.uiState.value).isInstanceOf(DashboardUiState.Error::class.java)
         val errorState = viewModel.uiState.value as DashboardUiState.Error
@@ -81,18 +96,22 @@ class DashboardViewModelTest {
 
     @Test
     fun `refresh - reloads prices`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
         val initialQuotes = listOf(
             QuoteResult(symbol = "AAPL", regularMarketPrice = 175.00)
         )
         val refreshedQuotes = listOf(
             QuoteResult(symbol = "AAPL", regularMarketPrice = 180.00)
         )
-        coEvery { repository.getQuotes(any()) } returnsMany listOf(
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returnsMany listOf(
             Result.success(initialQuotes),
             Result.success(refreshedQuotes)
         )
 
-        val viewModel = DashboardViewModel(repository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
         viewModel.refresh()
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -102,6 +121,9 @@ class DashboardViewModelTest {
 
     @Test
     fun `loadPrices - korean stocks - uses korean name from holdings`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, "005930.KS", "삼성전자", 50, 72000.0, "KRW")
+        )
         val quotes = listOf(
             QuoteResult(
                 symbol = "005930.KS",
@@ -112,9 +134,10 @@ class DashboardViewModelTest {
                 currency = "KRW"
             )
         )
-        coEvery { repository.getQuotes(any()) } returns Result.success(quotes)
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
 
-        val viewModel = DashboardViewModel(repository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
         val samsungStock = state.stocks.find { it.symbol == "005930.KS" }

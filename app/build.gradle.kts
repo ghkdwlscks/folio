@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("org.jetbrains.kotlinx.kover")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -80,6 +81,14 @@ dependencies {
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
 
+    // Room
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.6")
+
     // Unit Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.google.truth:truth:1.1.5")
@@ -113,8 +122,10 @@ koverReport {
                 "*.presentation.screen.*",
                 "*.presentation.component.*",
                 "*.presentation.theme.*",
-                // Exclude MainActivity
-                "*.MainActivity*"
+                "*.presentation.navigation.*",
+                // Exclude MainActivity and Room
+                "*.MainActivity*",
+                "*.data.local.*"
             )
             packages("dagger.hilt.*")
         }

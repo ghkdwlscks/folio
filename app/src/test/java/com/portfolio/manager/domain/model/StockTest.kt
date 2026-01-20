@@ -8,6 +8,7 @@ class StockTest {
     @Test
     fun `totalValue - calculates quantity times currentPrice`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 10,
@@ -21,6 +22,7 @@ class StockTest {
     @Test
     fun `totalCost - calculates quantity times averagePrice`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 10,
@@ -34,6 +36,7 @@ class StockTest {
     @Test
     fun `gainLoss - returns positive when price increased`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 10,
@@ -47,6 +50,7 @@ class StockTest {
     @Test
     fun `gainLoss - returns negative when price decreased`() {
         val stock = Stock(
+            id = 1,
             symbol = "TSLA",
             name = "Tesla Inc.",
             quantity = 5,
@@ -60,6 +64,7 @@ class StockTest {
     @Test
     fun `gainLossPercent - calculates percentage gain correctly`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 10,
@@ -73,6 +78,7 @@ class StockTest {
     @Test
     fun `gainLossPercent - calculates percentage loss correctly`() {
         val stock = Stock(
+            id = 1,
             symbol = "TSLA",
             name = "Tesla Inc.",
             quantity = 5,
@@ -86,6 +92,7 @@ class StockTest {
     @Test
     fun `gainLossPercent - returns zero when averagePrice is zero`() {
         val stock = Stock(
+            id = 1,
             symbol = "FREE",
             name = "Free Stock",
             quantity = 10,
@@ -99,6 +106,7 @@ class StockTest {
     @Test
     fun `totalValue - returns zero when quantity is zero`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 0,
@@ -112,6 +120,7 @@ class StockTest {
     @Test
     fun `dayChange - defaults to null`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 10,
@@ -126,6 +135,7 @@ class StockTest {
     @Test
     fun `dayChange - stores provided values`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 10,
@@ -142,6 +152,7 @@ class StockTest {
     @Test
     fun `currency - defaults to USD`() {
         val stock = Stock(
+            id = 1,
             symbol = "AAPL",
             name = "Apple Inc.",
             quantity = 10,
@@ -155,6 +166,7 @@ class StockTest {
     @Test
     fun `currency - stores provided value`() {
         val stock = Stock(
+            id = 1,
             symbol = "005930.KS",
             name = "Samsung Electronics",
             quantity = 50,
