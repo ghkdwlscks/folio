@@ -19,7 +19,10 @@ interface HoldingDao {
     @Query("SELECT * FROM holdings WHERE id = :id")
     suspend fun getHoldingById(id: Long): HoldingEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Query("SELECT * FROM holdings WHERE accountId = :accountId AND symbol = :symbol")
+    suspend fun getHoldingByAccountAndSymbol(accountId: Long, symbol: String): HoldingEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(holding: HoldingEntity): Long
 
     @Update

@@ -21,6 +21,10 @@ class HoldingsRepositoryImpl(
         return dao.getHoldingById(id)
     }
 
+    override suspend fun getHoldingByAccountAndSymbol(accountId: Long, symbol: String): HoldingEntity? {
+        return dao.getHoldingByAccountAndSymbol(accountId, symbol)
+    }
+
     override suspend fun addHolding(holding: HoldingEntity): Long {
         return dao.insert(holding)
     }

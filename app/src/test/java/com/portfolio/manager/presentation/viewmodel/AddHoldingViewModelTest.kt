@@ -46,6 +46,7 @@ class AddHoldingViewModelTest {
 
     @Test
     fun `saveHolding - valid input - saves and returns success`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
         coEvery { repository.addHolding(any()) } returns 1L
         val viewModel = AddHoldingViewModel(repository, 1L)
 
@@ -114,6 +115,7 @@ class AddHoldingViewModelTest {
 
     @Test
     fun `saveHolding - KRW currency - saves correctly`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
         coEvery { repository.addHolding(any()) } returns 1L
         val viewModel = AddHoldingViewModel(repository, 1L)
 
@@ -134,5 +136,40 @@ class AddHoldingViewModelTest {
                 it.averagePrice == 72000.0
             })
         }
+    }
+
+    @Test
+    fun `saveHolding - duplicate symbol in account - returns false`() = runTest {
+        val existingHolding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 5, 140.0, "USD")
+        coEvery { repository.getHoldingByAccountAndSymbol(1L, "AAPL") } returns existingHolding
+        val viewModel = AddHoldingViewModel(repository, 1L)
+
+        viewModel.symbol.value = "AAPL"
+        viewModel.name.value = "Apple Inc."
+        viewModel.quantity.value = "10"
+        viewModel.averagePrice.value = "150.00"
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.errorMessage.value).isEqualTo("This stock already exists in the account")
+        coVerify(exactly = 0) { repository.addHolding(any()) }
+    }
+
+    @Test
+    fun `saveHolding - same symbol in different account - succeeds`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(2L, "AAPL") } returns null
+        coEvery { repository.addHolding(any()) } returns 2L
+        val viewModel = AddHoldingViewModel(repository, 2L)
+
+        viewModel.symbol.value = "AAPL"
+        viewModel.name.value = "Apple Inc."
+        viewModel.quantity.value = "10"
+        viewModel.averagePrice.value = "150.00"
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify { repository.addHolding(any()) }
     }
 }

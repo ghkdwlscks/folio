@@ -15,7 +15,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["accountId"])]
+    indices = [
+        Index(value = ["accountId"]),
+        Index(value = ["accountId", "symbol"], unique = true)
+    ]
 )
 data class HoldingEntity(
     @PrimaryKey(autoGenerate = true)

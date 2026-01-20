@@ -63,11 +63,16 @@ fun AddHoldingScreen(
         ) {
             OutlinedTextField(
                 value = viewModel.symbol.value,
-                onValueChange = { viewModel.symbol.value = it.uppercase() },
+                onValueChange = {
+                    viewModel.symbol.value = it.uppercase()
+                    viewModel.errorMessage.value = null
+                },
                 label = { Text("Symbol") },
                 placeholder = { Text("e.g., AAPL or 005930.KS") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = viewModel.errorMessage.value != null,
+                supportingText = viewModel.errorMessage.value?.let { { Text(it) } }
             )
 
             OutlinedTextField(

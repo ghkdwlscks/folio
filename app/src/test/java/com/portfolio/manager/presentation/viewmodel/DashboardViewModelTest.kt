@@ -182,4 +182,83 @@ class DashboardViewModelTest {
         assertThat(state.stocks).hasSize(1)
         assertThat(state.stocks.first().symbol).isEqualTo("TSLA")
     }
+
+    @Test
+    fun `all accounts view - same symbol aggregated into single stock`() = runTest {
+        val account1 = AccountEntity(1, "Default", 1000L)
+        val account2 = AccountEntity(2, "Trading", 2000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1, account2))
+        coEvery { holdingsRepository.getHoldingsCountByAccount(1L) } returns 1
+        coEvery { holdingsRepository.getHoldingsCountByAccount(2L) } returns 1
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
+            HoldingEntity(2, 2L, "AAPL", "Apple Inc.", 5, 160.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", shortName = "Apple Inc.", regularMarketPrice = 180.0))
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val state = viewModel.uiState.value as DashboardUiState.Success
+
+        // Should show single aggregated stock, not 2 separate entries
+        assertThat(state.stocks).hasSize(1)
+        val appleStock = state.stocks.first()
+        assertThat(appleStock.symbol).isEqualTo("AAPL")
+        // Total quantity: 10 + 5 = 15
+        assertThat(appleStock.quantity).isEqualTo(15)
+        // Weighted average price: (10*150 + 5*160) / 15 = 2300/15 = 153.33...
+        assertThat(appleStock.averagePrice).isWithin(0.01).of(153.33)
+        // Should have account details for expansion
+        assertThat(appleStock.accountDetails).hasSize(2)
+    }
+
+    @Test
+    fun `all accounts view - different symbols shown separately`() = runTest {
+        val account1 = AccountEntity(1, "Default", 1000L)
+        val account2 = AccountEntity(2, "Trading", 2000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1, account2))
+        coEvery { holdingsRepository.getHoldingsCountByAccount(1L) } returns 1
+        coEvery { holdingsRepository.getHoldingsCountByAccount(2L) } returns 1
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
+            HoldingEntity(2, 2L, "TSLA", "Tesla", 5, 200.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", shortName = "Apple Inc.", regularMarketPrice = 180.0),
+                QuoteResult(symbol = "TSLA", shortName = "Tesla", regularMarketPrice = 250.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val state = viewModel.uiState.value as DashboardUiState.Success
+
+        assertThat(state.stocks).hasSize(2)
+        assertThat(state.stocks.map { it.symbol }).containsExactly("AAPL", "TSLA")
+    }
+
+    @Test
+    fun `single account view - no aggregation needed`() = runTest {
+        val account1 = AccountEntity(1, "Default", 1000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1))
+        coEvery { holdingsRepository.getHoldingsCountByAccount(1L) } returns 1
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(
+            listOf(HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"))
+        )
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", shortName = "Apple Inc.", regularMarketPrice = 180.0))
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        viewModel.selectAccount(1L)
+        val state = viewModel.uiState.value as DashboardUiState.Success
+
+        assertThat(state.stocks).hasSize(1)
+        val appleStock = state.stocks.first()
+        assertThat(appleStock.accountDetails).isEmpty()
+    }
 }

@@ -1,5 +1,12 @@
 package com.portfolio.manager.domain.model
 
+data class StockAccountDetail(
+    val accountId: Long,
+    val accountName: String,
+    val quantity: Int,
+    val averagePrice: Double
+)
+
 data class Stock(
     val id: Long,
     val symbol: String,
@@ -9,7 +16,8 @@ data class Stock(
     val currentPrice: Double,
     val dayChange: Double? = null,
     val dayChangePercent: Double? = null,
-    val currency: String = "USD"
+    val currency: String = "USD",
+    val accountDetails: List<StockAccountDetail> = emptyList()
 ) {
     val totalValue: Double
         get() = quantity * currentPrice

@@ -17,14 +17,23 @@ class AddHoldingViewModel(
     val quantity = mutableStateOf("")
     val averagePrice = mutableStateOf("")
     val currency = mutableStateOf("USD")
+    val errorMessage = mutableStateOf<String?>(null)
 
     suspend fun saveHolding(): Boolean {
-        val symbolValue = symbol.value.trim()
+        errorMessage.value = null
+        val symbolValue = symbol.value.trim().uppercase()
         val nameValue = name.value.trim()
         val quantityValue = quantity.value.toIntOrNull()
         val priceValue = averagePrice.value.toDoubleOrNull()
 
         if (symbolValue.isEmpty() || quantityValue == null || priceValue == null) {
+            return false
+        }
+
+        // Check for duplicate symbol in the same account
+        val existingHolding = repository.getHoldingByAccountAndSymbol(accountId, symbolValue)
+        if (existingHolding != null) {
+            errorMessage.value = "This stock already exists in the account"
             return false
         }
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
@@ -88,12 +89,16 @@ class DashboardViewModel(
                         holdingsCount = holdingsRepository.getHoldingsCountByAccount(account.id)
                     )
                 }
-                loadPricesForHoldings(holdings, accountsWithCount)
+                loadPricesForHoldings(holdings, accountsWithCount, accounts)
             }
         }
     }
 
-    private suspend fun loadPricesForHoldings(holdings: List<HoldingEntity>, accounts: List<AccountWithCount>) {
+    private suspend fun loadPricesForHoldings(
+        holdings: List<HoldingEntity>,
+        accounts: List<AccountWithCount>,
+        allAccounts: List<AccountEntity>
+    ) {
         if (holdings.isEmpty()) {
             _uiState.value = DashboardUiState.Success(
                 stocks = emptyList(),
@@ -105,25 +110,31 @@ class DashboardViewModel(
 
         _uiState.value = DashboardUiState.Loading
 
-        val symbols = holdings.map { it.symbol }
+        val symbols = holdings.map { it.symbol }.distinct()
         val result = stockRepository.getQuotes(symbols)
 
         result.fold(
             onSuccess = { quotes ->
-                val stocks = holdings.map { holding ->
-                    val quote = quotes.find { it.symbol == holding.symbol }
-                    val isKoreanStock = holding.symbol.endsWith(".KS") || holding.symbol.endsWith(".KQ")
-                    Stock(
-                        id = holding.id,
-                        symbol = holding.symbol,
-                        name = if (isKoreanStock) holding.name else (quote?.shortName ?: quote?.longName ?: holding.name),
-                        quantity = holding.quantity,
-                        averagePrice = holding.averagePrice,
-                        currentPrice = quote?.regularMarketPrice ?: holding.averagePrice,
-                        dayChange = quote?.regularMarketChange,
-                        dayChangePercent = quote?.regularMarketChangePercent,
-                        currency = holding.currency
-                    )
+                val stocks = if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                    // Aggregate holdings by symbol when viewing all accounts
+                    aggregateHoldings(holdings, quotes, allAccounts)
+                } else {
+                    // Normal view for single account
+                    holdings.map { holding ->
+                        val quote = quotes.find { it.symbol == holding.symbol }
+                        val isKoreanStock = holding.symbol.endsWith(".KS") || holding.symbol.endsWith(".KQ")
+                        Stock(
+                            id = holding.id,
+                            symbol = holding.symbol,
+                            name = if (isKoreanStock) holding.name else (quote?.shortName ?: quote?.longName ?: holding.name),
+                            quantity = holding.quantity,
+                            averagePrice = holding.averagePrice,
+                            currentPrice = quote?.regularMarketPrice ?: holding.averagePrice,
+                            dayChange = quote?.regularMarketChange,
+                            dayChangePercent = quote?.regularMarketChangePercent,
+                            currency = holding.currency
+                        )
+                    }
                 }
                 _uiState.value = DashboardUiState.Success(
                     stocks = stocks,
@@ -137,5 +148,46 @@ class DashboardViewModel(
                 )
             }
         )
+    }
+
+    private fun aggregateHoldings(
+        holdings: List<HoldingEntity>,
+        quotes: List<com.portfolio.manager.data.remote.dto.QuoteResult>,
+        accounts: List<AccountEntity>
+    ): List<Stock> {
+        val accountMap = accounts.associateBy { it.id }
+        val accountOrderMap = accounts.associate { it.id to it.orderIndex }
+
+        return holdings.groupBy { it.symbol }.map { (symbol, holdingGroup) ->
+            val quote = quotes.find { it.symbol == symbol }
+            val isKoreanStock = symbol.endsWith(".KS") || symbol.endsWith(".KQ")
+            val firstHolding = holdingGroup.first()
+
+            val totalQuantity = holdingGroup.sumOf { it.quantity }
+            val totalCost = holdingGroup.sumOf { it.quantity * it.averagePrice }
+            val weightedAvgPrice = if (totalQuantity > 0) totalCost / totalQuantity else 0.0
+
+            val accountDetails = holdingGroup.map { holding ->
+                StockAccountDetail(
+                    accountId = holding.accountId,
+                    accountName = accountMap[holding.accountId]?.name ?: "Unknown",
+                    quantity = holding.quantity,
+                    averagePrice = holding.averagePrice
+                )
+            }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
+
+            Stock(
+                id = firstHolding.id,
+                symbol = symbol,
+                name = if (isKoreanStock) firstHolding.name else (quote?.shortName ?: quote?.longName ?: firstHolding.name),
+                quantity = totalQuantity,
+                averagePrice = weightedAvgPrice,
+                currentPrice = quote?.regularMarketPrice ?: weightedAvgPrice,
+                dayChange = quote?.regularMarketChange,
+                dayChangePercent = quote?.regularMarketChangePercent,
+                currency = firstHolding.currency,
+                accountDetails = accountDetails
+            )
+        }
     }
 }

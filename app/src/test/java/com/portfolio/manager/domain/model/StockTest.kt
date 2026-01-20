@@ -177,4 +177,52 @@ class StockTest {
 
         assertThat(stock.currency).isEqualTo("KRW")
     }
+
+    @Test
+    fun `accountDetails - defaults to empty list`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0
+        )
+
+        assertThat(stock.accountDetails).isEmpty()
+    }
+
+    @Test
+    fun `accountDetails - stores provided values`() {
+        val accountDetails = listOf(
+            StockAccountDetail(
+                accountId = 1L,
+                accountName = "Default",
+                quantity = 10,
+                averagePrice = 150.0
+            ),
+            StockAccountDetail(
+                accountId = 2L,
+                accountName = "Trading",
+                quantity = 5,
+                averagePrice = 160.0
+            )
+        )
+
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 15,
+            averagePrice = 153.33,
+            currentPrice = 175.0,
+            accountDetails = accountDetails
+        )
+
+        assertThat(stock.accountDetails).hasSize(2)
+        assertThat(stock.accountDetails[0].accountName).isEqualTo("Default")
+        assertThat(stock.accountDetails[0].quantity).isEqualTo(10)
+        assertThat(stock.accountDetails[1].accountName).isEqualTo("Trading")
+        assertThat(stock.accountDetails[1].quantity).isEqualTo(5)
+    }
 }

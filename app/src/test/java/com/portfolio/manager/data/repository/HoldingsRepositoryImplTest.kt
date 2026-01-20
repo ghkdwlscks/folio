@@ -76,6 +76,26 @@ class HoldingsRepositoryImplTest {
     }
 
     @Test
+    fun `getHoldingByAccountAndSymbol - returns holding from dao`() = runTest {
+        val holding = HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        coEvery { dao.getHoldingByAccountAndSymbol(1L, "AAPL") } returns holding
+
+        val result = repository.getHoldingByAccountAndSymbol(1L, "AAPL")
+
+        assertThat(result).isNotNull()
+        assertThat(result?.symbol).isEqualTo("AAPL")
+    }
+
+    @Test
+    fun `getHoldingByAccountAndSymbol - returns null when not found`() = runTest {
+        coEvery { dao.getHoldingByAccountAndSymbol(1L, "TSLA") } returns null
+
+        val result = repository.getHoldingByAccountAndSymbol(1L, "TSLA")
+
+        assertThat(result).isNull()
+    }
+
+    @Test
     fun `addHolding - calls dao insert`() = runTest {
         val holding = HoldingEntity(0, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
         coEvery { dao.insert(holding) } returns 1L
