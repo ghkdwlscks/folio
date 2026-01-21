@@ -162,7 +162,7 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getPeriodReturn - no closing prices - uses chartPreviousClose`() = runTest {
-        coEvery { api.getChart("AAPL", "1d", "1d") } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", "1d", "5d") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
@@ -177,7 +177,7 @@ class StockRepositoryImplTest {
             )
         )
 
-        val result = repository.getPeriodReturn("AAPL", TimePeriod.ONE_DAY)
+        val result = repository.getPeriodReturn("AAPL", TimePeriod.ONE_WEEK)
 
         assertThat(result.isSuccess).isTrue()
         val periodReturn = result.getOrNull()

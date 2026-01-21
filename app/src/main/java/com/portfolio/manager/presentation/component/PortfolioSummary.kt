@@ -41,7 +41,7 @@ fun PortfolioSummary(
     stocks: List<Stock>,
     exchangeRate: Double,
     periodReturns: Map<TimePeriod, Double> = emptyMap(),
-    selectedPeriod: TimePeriod = TimePeriod.ONE_DAY,
+    selectedPeriod: TimePeriod = TimePeriod.ONE_WEEK,
     isLoadingPeriodReturns: Boolean = false,
     onPeriodSelected: (TimePeriod) -> Unit = {},
     showInKrw: Boolean = false,
