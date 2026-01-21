@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.TrendingDown
@@ -67,6 +68,9 @@ fun PortfolioSummary(
         { CurrencyFormatter.formatUsd(it) }
     }
 
+    // Calculate weighted portfolio sparkline
+    val portfolioSparkline = calculatePortfolioSparkline(stocks, exchangeRate)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -111,6 +115,18 @@ fun PortfolioSummary(
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
+
+            // Portfolio sparkline
+            if (portfolioSparkline.size >= 2) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Sparkline(
+                    prices = portfolioSparkline,
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(40.dp),
+                    lineColor = Color.White.copy(alpha = 0.9f)
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -289,4 +305,55 @@ private fun StatItem(
             color = Color.White.copy(alpha = 0.7f)
         )
     }
+}
+
+/**
+ * Calculate a weighted portfolio sparkline from individual stock price histories.
+ * Each stock's contribution is weighted by its portfolio allocation.
+ */
+private fun calculatePortfolioSparkline(stocks: List<Stock>, exchangeRate: Double): List<Double> {
+    // Filter stocks with valid price history (at least 2 points)
+    val stocksWithHistory = stocks.filter { it.priceHistory.size >= 2 }
+    if (stocksWithHistory.isEmpty()) return emptyList()
+
+    // Calculate total portfolio value for weights
+    val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
+    if (totalPortfolioValue <= 0) return emptyList()
+
+    // Find the minimum history length to align all sparklines
+    val minLength = stocksWithHistory.minOf { it.priceHistory.size }
+    if (minLength < 2) return emptyList()
+
+    // Calculate weighted portfolio returns for each time point
+    // Start with base value of 100 and apply weighted returns
+    val portfolioValues = mutableListOf<Double>()
+    val baseValue = 100.0
+
+    for (i in 0 until minLength) {
+        var weightedReturn = 0.0
+        var totalWeight = 0.0
+
+        for (stock in stocksWithHistory) {
+            val weight = stock.totalValueInUsd(exchangeRate) / totalPortfolioValue
+            val history = stock.priceHistory
+            val startPrice = history.first()
+            val currentPrice = history[i]
+
+            if (startPrice > 0) {
+                val stockReturn = (currentPrice - startPrice) / startPrice
+                weightedReturn += weight * stockReturn
+                totalWeight += weight
+            }
+        }
+
+        // Normalize if not all stocks contributed
+        if (totalWeight > 0) {
+            weightedReturn /= totalWeight
+            weightedReturn *= (totalPortfolioValue / stocks.sumOf { it.totalValueInUsd(exchangeRate) }.coerceAtLeast(1.0))
+        }
+
+        portfolioValues.add(baseValue * (1 + weightedReturn))
+    }
+
+    return portfolioValues
 }
