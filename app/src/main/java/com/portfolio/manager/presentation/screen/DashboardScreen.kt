@@ -1,5 +1,6 @@
 package com.portfolio.manager.presentation.screen
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.AlertDialog
@@ -26,17 +29,17 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -103,7 +106,6 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
 
     val (accounts, selectedAccountId, isRefreshing) = when (val state = uiState) {
@@ -112,16 +114,10 @@ fun DashboardScreen(
     }
 
     Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.fillMaxSize(),
         topBar = {
             DashboardTopBar(
-                scrollBehavior = scrollBehavior,
-                accounts = accounts,
-                selectedAccountId = selectedAccountId,
                 isRefreshing = isRefreshing,
-                onAccountSelected = { viewModel.selectAccount(it) },
                 onManageAccounts = onManageAccounts,
                 onRefresh = { viewModel.refresh() }
             )
@@ -144,6 +140,9 @@ fun DashboardScreen(
                 DashboardContent(
                     stocks = state.stocks,
                     exchangeRate = state.exchangeRate,
+                    accounts = state.accounts,
+                    selectedAccountId = state.selectedAccountId,
+                    onAccountSelected = { viewModel.selectAccount(it) },
                     periodReturns = state.periodReturns,
                     selectedPeriod = state.selectedPeriod,
                     isLoadingPeriodReturns = state.isLoadingPeriodReturns,
@@ -236,6 +235,9 @@ private fun ErrorContent(
 private fun DashboardContent(
     stocks: List<Stock>,
     exchangeRate: Double,
+    accounts: List<AccountWithCount>,
+    selectedAccountId: Long,
+    onAccountSelected: (Long) -> Unit,
     periodReturns: Map<TimePeriod, Double>,
     selectedPeriod: TimePeriod,
     isLoadingPeriodReturns: Boolean,
@@ -257,6 +259,14 @@ private fun DashboardContent(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item {
+            AccountTabSelector(
+                accounts = accounts,
+                selectedAccountId = selectedAccountId,
+                onAccountSelected = onAccountSelected
+            )
+        }
+
         item {
             PortfolioSummary(
                 stocks = stocks,
@@ -315,89 +325,24 @@ private fun DashboardContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DashboardTopBar(
-    scrollBehavior: TopAppBarScrollBehavior,
-    accounts: List<AccountWithCount>,
-    selectedAccountId: Long,
     isRefreshing: Boolean,
-    onAccountSelected: (Long) -> Unit,
     onManageAccounts: () -> Unit,
     onRefresh: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedAccount = accounts.find { it.account.id == selectedAccountId }
-    val totalHoldings = accounts.sumOf { it.holdingsCount }
-    val selectedName = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-        "All"
-    } else {
-        selectedAccount?.account?.name ?: "Select Account"
-    }
-
-    LargeTopAppBar(
+    TopAppBar(
         title = {
-            Column {
-                Text(
-                    text = "Portfolio",
-                    fontWeight = FontWeight.Bold
-                )
-                if (accounts.isNotEmpty()) {
-                    Box {
-                        Row(
-                            modifier = Modifier.clickable { expanded = true },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = selectedName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Filled.ArrowDropDown,
-                                contentDescription = "Select Account",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("All ($totalHoldings)") },
-                                onClick = {
-                                    onAccountSelected(ALL_ACCOUNTS_ID)
-                                    expanded = false
-                                }
-                            )
-                            accounts.forEach { accountWithCount ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text("${accountWithCount.account.name} (${accountWithCount.holdingsCount})")
-                                    },
-                                    onClick = {
-                                        onAccountSelected(accountWithCount.account.id)
-                                        expanded = false
-                                    }
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "Manage Accounts...",
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                },
-                                onClick = {
-                                    expanded = false
-                                    onManageAccounts()
-                                }
-                            )
-                        }
-                    }
-                }
-            }
+            Text(
+                text = "Portfolio Manager",
+                fontWeight = FontWeight.Bold
+            )
         },
         actions = {
+            IconButton(onClick = onManageAccounts) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Manage Accounts"
+                )
+            }
             IconButton(onClick = onRefresh, enabled = !isRefreshing) {
                 if (isRefreshing) {
                     CircularProgressIndicator(
@@ -412,12 +357,48 @@ private fun DashboardTopBar(
                 }
             }
         },
-        scrollBehavior = scrollBehavior,
-        colors = TopAppBarDefaults.largeTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background
         )
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountTabSelector(
+    accounts: List<AccountWithCount>,
+    selectedAccountId: Long,
+    onAccountSelected: (Long) -> Unit
+) {
+    val totalHoldings = accounts.sumOf { it.holdingsCount }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = selectedAccountId == ALL_ACCOUNTS_ID,
+            onClick = { onAccountSelected(ALL_ACCOUNTS_ID) },
+            label = { Text("All ($totalHoldings)") },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        )
+        accounts.forEach { accountWithCount ->
+            FilterChip(
+                selected = selectedAccountId == accountWithCount.account.id,
+                onClick = { onAccountSelected(accountWithCount.account.id) },
+                label = { Text("${accountWithCount.account.name} (${accountWithCount.holdingsCount})") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+    }
 }
 
 @Composable
