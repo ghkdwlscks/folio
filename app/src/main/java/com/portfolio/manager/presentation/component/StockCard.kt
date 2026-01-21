@@ -126,6 +126,7 @@ fun StockCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
+                    // Row 1: Stock name (full width)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -138,20 +139,6 @@ fun StockCard(
                             maxLines = 1,
                             modifier = Modifier.weight(1f, fill = false)
                         )
-                        if (weightPercent != null) {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer
-                            ) {
-                                Text(
-                                    text = "${CurrencyFormatter.formatPercent(weightPercent)}%",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
                         if (canExpand) {
                             Icon(
                                 imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
@@ -161,21 +148,44 @@ fun StockCard(
                             )
                         }
                     }
-                    Text(
-                        text = "${stock.quantity} shares @ ${CurrencyFormatter.format(stock.averagePrice, stock.currency)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-
-                // Sparkline chart (if available)
-                if (stock.priceHistory.size >= 2) {
-                    Sparkline(
-                        prices = stock.priceHistory,
-                        modifier = Modifier
-                            .width(60.dp)
-                            .height(32.dp)
-                    )
+                    // Row 2 & 3: shares info + weight on left, sparkline on right
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "${stock.quantity} shares @ ${CurrencyFormatter.format(stock.averagePrice, stock.currency)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                            if (weightPercent != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer
+                                ) {
+                                    Text(
+                                        text = "${CurrencyFormatter.formatPercent(weightPercent)}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                        // Sparkline chart (if available)
+                        if (stock.priceHistory.size >= 2) {
+                            Sparkline(
+                                prices = stock.priceHistory,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(32.dp)
+                            )
+                        }
+                    }
                 }
 
                 // Value and change
