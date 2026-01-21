@@ -113,10 +113,12 @@ fun StockCard(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = stock.symbol,
+                            text = stock.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         if (weightPercent != null) {
                             Surface(
@@ -141,12 +143,6 @@ fun StockCard(
                             )
                         }
                     }
-                    Text(
-                        text = stock.name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
                     Text(
                         text = "${stock.quantity} shares @ ${CurrencyFormatter.format(stock.averagePrice, stock.currency)}",
                         style = MaterialTheme.typography.labelSmall,
