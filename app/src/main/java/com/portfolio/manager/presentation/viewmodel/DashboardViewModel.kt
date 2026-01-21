@@ -75,6 +75,7 @@ class DashboardViewModel @Inject constructor(
         private const val PREF_CACHED_STOCKS = "cached_stocks"
         private const val PREF_CACHED_EXCHANGE_RATE = "cached_exchange_rate"
         private const val PREF_SPARKLINE_PERIOD = "sparkline_period"
+        private const val PREF_SUMMARY_PERIOD = "summary_period"
     }
 
     private var sparklinePeriod: TimePeriod
@@ -83,6 +84,13 @@ class DashboardViewModel @Inject constructor(
             return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
         }
         set(value) = sharedPreferences.edit().putInt(PREF_SPARKLINE_PERIOD, value.ordinal).apply()
+
+    private var summaryPeriod: TimePeriod
+        get() {
+            val ordinal = sharedPreferences.getInt(PREF_SUMMARY_PERIOD, TimePeriod.ONE_DAY.ordinal)
+            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_DAY }
+        }
+        set(value) = sharedPreferences.edit().putInt(PREF_SUMMARY_PERIOD, value.ordinal).apply()
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -110,6 +118,7 @@ class DashboardViewModel @Inject constructor(
                 _uiState.value = DashboardUiState.Success(
                     stocks = stocks,
                     selectedAccountId = selectedAccountId,
+                    selectedPeriod = summaryPeriod,
                     exchangeRate = cachedRate,
                     showInKrw = allAccountsCurrencyKrw,
                     isRefreshing = true,
@@ -181,6 +190,7 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun selectPeriod(period: TimePeriod) {
+        summaryPeriod = period
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(selectedPeriod = period)
@@ -400,7 +410,7 @@ class DashboardViewModel @Inject constructor(
                 val selectedPeriod = if (currentState is DashboardUiState.Success) {
                     currentState.selectedPeriod
                 } else {
-                    TimePeriod.ONE_DAY
+                    summaryPeriod
                 }
                 val showInKrw = getShowInKrwForCurrentAccount()
                 _uiState.value = DashboardUiState.Success(
