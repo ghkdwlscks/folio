@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -43,6 +44,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.runningFold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,22 +111,16 @@ fun DashboardScreen(
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
-
-    val (accounts, selectedAccountId, isRefreshing) = when (val state = uiState) {
-        is DashboardUiState.Success -> Triple(state.accounts, state.selectedAccountId, state.isRefreshing)
-        else -> Triple(emptyList(), 1L, false)
-    }
+    val accountTabScrollState = rememberScrollState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            DashboardTopBar(
-                isRefreshing = isRefreshing,
+            DashboardTopBarWrapper(
+                viewModel = viewModel,
                 onOpenDrawer = onOpenDrawer,
-                onManageAccounts = onManageAccounts,
-                onRefresh = { viewModel.refresh() }
+                onManageAccounts = onManageAccounts
             )
         },
         floatingActionButton = {
@@ -135,41 +133,19 @@ fun DashboardScreen(
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) { paddingValues ->
-        when (val state = uiState) {
-            is DashboardUiState.Loading -> {
-                SkeletonDashboard(modifier = Modifier.padding(paddingValues))
-            }
-            is DashboardUiState.Success -> {
-                DashboardContent(
-                    stocks = state.stocks,
-                    exchangeRate = state.exchangeRate,
-                    accounts = state.accounts,
-                    selectedAccountId = state.selectedAccountId,
-                    onAccountSelected = { viewModel.selectAccount(it) },
-                    periodReturns = state.periodReturns,
-                    selectedPeriod = state.selectedPeriod,
-                    isLoadingPeriodReturns = state.isLoadingPeriodReturns,
-                    onPeriodSelected = { viewModel.selectPeriod(it) },
-                    showInKrw = state.showInKrw,
-                    onCurrencyToggle = { viewModel.toggleCurrency() },
-                    portfolioSparkline = state.portfolioSparkline,
-                    portfolioStats = state.portfolioStats,
-                    sparklinePeriod = state.sparklinePeriod,
-                    onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
-                    onDeleteHolding = { id, symbol, quantity ->
-                        deleteConfirmation = DeleteConfirmation(id, symbol, quantity)
-                    },
-                    onEditHolding = onEditHolding,
-                    modifier = Modifier.padding(paddingValues)
-                )
-            }
-            is DashboardUiState.Error -> {
-                ErrorContent(
-                    message = state.message,
-                    onRetry = { viewModel.refresh() },
-                    modifier = Modifier.padding(paddingValues)
-                )
-            }
+        Column(modifier = Modifier.padding(paddingValues)) {
+            AccountTabSelectorWrapper(
+                viewModel = viewModel,
+                scrollState = accountTabScrollState,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            DashboardStateContent(
+                viewModel = viewModel,
+                onDeleteHolding = { id, symbol, quantity ->
+                    deleteConfirmation = DeleteConfirmation(id, symbol, quantity)
+                },
+                onEditHolding = onEditHolding
+            )
         }
     }
 
@@ -235,12 +211,48 @@ private fun ErrorContent(
 }
 
 @Composable
+private fun DashboardStateContent(
+    viewModel: DashboardViewModel,
+    onDeleteHolding: (Long, String, Int) -> Unit,
+    onEditHolding: (Long) -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    when (val state = uiState) {
+        is DashboardUiState.Loading -> {
+            SkeletonDashboard()
+        }
+        is DashboardUiState.Success -> {
+            DashboardContent(
+                stocks = state.stocks,
+                exchangeRate = state.exchangeRate,
+                periodReturns = state.periodReturns,
+                selectedPeriod = state.selectedPeriod,
+                isLoadingPeriodReturns = state.isLoadingPeriodReturns,
+                onPeriodSelected = { viewModel.selectPeriod(it) },
+                showInKrw = state.showInKrw,
+                onCurrencyToggle = { viewModel.toggleCurrency() },
+                portfolioSparkline = state.portfolioSparkline,
+                portfolioStats = state.portfolioStats,
+                sparklinePeriod = state.sparklinePeriod,
+                onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
+                onDeleteHolding = onDeleteHolding,
+                onEditHolding = onEditHolding
+            )
+        }
+        is DashboardUiState.Error -> {
+            ErrorContent(
+                message = state.message,
+                onRetry = { viewModel.refresh() }
+            )
+        }
+    }
+}
+
+@Composable
 private fun DashboardContent(
     stocks: List<Stock>,
     exchangeRate: Double,
-    accounts: List<AccountWithCount>,
-    selectedAccountId: Long,
-    onAccountSelected: (Long) -> Unit,
     periodReturns: Map<TimePeriod, Double>,
     selectedPeriod: TimePeriod,
     isLoadingPeriodReturns: Boolean,
@@ -259,17 +271,9 @@ private fun DashboardContent(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            AccountTabSelector(
-                accounts = accounts,
-                selectedAccountId = selectedAccountId,
-                onAccountSelected = onAccountSelected
-            )
-        }
-
         item {
             PortfolioSummary(
                 stocks = stocks,
@@ -322,6 +326,65 @@ private fun DashboardContent(
                 onEditAccountHolding = onEditHolding.takeIf { isAggregated }
             )
         }
+    }
+}
+
+@Composable
+private fun DashboardTopBarWrapper(
+    viewModel: DashboardViewModel,
+    onOpenDrawer: () -> Unit,
+    onManageAccounts: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val isRefreshing = (uiState as? DashboardUiState.Success)?.isRefreshing ?: false
+
+    DashboardTopBar(
+        isRefreshing = isRefreshing,
+        onOpenDrawer = onOpenDrawer,
+        onManageAccounts = onManageAccounts,
+        onRefresh = { viewModel.refresh() }
+    )
+}
+
+private data class AccountTabState(
+    val accounts: List<AccountWithCount>,
+    val selectedAccountId: Long
+)
+
+@Composable
+private fun AccountTabSelectorWrapper(
+    viewModel: DashboardViewModel,
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier
+) {
+    val initialState = AccountTabState(emptyList(), ALL_ACCOUNTS_ID)
+    val tabState by remember {
+        viewModel.uiState
+            .map { state ->
+                val success = state as? DashboardUiState.Success
+                AccountTabState(
+                    accounts = success?.accounts ?: emptyList(),
+                    selectedAccountId = success?.selectedAccountId ?: ALL_ACCOUNTS_ID
+                )
+            }
+            .runningFold(initialState) { prev, new ->
+                // Keep previous accounts during Loading state to prevent component removal
+                AccountTabState(
+                    accounts = new.accounts.ifEmpty { prev.accounts },
+                    selectedAccountId = new.selectedAccountId
+                )
+            }
+            .distinctUntilChanged()
+    }.collectAsState(initial = initialState)
+
+    if (tabState.accounts.isNotEmpty()) {
+        AccountTabSelector(
+            accounts = tabState.accounts,
+            selectedAccountId = tabState.selectedAccountId,
+            onAccountSelected = { viewModel.selectAccount(it) },
+            scrollState = scrollState,
+            modifier = modifier
+        )
     }
 }
 
@@ -380,14 +443,16 @@ private fun DashboardTopBar(
 private fun AccountTabSelector(
     accounts: List<AccountWithCount>,
     selectedAccountId: Long,
-    onAccountSelected: (Long) -> Unit
+    onAccountSelected: (Long) -> Unit,
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier
 ) {
     val totalHoldings = accounts.sumOf { it.holdingsCount }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+            .horizontalScroll(scrollState),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterChip(
