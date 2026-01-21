@@ -89,10 +89,6 @@ fun DashboardScreen(
         is DashboardUiState.Success -> state.isRefreshing
         else -> false
     }
-    val sparklinePeriod = when (val state = uiState) {
-        is DashboardUiState.Success -> state.sparklinePeriod
-        else -> TimePeriod.ONE_YEAR
-    }
 
     Scaffold(
         modifier = modifier
@@ -104,11 +100,9 @@ fun DashboardScreen(
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
                 isRefreshing = isRefreshing,
-                sparklinePeriod = sparklinePeriod,
                 onAccountSelected = { viewModel.selectAccount(it) },
                 onManageAccounts = onManageAccounts,
-                onRefresh = { viewModel.refresh() },
-                onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) }
+                onRefresh = { viewModel.refresh() }
             )
         },
         floatingActionButton = {
@@ -135,6 +129,9 @@ fun DashboardScreen(
                     onPeriodSelected = { viewModel.selectPeriod(it) },
                     showInKrw = state.showInKrw,
                     onCurrencyToggle = { viewModel.toggleCurrency() },
+                    portfolioSparkline = state.portfolioSparkline,
+                    sparklinePeriod = state.sparklinePeriod,
+                    onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
                     onDeleteHolding = { id, symbol, quantity ->
                         deleteConfirmation = DeleteConfirmation(id, symbol, quantity)
                     },
@@ -246,6 +243,9 @@ private fun DashboardContent(
     onPeriodSelected: (TimePeriod) -> Unit,
     showInKrw: Boolean,
     onCurrencyToggle: () -> Unit,
+    portfolioSparkline: List<Double>,
+    sparklinePeriod: TimePeriod,
+    onSparklinePeriodSelected: (TimePeriod) -> Unit,
     onDeleteHolding: (Long, String, Int) -> Unit,
     onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
@@ -267,6 +267,7 @@ private fun DashboardContent(
                 onPeriodSelected = onPeriodSelected,
                 showInKrw = showInKrw,
                 onCurrencyToggle = onCurrencyToggle,
+                portfolioSparkline = portfolioSparkline,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
@@ -274,7 +275,9 @@ private fun DashboardContent(
         item {
             SectionHeader(
                 title = "My Holdings",
-                count = stocks.size
+                count = stocks.size,
+                sparklinePeriod = sparklinePeriod,
+                onSparklinePeriodSelected = onSparklinePeriodSelected
             )
         }
 
@@ -312,14 +315,11 @@ private fun DashboardTopBar(
     accounts: List<AccountWithCount>,
     selectedAccountId: Long,
     isRefreshing: Boolean,
-    sparklinePeriod: TimePeriod,
     onAccountSelected: (Long) -> Unit,
     onManageAccounts: () -> Unit,
-    onRefresh: () -> Unit,
-    onSparklinePeriodSelected: (TimePeriod) -> Unit
+    onRefresh: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var sparklineMenuExpanded by remember { mutableStateOf(false) }
     val selectedAccount = accounts.find { it.account.id == selectedAccountId }
     val totalHoldings = accounts.sumOf { it.holdingsCount }
     val selectedName = if (selectedAccountId == ALL_ACCOUNTS_ID) {
@@ -394,43 +394,6 @@ private fun DashboardTopBar(
             }
         },
         actions = {
-            Box {
-                IconButton(onClick = { sparklineMenuExpanded = true }) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ShowChart,
-                            contentDescription = "Sparkline Period",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = sparklinePeriod.label,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-                DropdownMenu(
-                    expanded = sparklineMenuExpanded,
-                    onDismissRequest = { sparklineMenuExpanded = false }
-                ) {
-                    TimePeriod.entries.forEach { period ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = period.label,
-                                    fontWeight = if (period == sparklinePeriod) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            onClick = {
-                                onSparklinePeriodSelected(period)
-                                sparklineMenuExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
             IconButton(onClick = onRefresh, enabled = !isRefreshing) {
                 if (isRefreshing) {
                     CircularProgressIndicator(
@@ -456,8 +419,12 @@ private fun DashboardTopBar(
 @Composable
 private fun SectionHeader(
     title: String,
-    count: Int
+    count: Int,
+    sparklinePeriod: TimePeriod,
+    onSparklinePeriodSelected: (TimePeriod) -> Unit
 ) {
+    var sparklineMenuExpanded by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -465,16 +432,66 @@ private fun SectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = "$count items",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "$count items",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Box {
+            Row(
+                modifier = Modifier.clickable { sparklineMenuExpanded = true },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.ShowChart,
+                    contentDescription = "Sparkline Period",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = sparklinePeriod.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            DropdownMenu(
+                expanded = sparklineMenuExpanded,
+                onDismissRequest = { sparklineMenuExpanded = false }
+            ) {
+                TimePeriod.entries.forEach { period ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = period.label,
+                                fontWeight = if (period == sparklinePeriod) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        onClick = {
+                            onSparklinePeriodSelected(period)
+                            sparklineMenuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
     }
 }

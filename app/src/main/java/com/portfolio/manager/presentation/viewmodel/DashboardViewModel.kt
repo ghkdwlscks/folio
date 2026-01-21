@@ -45,7 +45,8 @@ sealed interface DashboardUiState {
         val isRefreshing: Boolean = false,
         val exchangeRate: Double = KRW_TO_USD_RATE,
         val showInKrw: Boolean = false,
-        val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR
+        val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR,
+        val portfolioSparkline: List<Double> = emptyList()
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -184,6 +185,7 @@ class DashboardViewModel @Inject constructor(
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(selectedPeriod = period)
             loadPeriodReturns(currentState.stocks, period)
+            loadPortfolioSparkline(currentState.stocks, period)
         }
     }
 
@@ -245,6 +247,67 @@ class DashboardViewModel @Inject constructor(
                 periodReturns = updatedReturns,
                 isLoadingPeriodReturns = false
             )
+        }
+    }
+
+    private fun loadPortfolioSparkline(stocks: List<Stock>, period: TimePeriod) {
+        if (stocks.isEmpty()) return
+
+        viewModelScope.launch {
+            val symbols = stocks.map { it.symbol }.distinct()
+            val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
+
+            // Calculate weighted portfolio sparkline
+            val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
+            if (totalPortfolioValue <= 0) return@launch
+
+            val stocksWithHistory = stocks.filter { (priceHistoryMap[it.symbol]?.size ?: 0) >= 2 }
+            if (stocksWithHistory.isEmpty()) {
+                updatePortfolioSparkline(emptyList())
+                return@launch
+            }
+
+            val minLength = stocksWithHistory.minOf { priceHistoryMap[it.symbol]?.size ?: 0 }
+            if (minLength < 2) {
+                updatePortfolioSparkline(emptyList())
+                return@launch
+            }
+
+            val portfolioValues = mutableListOf<Double>()
+            val baseValue = 100.0
+
+            for (i in 0 until minLength) {
+                var weightedReturn = 0.0
+                var totalWeight = 0.0
+
+                for (stock in stocksWithHistory) {
+                    val history = priceHistoryMap[stock.symbol] ?: continue
+                    val weight = stock.totalValueInUsd(currentExchangeRate) / totalPortfolioValue
+                    val startPrice = history.first()
+                    val currentPrice = history[i]
+
+                    if (startPrice > 0) {
+                        val stockReturn = (currentPrice - startPrice) / startPrice
+                        weightedReturn += weight * stockReturn
+                        totalWeight += weight
+                    }
+                }
+
+                if (totalWeight > 0) {
+                    weightedReturn /= totalWeight
+                }
+
+                portfolioValues.add(baseValue * (1 + weightedReturn))
+            }
+
+            updatePortfolioSparkline(portfolioValues)
+        }
+    }
+
+    private fun updatePortfolioSparkline(sparkline: List<Double>) {
+        val currentState = _uiState.value
+        if (currentState is DashboardUiState.Success) {
+            _uiState.value = currentState.copy(portfolioSparkline = sparkline)
         }
     }
 
@@ -355,8 +418,9 @@ class DashboardViewModel @Inject constructor(
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
                     saveStateToCache(stocks, currentExchangeRate)
                 }
-                // Load period returns for the selected period
+                // Load period returns and portfolio sparkline for the selected period
                 loadPeriodReturns(stocks, selectedPeriod)
+                loadPortfolioSparkline(stocks, selectedPeriod)
             },
             onFailure = { exception ->
                 _uiState.value = DashboardUiState.Error(
