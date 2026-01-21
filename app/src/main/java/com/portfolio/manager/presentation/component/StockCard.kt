@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
@@ -47,6 +49,8 @@ import com.portfolio.manager.presentation.theme.GainGreenLight
 import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.theme.LossRedLight
 import com.portfolio.manager.presentation.util.CurrencyFormatter
+import kotlin.math.abs
+import kotlin.math.min
 
 @Composable
 fun StockCard(
@@ -66,6 +70,10 @@ fun StockCard(
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
     val canExpand = hasAccountDetails || onDelete != null || onEdit != null
 
+    // Heatmap: color intensity based on gain/loss percentage (max at 50%)
+    val heatmapIntensity = min(abs(stock.gainLossPercent) / 50.0, 1.0).toFloat()
+    val heatmapColor = if (isGain) GainGreen else LossRed
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -74,7 +82,15 @@ fun StockCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column {
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            // Heatmap indicator bar
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(heatmapColor.copy(alpha = 0.3f + (heatmapIntensity * 0.7f)))
+            )
+            Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -305,6 +321,7 @@ fun StockCard(
                         }
                     }
                 }
+            }
             }
         }
     }
