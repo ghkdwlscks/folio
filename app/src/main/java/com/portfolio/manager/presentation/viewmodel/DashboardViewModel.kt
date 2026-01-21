@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 data class AccountWithCount(
@@ -68,10 +70,16 @@ class DashboardViewModel @Inject constructor(
 
     companion object {
         private const val PREF_ALL_ACCOUNTS_CURRENCY_KRW = "all_accounts_currency_krw"
+        private const val PREF_CACHED_STOCKS = "cached_stocks"
+        private const val PREF_CACHED_EXCHANGE_RATE = "cached_exchange_rate"
     }
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     init {
         viewModelScope.launch {
+            // Load cached state immediately for fast startup
+            loadCachedState()
             // Ensure default account exists (atomic operation to prevent race condition)
             accountRepository.getOrCreateDefaultAccount(DEFAULT_ACCOUNT_NAME)
             // Fetch exchange rate
@@ -79,6 +87,38 @@ class DashboardViewModel @Inject constructor(
                 currentExchangeRate = rate
             }
             observeHoldings()
+        }
+    }
+
+    private fun loadCachedState() {
+        try {
+            val cachedStocksJson = sharedPreferences.getString(PREF_CACHED_STOCKS, null)
+            val cachedRate = sharedPreferences.getFloat(PREF_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
+            if (cachedStocksJson != null) {
+                val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
+                currentExchangeRate = cachedRate
+                _uiState.value = DashboardUiState.Success(
+                    stocks = stocks,
+                    selectedAccountId = selectedAccountId,
+                    exchangeRate = cachedRate,
+                    showInKrw = allAccountsCurrencyKrw,
+                    isRefreshing = true
+                )
+            }
+        } catch (_: Exception) {
+            // Ignore cache errors, will load fresh data
+        }
+    }
+
+    private fun saveStateToCache(stocks: List<Stock>, exchangeRate: Double) {
+        try {
+            val stocksJson = json.encodeToString(stocks)
+            sharedPreferences.edit()
+                .putString(PREF_CACHED_STOCKS, stocksJson)
+                .putFloat(PREF_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
+                .apply()
+        } catch (_: Exception) {
+            // Ignore cache errors
         }
     }
 
@@ -286,6 +326,10 @@ class DashboardViewModel @Inject constructor(
                     exchangeRate = currentExchangeRate,
                     showInKrw = showInKrw
                 )
+                // Cache state for fast cold start (only for All Accounts view)
+                if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                    saveStateToCache(stocks, currentExchangeRate)
+                }
                 // Load period returns for the selected period
                 loadPeriodReturns(stocks, selectedPeriod)
             },

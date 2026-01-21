@@ -1,7 +1,9 @@
 package com.portfolio.manager.domain.model
 
 import com.portfolio.manager.util.AppConstants
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class StockAccountDetail(
     val holdingId: Long,
     val accountId: Long,
@@ -10,6 +12,7 @@ data class StockAccountDetail(
     val averagePrice: Double
 )
 
+@Serializable
 data class Stock(
     val id: Long,
     val symbol: String,
