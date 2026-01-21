@@ -54,27 +54,23 @@ fun getTrendIcon(value: Double): ImageVector {
 }
 
 /**
- * Creates a complete TrendIndicator for standard UI contexts (light backgrounds).
+ * Creates a complete TrendIndicator with configurable color scheme.
+ * @param value The value to determine gain/loss
+ * @param usePastel Use pastel colors for dark backgrounds (e.g., portfolio summary card)
  */
-fun createTrendIndicator(value: Double): TrendIndicator {
+fun createTrendIndicator(value: Double, usePastel: Boolean = false): TrendIndicator {
     val gain = value >= 0
-    return TrendIndicator(
-        isGain = gain,
-        color = if (gain) GainGreen else LossRed,
-        backgroundColor = if (gain) GainGreenLight else LossRedLight,
-        icon = if (gain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
-    )
-}
+    val (color, backgroundColor) = if (usePastel) {
+        val pastelColor = if (gain) GainGreenPastel else LossRedPastel
+        pastelColor to pastelColor.copy(alpha = 0.3f)
+    } else {
+        (if (gain) GainGreen else LossRed) to (if (gain) GainGreenLight else LossRedLight)
+    }
 
-/**
- * Creates a TrendIndicator for dark backgrounds using pastel colors.
- */
-fun createPastelTrendIndicator(value: Double): TrendIndicator {
-    val gain = value >= 0
     return TrendIndicator(
         isGain = gain,
-        color = if (gain) GainGreenPastel else LossRedPastel,
-        backgroundColor = if (gain) GainGreenPastel.copy(alpha = 0.3f) else LossRedPastel.copy(alpha = 0.3f),
+        color = color,
+        backgroundColor = backgroundColor,
         icon = if (gain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
     )
 }

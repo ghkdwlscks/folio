@@ -33,7 +33,7 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRedPastel
 import com.portfolio.manager.presentation.util.CurrencyFormatter
-import com.portfolio.manager.presentation.util.createPastelTrendIndicator
+import com.portfolio.manager.presentation.util.createTrendIndicator
 
 @Composable
 fun PortfolioSummary(
@@ -60,7 +60,7 @@ fun PortfolioSummary(
     val totalGainLoss = totalValue - totalCost
     val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
 
-    val trend = createPastelTrendIndicator(totalGainLoss)
+    val trend = createTrendIndicator(totalGainLoss, usePastel = true)
 
     val formatValue: (Double) -> String = if (showInKrw) {
         { CurrencyFormatter.formatKrw(it) }

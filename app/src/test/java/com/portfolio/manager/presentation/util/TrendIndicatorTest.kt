@@ -115,8 +115,8 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `createPastelTrendIndicator - positive value - returns correct pastel indicator`() {
-        val indicator = createPastelTrendIndicator(100.0)
+    fun `createTrendIndicator - usePastel true - positive value - returns pastel indicator`() {
+        val indicator = createTrendIndicator(100.0, usePastel = true)
 
         assertThat(indicator.isGain).isTrue()
         assertThat(indicator.color).isEqualTo(GainGreenPastel)
@@ -125,8 +125,8 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `createPastelTrendIndicator - negative value - returns correct pastel indicator`() {
-        val indicator = createPastelTrendIndicator(-50.0)
+    fun `createTrendIndicator - usePastel true - negative value - returns pastel indicator`() {
+        val indicator = createTrendIndicator(-50.0, usePastel = true)
 
         assertThat(indicator.isGain).isFalse()
         assertThat(indicator.color).isEqualTo(LossRedPastel)
@@ -135,8 +135,8 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `createPastelTrendIndicator - zero value - returns gain pastel indicator`() {
-        val indicator = createPastelTrendIndicator(0.0)
+    fun `createTrendIndicator - usePastel true - zero value - returns gain pastel indicator`() {
+        val indicator = createTrendIndicator(0.0, usePastel = true)
 
         assertThat(indicator.isGain).isTrue()
         assertThat(indicator.color).isEqualTo(GainGreenPastel)
