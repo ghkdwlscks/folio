@@ -1,7 +1,16 @@
 package com.portfolio.manager.presentation.component
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -280,12 +289,21 @@ private fun PeriodSelector(
                         color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
                     )
                     if (isSelected && returnValue != null) {
-                        Text(
-                            text = displayValue,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = returnColor
-                        )
+                        AnimatedContent(
+                            targetState = displayValue,
+                            transitionSpec = {
+                                (fadeIn() + slideInVertically { it / 2 }) togetherWith
+                                    (fadeOut() + slideOutVertically { -it / 2 })
+                            },
+                            label = "periodReturnAnimation"
+                        ) { value ->
+                            Text(
+                                text = value,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = returnColor
+                            )
+                        }
                     }
                 }
             }
@@ -299,28 +317,49 @@ private fun CurrencyToggle(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val indicatorOffset by animateDpAsState(
+        targetValue = if (showInKrw) 36.dp else 0.dp,
+        label = "currencyToggleIndicator"
+    )
+
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = Color.White.copy(alpha = 0.2f),
         modifier = modifier.clickable(onClick = onToggle)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-        ) {
-            Text(
-                text = "USD",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (!showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (!showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-            )
-            Text(
-                text = "KRW",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-            )
+        Box(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
+            // Sliding indicator background
+            Box(
+                modifier = Modifier
+                    .offset(x = indicatorOffset)
+                    .background(
+                        color = Color.White.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = if (showInKrw) "KRW" else "USD",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Transparent
+                )
+            }
+            Row {
+                Text(
+                    text = "USD",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (!showInKrw) FontWeight.Bold else FontWeight.Normal,
+                    color = if (!showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+                Text(
+                    text = "KRW",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (showInKrw) FontWeight.Bold else FontWeight.Normal,
+                    color = if (showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
         }
     }
 }

@@ -1,5 +1,10 @@
 package com.portfolio.manager.presentation.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +20,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -44,10 +51,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.runningFold
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -113,6 +122,28 @@ fun DashboardScreen(
 ) {
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
     val accountTabScrollState = rememberScrollState()
+    val listState = rememberLazyListState()
+
+    // Track scroll direction for FAB visibility
+    var previousScrollOffset by remember { mutableIntStateOf(0) }
+    var previousFirstVisibleItem by remember { mutableIntStateOf(0) }
+    val fabVisible by remember {
+        derivedStateOf {
+            val currentFirstVisibleItem = listState.firstVisibleItemIndex
+            val currentScrollOffset = listState.firstVisibleItemScrollOffset
+
+            val isScrollingUp = when {
+                currentFirstVisibleItem < previousFirstVisibleItem -> true
+                currentFirstVisibleItem > previousFirstVisibleItem -> false
+                else -> currentScrollOffset <= previousScrollOffset
+            }
+
+            previousScrollOffset = currentScrollOffset
+            previousFirstVisibleItem = currentFirstVisibleItem
+
+            isScrollingUp || currentFirstVisibleItem == 0
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -124,11 +155,17 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddHolding) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "Add Holding"
-                )
+            AnimatedVisibility(
+                visible = fabVisible,
+                enter = slideInVertically(initialOffsetY = { it * 2 }),
+                exit = slideOutVertically(targetOffsetY = { it * 2 })
+            ) {
+                FloatingActionButton(onClick = onAddHolding) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = "Add Holding"
+                    )
+                }
             }
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -141,6 +178,7 @@ fun DashboardScreen(
             )
             DashboardStateContent(
                 viewModel = viewModel,
+                listState = listState,
                 onDeleteHolding = { id, symbol, quantity ->
                     deleteConfirmation = DeleteConfirmation(id, symbol, quantity)
                 },
@@ -213,42 +251,50 @@ private fun ErrorContent(
 @Composable
 private fun DashboardStateContent(
     viewModel: DashboardViewModel,
+    listState: LazyListState,
     onDeleteHolding: (Long, String, Int) -> Unit,
     onEditHolding: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    when (val state = uiState) {
-        is DashboardUiState.Loading -> {
-            SkeletonDashboard()
-        }
-        is DashboardUiState.Success -> {
-            DashboardContent(
-                stocks = state.stocks,
-                exchangeRate = state.exchangeRate,
-                periodReturns = state.periodReturns,
-                selectedPeriod = state.selectedPeriod,
-                isLoadingPeriodReturns = state.isLoadingPeriodReturns,
-                onPeriodSelected = { viewModel.selectPeriod(it) },
-                showInKrw = state.showInKrw,
-                onCurrencyToggle = { viewModel.toggleCurrency() },
-                portfolioSparkline = state.portfolioSparkline,
-                portfolioStats = state.portfolioStats,
-                sparklinePeriod = state.sparklinePeriod,
-                onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
-                onDeleteHolding = onDeleteHolding,
-                onEditHolding = onEditHolding
-            )
-        }
-        is DashboardUiState.Error -> {
-            ErrorContent(
-                message = state.message,
-                onRetry = { viewModel.refresh() }
-            )
+    Crossfade(
+        targetState = uiState,
+        label = "dashboardStateTransition"
+    ) { state ->
+        when (state) {
+            is DashboardUiState.Loading -> {
+                SkeletonDashboard()
+            }
+            is DashboardUiState.Success -> {
+                DashboardContent(
+                    stocks = state.stocks,
+                    exchangeRate = state.exchangeRate,
+                    periodReturns = state.periodReturns,
+                    selectedPeriod = state.selectedPeriod,
+                    isLoadingPeriodReturns = state.isLoadingPeriodReturns,
+                    onPeriodSelected = { viewModel.selectPeriod(it) },
+                    showInKrw = state.showInKrw,
+                    onCurrencyToggle = { viewModel.toggleCurrency() },
+                    portfolioSparkline = state.portfolioSparkline,
+                    portfolioStats = state.portfolioStats,
+                    sparklinePeriod = state.sparklinePeriod,
+                    onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
+                    onDeleteHolding = onDeleteHolding,
+                    onEditHolding = onEditHolding,
+                    listState = listState
+                )
+            }
+            is DashboardUiState.Error -> {
+                ErrorContent(
+                    message = state.message,
+                    onRetry = { viewModel.refresh() }
+                )
+            }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DashboardContent(
     stocks: List<Stock>,
@@ -265,12 +311,14 @@ private fun DashboardContent(
     onSparklinePeriodSelected: (TimePeriod) -> Unit,
     onDeleteHolding: (Long, String, Int) -> Unit,
     onEditHolding: (Long) -> Unit,
+    listState: LazyListState,
     modifier: Modifier = Modifier
 ) {
     val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
+        state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -323,7 +371,8 @@ private fun DashboardContent(
                     }
                 }.takeIf { isAggregated },
                 onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated },
-                onEditAccountHolding = onEditHolding.takeIf { isAggregated }
+                onEditAccountHolding = onEditHolding.takeIf { isAggregated },
+                modifier = Modifier.animateItemPlacement()
             )
         }
     }
@@ -462,16 +511,27 @@ private fun AccountTabSelector(
             colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ),
+            border = FilterChipDefaults.filterChipBorder(
+                borderColor = MaterialTheme.colorScheme.outline,
+                selectedBorderColor = MaterialTheme.colorScheme.primary,
+                selectedBorderWidth = 1.dp
             )
         )
         accounts.forEach { accountWithCount ->
+            val isSelected = selectedAccountId == accountWithCount.account.id
             FilterChip(
-                selected = selectedAccountId == accountWithCount.account.id,
+                selected = isSelected,
                 onClick = { onAccountSelected(accountWithCount.account.id) },
                 label = { Text("${accountWithCount.account.name} (${accountWithCount.holdingsCount})") },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    borderColor = MaterialTheme.colorScheme.outline,
+                    selectedBorderColor = MaterialTheme.colorScheme.primary,
+                    selectedBorderWidth = 1.dp
                 )
             )
         }

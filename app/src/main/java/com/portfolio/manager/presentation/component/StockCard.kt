@@ -1,10 +1,13 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.Stock
@@ -65,17 +69,33 @@ fun StockCard(
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
     val canExpand = hasAccountDetails || onDelete != null || onEdit != null
 
+    // Scale animation on press
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        label = "cardScale"
+    )
+
     // Heatmap: color intensity based on gain/loss percentage (max at 50%)
     val heatmapIntensity = min(abs(stock.gainLossPercent) / 50.0, 1.0).toFloat()
     val heatmapColor = getTrendColor(stock.gainLoss)
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 1.dp
+        )
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Heatmap indicator bar
@@ -91,7 +111,10 @@ fun StockCard(
                     .fillMaxWidth()
                     .then(
                         if (canExpand) {
-                            Modifier.clickable { expanded = !expanded }
+                            Modifier.clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) { expanded = !expanded }
                         } else {
                             Modifier
                         }

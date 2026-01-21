@@ -47,6 +47,7 @@ fun AllocationPieChart(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
         tonalElevation = 1.dp
     ) {
         Column(
