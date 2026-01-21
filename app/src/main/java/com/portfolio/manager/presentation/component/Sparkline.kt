@@ -9,8 +9,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import com.portfolio.manager.presentation.theme.GainGreen
-import com.portfolio.manager.presentation.theme.LossRed
+import com.portfolio.manager.presentation.util.getTrendColor
 import kotlin.math.ln
 
 @Composable
@@ -28,8 +27,8 @@ fun Sparkline(
     val minLog = logPrices.min()
     val maxLog = logPrices.max()
     val logRange = maxLog - minLog
-    val isGain = prices.last() >= prices.first()
-    val color = lineColor ?: if (isGain) GainGreen else LossRed
+    val priceChange = prices.last() - prices.first()
+    val color = lineColor ?: getTrendColor(priceChange)
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val width = size.width

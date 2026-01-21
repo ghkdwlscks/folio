@@ -27,6 +27,24 @@ class StockRepositoryImpl(
     private var cacheTimestamp: Long = 0
     private val cacheValidityMs = 60 * 60 * 1000L // 1 hour
 
+    /**
+     * Decodes price history from a cached entity.
+     * Returns null if decoding fails or data is invalid.
+     */
+    private fun decodePriceHistory(entity: PriceHistoryEntity): PriceHistoryData? {
+        return try {
+            val prices = json.decodeFromString<List<Double>>(entity.prices)
+            val timestamps = json.decodeFromString<List<Long>>(entity.timestamps)
+            if (timestamps.isNotEmpty() && timestamps.size == prices.size) {
+                PriceHistoryData(prices, timestamps)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     override suspend fun getQuotes(symbols: List<String>): Result<List<QuoteResult>> {
         if (symbols.isEmpty()) {
             return Result.success(emptyList())
@@ -123,15 +141,7 @@ class StockRepositoryImpl(
         // Check cache
         val cached = priceHistoryDao.getPriceHistory(symbol, range)
         if (cached != null && cached.lastUpdatedDate == today) {
-            try {
-                val prices = json.decodeFromString<List<Double>>(cached.prices)
-                val timestamps = json.decodeFromString<List<Long>>(cached.timestamps)
-                if (timestamps.isNotEmpty() && timestamps.size == prices.size) {
-                    return PriceHistoryData(prices, timestamps)
-                }
-            } catch (e: Exception) {
-                // Continue to fetch from API
-            }
+            decodePriceHistory(cached)?.let { return it }
         }
 
         // Fetch from API
@@ -162,16 +172,7 @@ class StockRepositoryImpl(
             PriceHistoryData(closes, timestamps)
         } catch (e: Exception) {
             // Return cached data if available, even if stale
-            cached?.let {
-                try {
-                    PriceHistoryData(
-                        prices = json.decodeFromString<List<Double>>(it.prices),
-                        timestamps = json.decodeFromString<List<Long>>(it.timestamps)
-                    )
-                } catch (e: Exception) {
-                    PriceHistoryData(emptyList(), emptyList())
-                }
-            } ?: PriceHistoryData(emptyList(), emptyList())
+            cached?.let { decodePriceHistory(it) } ?: PriceHistoryData(emptyList(), emptyList())
         }
     }
 
@@ -191,15 +192,10 @@ class StockRepositoryImpl(
         symbols.forEach { symbol ->
             val entity = cachedMap[symbol]
             if (entity != null && entity.lastUpdatedDate == today) {
-                try {
-                    val prices = json.decodeFromString<List<Double>>(entity.prices)
-                    val timestamps = json.decodeFromString<List<Long>>(entity.timestamps)
-                    if (timestamps.isNotEmpty() && timestamps.size == prices.size) {
-                        result[symbol] = PriceHistoryData(prices, timestamps)
-                    } else {
-                        needsFetch.add(symbol)
-                    }
-                } catch (e: Exception) {
+                val decoded = decodePriceHistory(entity)
+                if (decoded != null) {
+                    result[symbol] = decoded
+                } else {
                     needsFetch.add(symbol)
                 }
             } else {

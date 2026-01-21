@@ -23,8 +23,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -45,10 +43,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.presentation.theme.GainGreen
-import com.portfolio.manager.presentation.theme.GainGreenLight
 import com.portfolio.manager.presentation.theme.LossRed
-import com.portfolio.manager.presentation.theme.LossRedLight
 import com.portfolio.manager.presentation.util.CurrencyFormatter
+import com.portfolio.manager.presentation.util.createTrendIndicator
+import com.portfolio.manager.presentation.util.getTrendColor
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -62,17 +60,14 @@ fun StockCard(
     onEditAccountHolding: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val isGain = stock.gainLoss >= 0
-    val trendColor = if (isGain) GainGreen else LossRed
-    val trendBgColor = if (isGain) GainGreenLight else LossRedLight
-    val trendIcon = if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
+    val trend = createTrendIndicator(stock.gainLoss)
     var expanded by remember { mutableStateOf(false) }
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
     val canExpand = hasAccountDetails || onDelete != null || onEdit != null
 
     // Heatmap: color intensity based on gain/loss percentage (max at 50%)
     val heatmapIntensity = min(abs(stock.gainLossPercent) / 50.0, 1.0).toFloat()
-    val heatmapColor = if (isGain) GainGreen else LossRed
+    val heatmapColor = getTrendColor(stock.gainLoss)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -206,7 +201,7 @@ fun StockCard(
                     )
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = trendBgColor
+                        color = trend.backgroundColor
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -214,16 +209,16 @@ fun StockCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = trendIcon,
-                                contentDescription = if (isGain) "Trending up" else "Trending down",
+                                imageVector = trend.icon,
+                                contentDescription = if (trend.isGain) "Trending up" else "Trending down",
                                 modifier = Modifier.size(14.dp),
-                                tint = trendColor
+                                tint = trend.color
                             )
                             Text(
-                                text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(stock.gainLossPercent)}%",
+                                text = "${if (trend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(stock.gainLossPercent)}%",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = trendColor
+                                color = trend.color
                             )
                         }
                     }

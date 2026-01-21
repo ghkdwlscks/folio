@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +33,7 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRedPastel
 import com.portfolio.manager.presentation.util.CurrencyFormatter
+import com.portfolio.manager.presentation.util.createPastelTrendIndicator
 
 @Composable
 fun PortfolioSummary(
@@ -61,9 +60,7 @@ fun PortfolioSummary(
     val totalGainLoss = totalValue - totalCost
     val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
 
-    val isGain = totalGainLoss >= 0
-    val trendIcon = if (isGain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
-    val trendColor = if (isGain) GainGreenPastel else LossRedPastel
+    val trend = createPastelTrendIndicator(totalGainLoss)
 
     val formatValue: (Double) -> String = if (showInKrw) {
         { CurrencyFormatter.formatKrw(it) }
@@ -115,23 +112,23 @@ fun PortfolioSummary(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = trendIcon,
+                    imageVector = trend.icon,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = trendColor
+                    tint = trend.color
                 )
                 Text(
-                    text = "${if (isGain) "+" else ""}${formatValue(totalGainLoss)}",
+                    text = "${if (trend.isGain) "+" else ""}${formatValue(totalGainLoss)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = trendColor.copy(alpha = 0.3f)
+                    color = trend.backgroundColor
                 ) {
                     Text(
-                        text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent)}%",
+                        text = "${if (trend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent)}%",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,

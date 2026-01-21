@@ -62,6 +62,31 @@ import com.portfolio.manager.presentation.viewmodel.DashboardUiState
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 
+/**
+ * Calculates the weight percentage of a stock in the total portfolio.
+ */
+private fun calculateWeightPercent(stock: Stock, totalPortfolioValue: Double, exchangeRate: Double): Double {
+    return if (totalPortfolioValue > 0) {
+        (stock.totalValueInUsd(exchangeRate) / totalPortfolioValue) * 100
+    } else {
+        0.0
+    }
+}
+
+/**
+ * Creates allocation items from stocks for the pie chart.
+ */
+private fun createAllocationItems(stocks: List<Stock>, totalPortfolioValue: Double, exchangeRate: Double): List<AllocationItem> {
+    return stocks.map { stock ->
+        AllocationItem(
+            symbol = stock.symbol,
+            name = stock.name,
+            value = stock.totalValueInUsd(exchangeRate),
+            weight = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate)
+        )
+    }
+}
+
 private data class DeleteConfirmation(
     val holdingId: Long,
     val symbol: String,
@@ -81,17 +106,9 @@ fun DashboardScreen(
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
 
-    val accounts = when (val state = uiState) {
-        is DashboardUiState.Success -> state.accounts
-        else -> emptyList()
-    }
-    val selectedAccountId = when (val state = uiState) {
-        is DashboardUiState.Success -> state.selectedAccountId
-        else -> 1L
-    }
-    val isRefreshing = when (val state = uiState) {
-        is DashboardUiState.Success -> state.isRefreshing
-        else -> false
+    val (accounts, selectedAccountId, isRefreshing) = when (val state = uiState) {
+        is DashboardUiState.Success -> Triple(state.accounts, state.selectedAccountId, state.isRefreshing)
+        else -> Triple(emptyList(), 1L, false)
     }
 
     Scaffold(
@@ -258,20 +275,9 @@ private fun DashboardContent(
 
         if (stocks.size >= 2) {
             item {
-                val allocationItems = stocks.map { stock ->
-                    val weight = if (totalPortfolioValue > 0) {
-                        (stock.totalValueInUsd(exchangeRate) / totalPortfolioValue) * 100
-                    } else {
-                        0.0
-                    }
-                    AllocationItem(
-                        symbol = stock.symbol,
-                        name = stock.name,
-                        value = stock.totalValueInUsd(exchangeRate),
-                        weight = weight
-                    )
-                }
-                AllocationPieChart(items = allocationItems)
+                AllocationPieChart(
+                    items = createAllocationItems(stocks, totalPortfolioValue, exchangeRate)
+                )
             }
         }
 
@@ -289,14 +295,9 @@ private fun DashboardContent(
             key = { it.id }
         ) { stock ->
             val isAggregated = stock.accountDetails.isNotEmpty()
-            val weightPercent = if (totalPortfolioValue > 0) {
-                (stock.totalValueInUsd(exchangeRate) / totalPortfolioValue) * 100
-            } else {
-                0.0
-            }
             StockCard(
                 stock = stock,
-                weightPercent = weightPercent,
+                weightPercent = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate),
                 onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated },
                 onDeleteAccountHolding = { holdingId: Long ->
                     val detail = stock.accountDetails.find { it.holdingId == holdingId }
