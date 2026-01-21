@@ -45,7 +45,7 @@ sealed interface DashboardUiState {
         val accounts: List<AccountWithCount> = emptyList(),
         val selectedAccountId: Long = 1L,
         val periodReturns: Map<TimePeriod, Double> = emptyMap(),
-        val selectedPeriod: TimePeriod = TimePeriod.ONE_WEEK,
+        val selectedPeriod: TimePeriod = TimePeriod.ONE_YEAR,
         val isLoadingPeriodReturns: Boolean = false,
         val isRefreshing: Boolean = false,
         val exchangeRate: Double = KRW_TO_USD_RATE,
@@ -93,8 +93,8 @@ class DashboardViewModel @Inject constructor(
 
     private var summaryPeriod: TimePeriod
         get() {
-            val ordinal = sharedPreferences.getInt(PREF_SUMMARY_PERIOD, TimePeriod.ONE_WEEK.ordinal)
-            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_WEEK }
+            val ordinal = sharedPreferences.getInt(PREF_SUMMARY_PERIOD, TimePeriod.ONE_YEAR.ordinal)
+            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
         }
         set(value) = sharedPreferences.edit().putInt(PREF_SUMMARY_PERIOD, value.ordinal).apply()
 
