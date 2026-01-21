@@ -54,6 +54,7 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.component.AllocationItem
 import com.portfolio.manager.presentation.component.AllocationPieChart
 import com.portfolio.manager.presentation.component.PortfolioSummary
+import com.portfolio.manager.presentation.component.SkeletonDashboard
 import com.portfolio.manager.presentation.component.StockCard
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
@@ -119,7 +120,7 @@ fun DashboardScreen(
     ) { paddingValues ->
         when (val state = uiState) {
             is DashboardUiState.Loading -> {
-                LoadingContent(modifier = Modifier.padding(paddingValues))
+                SkeletonDashboard(modifier = Modifier.padding(paddingValues))
             }
             is DashboardUiState.Success -> {
                 DashboardContent(
@@ -174,29 +175,6 @@ fun DashboardScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun LoadingContent(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp),
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "Loading prices...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 
