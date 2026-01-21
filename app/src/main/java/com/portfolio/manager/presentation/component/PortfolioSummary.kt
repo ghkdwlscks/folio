@@ -95,7 +95,7 @@ fun PortfolioSummary(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -107,7 +107,7 @@ fun PortfolioSummary(
                 color = Color.White
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Gain/Loss row with invested info
             Row(
@@ -151,17 +151,17 @@ fun PortfolioSummary(
 
             // Portfolio sparkline
             if (portfolioSparkline.size >= 2) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Sparkline(
                     prices = portfolioSparkline,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(32.dp),
+                        .fillMaxWidth(0.7f)
+                        .height(56.dp),
                     lineColor = Color.White.copy(alpha = 0.9f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             PeriodSelector(
                 periods = TimePeriod.entries,
@@ -173,7 +173,7 @@ fun PortfolioSummary(
 
             // Portfolio Statistics Row
             if (portfolioStats != PortfolioStats()) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 StatsRow(stats = portfolioStats)
             }
         }
