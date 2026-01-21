@@ -12,9 +12,10 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Input Validation**: Quantity (1-1,000,000) and price (0.0001-1,000,000,000) bounds enforced
 
 ### Dashboard
-- **Portfolio Summary**: Total value, invested amount, gain/loss with percentage
-- **Portfolio Sparkline**: Weighted portfolio performance chart (logarithmic scale)
-- **Period Returns**: Selectable time periods (1D, 1W, 1M, 6M, 1Y, Max) showing weighted portfolio returns
+- **Portfolio Summary**: Total value, gain/loss with percentage, invested amount
+- **Portfolio Sparkline**: Weighted portfolio performance chart with proper aspect ratio
+- **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (period-specific)
+- **Period Returns**: Selectable time periods (1W, 1M, 6M, 1Y, Max) showing weighted portfolio returns
 - **Currency Toggle**: View totals in USD or KRW
 - **Holdings List**: Stock cards sorted by weight (largest positions first)
 - **Stock Sparklines**: Each card shows price history chart with configurable period
@@ -30,7 +31,9 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Day Change**: Shows daily price change and percentage
 - **Name Resolution**: Uses longName → shortName → symbol fallback
 - **Dynamic Exchange Rate**: Live USD/KRW rate from Yahoo Finance API (1-hour cache, fallback to AppConstants)
-- **Price History Cache**: Historical prices cached locally with daily refresh (handles stock splits)
+- **Price History Cache**: Historical prices cached locally with daily refresh
+- **Date-based Alignment**: Handles different market trading hours (US vs Korea) using date keys
+- **Forward-fill Logic**: Missing dates use last known price; excludes dates before first data point
 
 ### UI/UX
 - **Material 3 Design**: Modern Android design language
@@ -66,7 +69,7 @@ app/src/main/java/com/portfolio/manager/
 │   │   └── dto/            # Response DTOs
 │   └── repository/         # Repository implementations
 ├── domain/
-│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod
+│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod, PortfolioStats
 │   └── repository/         # Repository interfaces
 ├── presentation/
 │   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen
@@ -81,7 +84,7 @@ app/src/main/java/com/portfolio/manager/
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary with sparkline, period returns selector (1D-Max), holdings list with individual sparklines, account filter
+1. **Dashboard**: Portfolio summary with sparkline and statistics, period selector (1W-Max), holdings list with individual sparklines, account filter
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation
 3. **Accounts**: Manage accounts with add, edit, delete, reorder, and error snackbar
 
