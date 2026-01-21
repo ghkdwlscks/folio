@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.portfolio.manager.presentation.screen.AccountsScreen
 import com.portfolio.manager.presentation.screen.AddHoldingScreen
 import com.portfolio.manager.presentation.screen.DashboardScreen
+import com.portfolio.manager.presentation.screen.FIRECalculatorScreen
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 
 object Routes {
@@ -17,6 +18,7 @@ object Routes {
     const val ADD_HOLDING = "add_holding/{accountId}"
     const val EDIT_HOLDING = "edit_holding/{holdingId}"
     const val ACCOUNTS = "accounts"
+    const val FIRE_CALCULATOR = "fire_calculator"
 
     fun addHolding(accountId: Long) = "add_holding/$accountId"
     fun editHolding(holdingId: Long) = "edit_holding/$holdingId"
@@ -61,6 +63,12 @@ fun NavGraph(
         }
         composable(Routes.ACCOUNTS) {
             AccountsScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.FIRE_CALCULATOR) {
+            FIRECalculatorScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() }
             )
