@@ -11,6 +11,7 @@ import com.portfolio.manager.data.remote.dto.ChartQuote
 import com.portfolio.manager.data.remote.dto.ChartResult
 import com.portfolio.manager.data.remote.dto.YahooChartResponse
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.domain.repository.PriceHistoryData
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -380,7 +381,7 @@ class StockRepositoryImplTest {
     }
 
     @Test
-    fun `getPriceHistory - success - returns closing prices`() = runTest {
+    fun `getPriceHistory - success - returns closing prices with timestamps`() = runTest {
         coEvery { api.getChart("AAPL", "1d", "1y") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
@@ -390,6 +391,7 @@ class StockRepositoryImplTest {
                             regularMarketPrice = 180.0,
                             chartPreviousClose = 175.0
                         ),
+                        timestamp = listOf(1000L, 2000L, 3000L, 4000L, 5000L),
                         indicators = ChartIndicators(
                             quote = listOf(
                                 ChartQuote(close = listOf(150.0, 155.0, 160.0, 170.0, 180.0))
@@ -403,7 +405,8 @@ class StockRepositoryImplTest {
         val result = repository.getPriceHistory(listOf("AAPL"), "1y")
 
         assertThat(result).containsKey("AAPL")
-        assertThat(result["AAPL"]).containsExactly(150.0, 155.0, 160.0, 170.0, 180.0).inOrder()
+        assertThat(result["AAPL"]?.prices).containsExactly(150.0, 155.0, 160.0, 170.0, 180.0).inOrder()
+        assertThat(result["AAPL"]?.timestamps).containsExactly(1000L, 2000L, 3000L, 4000L, 5000L).inOrder()
     }
 
     @Test
@@ -413,6 +416,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        timestamp = listOf(1000L, 2000L),
                         indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(170.0, 180.0))))
                     )
                 )
@@ -423,6 +427,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "GOOGL", regularMarketPrice = 140.0, chartPreviousClose = 135.0),
+                        timestamp = listOf(1000L, 2000L),
                         indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(135.0, 140.0))))
                     )
                 )
@@ -432,8 +437,8 @@ class StockRepositoryImplTest {
         val result = repository.getPriceHistory(listOf("AAPL", "GOOGL"), "5d")
 
         assertThat(result).hasSize(2)
-        assertThat(result["AAPL"]).containsExactly(170.0, 180.0).inOrder()
-        assertThat(result["GOOGL"]).containsExactly(135.0, 140.0).inOrder()
+        assertThat(result["AAPL"]?.prices).containsExactly(170.0, 180.0).inOrder()
+        assertThat(result["GOOGL"]?.prices).containsExactly(135.0, 140.0).inOrder()
     }
 
     @Test
@@ -444,17 +449,18 @@ class StockRepositoryImplTest {
     }
 
     @Test
-    fun `getPriceHistory - api failure - returns empty list for symbol`() = runTest {
+    fun `getPriceHistory - api failure - returns empty data for symbol`() = runTest {
         coEvery { api.getChart("AAPL", "1d", "1mo") } throws IOException("Network error")
 
         val result = repository.getPriceHistory(listOf("AAPL"), "1mo")
 
         assertThat(result).containsKey("AAPL")
-        assertThat(result["AAPL"]).isEmpty()
+        assertThat(result["AAPL"]?.prices).isEmpty()
+        assertThat(result["AAPL"]?.timestamps).isEmpty()
     }
 
     @Test
-    fun `getPriceHistory - null result - returns empty list for symbol`() = runTest {
+    fun `getPriceHistory - null result - returns empty data for symbol`() = runTest {
         coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
             chart = ChartData(result = null)
         )
@@ -462,16 +468,18 @@ class StockRepositoryImplTest {
         val result = repository.getPriceHistory(listOf("AAPL"), "1mo")
 
         assertThat(result).containsKey("AAPL")
-        assertThat(result["AAPL"]).isEmpty()
+        assertThat(result["AAPL"]?.prices).isEmpty()
+        assertThat(result["AAPL"]?.timestamps).isEmpty()
     }
 
     @Test
-    fun `getPriceHistory - closes with nulls - filters them out`() = runTest {
+    fun `getPriceHistory - closes with nulls - filters them out with aligned timestamps`() = runTest {
         coEvery { api.getChart("AAPL", "1d", "6mo") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        timestamp = listOf(1000L, 2000L, 3000L, 4000L, 5000L),
                         indicators = ChartIndicators(
                             quote = listOf(ChartQuote(close = listOf(150.0, null, 160.0, null, 180.0)))
                         )
@@ -482,7 +490,8 @@ class StockRepositoryImplTest {
 
         val result = repository.getPriceHistory(listOf("AAPL"), "6mo")
 
-        assertThat(result["AAPL"]).containsExactly(150.0, 160.0, 180.0).inOrder()
+        assertThat(result["AAPL"]?.prices).containsExactly(150.0, 160.0, 180.0).inOrder()
+        assertThat(result["AAPL"]?.timestamps).containsExactly(1000L, 3000L, 5000L).inOrder()
     }
 
     @Test
@@ -492,6 +501,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        timestamp = listOf(1000L, 2000L),
                         indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(170.0, 180.0))))
                     )
                 )
@@ -500,24 +510,26 @@ class StockRepositoryImplTest {
 
         val result = repository.getPriceHistory(listOf("AAPL"))
 
-        assertThat(result["AAPL"]).containsExactly(170.0, 180.0).inOrder()
+        assertThat(result["AAPL"]?.prices).containsExactly(170.0, 180.0).inOrder()
     }
 
     @Test
-    fun `getPriceHistory - uses cache when data is from today`() = runTest {
+    fun `getPriceHistory - uses cache when data is from today with valid timestamps`() = runTest {
         val today = LocalDate.now().toString()
         coEvery { priceHistoryDao.getPriceHistoryForSymbols(listOf("AAPL"), "1y") } returns listOf(
             PriceHistoryEntity(
                 symbol = "AAPL",
                 range = "1y",
                 prices = "[150.0,160.0,170.0]",
+                timestamps = "[1000,2000,3000]",
                 lastUpdatedDate = today
             )
         )
 
         val result = repository.getPriceHistory(listOf("AAPL"), "1y")
 
-        assertThat(result["AAPL"]).containsExactly(150.0, 160.0, 170.0).inOrder()
+        assertThat(result["AAPL"]?.prices).containsExactly(150.0, 160.0, 170.0).inOrder()
+        assertThat(result["AAPL"]?.timestamps).containsExactly(1000L, 2000L, 3000L).inOrder()
         // API should not be called since cache is valid
         coVerify(exactly = 0) { api.getChart("AAPL", any(), any()) }
     }
@@ -530,6 +542,7 @@ class StockRepositoryImplTest {
                 symbol = "AAPL",
                 range = "1y",
                 prices = "[100.0,110.0]",
+                timestamps = "[1000,2000]",
                 lastUpdatedDate = yesterday
             )
         )
@@ -538,6 +551,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        timestamp = listOf(1000L, 2000L, 3000L),
                         indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(150.0, 160.0, 170.0))))
                     )
                 )
@@ -546,7 +560,7 @@ class StockRepositoryImplTest {
 
         val result = repository.getPriceHistory(listOf("AAPL"), "1y")
 
-        assertThat(result["AAPL"]).containsExactly(150.0, 160.0, 170.0).inOrder()
+        assertThat(result["AAPL"]?.prices).containsExactly(150.0, 160.0, 170.0).inOrder()
         coVerify { api.getChart("AAPL", "1d", "1y") }
         coVerify { priceHistoryDao.insertPriceHistories(any()) }
     }
@@ -558,6 +572,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        timestamp = listOf(1000L, 2000L),
                         indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(170.0, 180.0))))
                     )
                 )
@@ -578,6 +593,7 @@ class StockRepositoryImplTest {
                 symbol = "AAPL",
                 range = "1y",
                 prices = "[150.0,160.0]",
+                timestamps = "[1000,2000]",
                 lastUpdatedDate = today
             )
         )
@@ -586,6 +602,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "GOOGL", regularMarketPrice = 140.0, chartPreviousClose = 135.0),
+                        timestamp = listOf(1000L, 2000L),
                         indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(130.0, 140.0))))
                     )
                 )
@@ -594,15 +611,15 @@ class StockRepositoryImplTest {
 
         val result = repository.getPriceHistory(listOf("AAPL", "GOOGL"), "1y")
 
-        assertThat(result["AAPL"]).containsExactly(150.0, 160.0).inOrder()
-        assertThat(result["GOOGL"]).containsExactly(130.0, 140.0).inOrder()
+        assertThat(result["AAPL"]?.prices).containsExactly(150.0, 160.0).inOrder()
+        assertThat(result["GOOGL"]?.prices).containsExactly(130.0, 140.0).inOrder()
         // Only GOOGL should be fetched from API
         coVerify(exactly = 0) { api.getChart("AAPL", any(), any()) }
         coVerify(exactly = 1) { api.getChart("GOOGL", "1d", "1y") }
     }
 
     @Test
-    fun `getExchangeRateHistory - success - returns rate history`() = runTest {
+    fun `getExchangeRateHistory - success - returns rate history with timestamps`() = runTest {
         coEvery { api.getChart("USDKRW=X", "1d", "1y") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
@@ -612,6 +629,7 @@ class StockRepositoryImplTest {
                             regularMarketPrice = 1400.0,
                             chartPreviousClose = 1350.0
                         ),
+                        timestamp = listOf(1000L, 2000L, 3000L, 4000L, 5000L),
                         indicators = ChartIndicators(
                             quote = listOf(
                                 ChartQuote(close = listOf(1300.0, 1320.0, 1350.0, 1380.0, 1400.0))
@@ -624,22 +642,25 @@ class StockRepositoryImplTest {
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1y")
 
-        assertThat(result).containsExactly(1300.0, 1320.0, 1350.0, 1380.0, 1400.0).inOrder()
+        assertThat(result.prices).containsExactly(1300.0, 1320.0, 1350.0, 1380.0, 1400.0).inOrder()
+        assertThat(result.timestamps).containsExactly(1000L, 2000L, 3000L, 4000L, 5000L).inOrder()
     }
 
     @Test
-    fun `getExchangeRateHistory - uses cache when data is from today`() = runTest {
+    fun `getExchangeRateHistory - uses cache when data is from today with valid timestamps`() = runTest {
         val today = LocalDate.now().toString()
         coEvery { priceHistoryDao.getPriceHistory("USDKRW=X", "1y") } returns PriceHistoryEntity(
             symbol = "USDKRW=X",
             range = "1y",
             prices = "[1300.0,1350.0,1400.0]",
+            timestamps = "[1000,2000,3000]",
             lastUpdatedDate = today
         )
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1y")
 
-        assertThat(result).containsExactly(1300.0, 1350.0, 1400.0).inOrder()
+        assertThat(result.prices).containsExactly(1300.0, 1350.0, 1400.0).inOrder()
+        assertThat(result.timestamps).containsExactly(1000L, 2000L, 3000L).inOrder()
         coVerify(exactly = 0) { api.getChart("USDKRW=X", any(), any()) }
     }
 
@@ -650,6 +671,7 @@ class StockRepositoryImplTest {
             symbol = "USDKRW=X",
             range = "1y",
             prices = "[1250.0,1280.0]",
+            timestamps = "[1000,2000]",
             lastUpdatedDate = yesterday
         )
         coEvery { api.getChart("USDKRW=X", "1d", "1y") } returns YahooChartResponse(
@@ -657,6 +679,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "USDKRW=X", regularMarketPrice = 1400.0, chartPreviousClose = 1350.0),
+                        timestamp = listOf(1000L, 2000L, 3000L),
                         indicators = ChartIndicators(
                             quote = listOf(ChartQuote(close = listOf(1300.0, 1350.0, 1400.0)))
                         )
@@ -667,7 +690,7 @@ class StockRepositoryImplTest {
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1y")
 
-        assertThat(result).containsExactly(1300.0, 1350.0, 1400.0).inOrder()
+        assertThat(result.prices).containsExactly(1300.0, 1350.0, 1400.0).inOrder()
         coVerify { api.getChart("USDKRW=X", "1d", "1y") }
         coVerify { priceHistoryDao.insertPriceHistory(any()) }
     }
@@ -679,42 +702,46 @@ class StockRepositoryImplTest {
             symbol = "USDKRW=X",
             range = "1mo",
             prices = "[1300.0,1350.0]",
+            timestamps = "[1000,2000]",
             lastUpdatedDate = yesterday
         )
         coEvery { api.getChart("USDKRW=X", "1d", "1mo") } throws IOException("Network error")
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1mo")
 
-        assertThat(result).containsExactly(1300.0, 1350.0).inOrder()
+        assertThat(result.prices).containsExactly(1300.0, 1350.0).inOrder()
     }
 
     @Test
-    fun `getExchangeRateHistory - api failure no cache - returns empty list`() = runTest {
+    fun `getExchangeRateHistory - api failure no cache - returns empty data`() = runTest {
         coEvery { api.getChart("USDKRW=X", "1d", "1mo") } throws IOException("Network error")
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1mo")
 
-        assertThat(result).isEmpty()
+        assertThat(result.prices).isEmpty()
+        assertThat(result.timestamps).isEmpty()
     }
 
     @Test
-    fun `getExchangeRateHistory - null result - returns empty list`() = runTest {
+    fun `getExchangeRateHistory - null result - returns empty data`() = runTest {
         coEvery { api.getChart("USDKRW=X", "1d", "1mo") } returns YahooChartResponse(
             chart = ChartData(result = null)
         )
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1mo")
 
-        assertThat(result).isEmpty()
+        assertThat(result.prices).isEmpty()
+        assertThat(result.timestamps).isEmpty()
     }
 
     @Test
-    fun `getExchangeRateHistory - filters null values`() = runTest {
+    fun `getExchangeRateHistory - filters null values with aligned timestamps`() = runTest {
         coEvery { api.getChart("USDKRW=X", "1d", "1mo") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "USDKRW=X", regularMarketPrice = 1400.0, chartPreviousClose = 1350.0),
+                        timestamp = listOf(1000L, 2000L, 3000L, 4000L, 5000L),
                         indicators = ChartIndicators(
                             quote = listOf(ChartQuote(close = listOf(1300.0, null, 1350.0, null, 1400.0)))
                         )
@@ -725,7 +752,8 @@ class StockRepositoryImplTest {
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1mo")
 
-        assertThat(result).containsExactly(1300.0, 1350.0, 1400.0).inOrder()
+        assertThat(result.prices).containsExactly(1300.0, 1350.0, 1400.0).inOrder()
+        assertThat(result.timestamps).containsExactly(1000L, 3000L, 5000L).inOrder()
     }
 
     @Test
@@ -735,6 +763,7 @@ class StockRepositoryImplTest {
                 result = listOf(
                     ChartResult(
                         meta = ChartMeta(symbol = "USDKRW=X", regularMarketPrice = 1400.0, chartPreviousClose = 1350.0),
+                        timestamp = listOf(1000L, 2000L),
                         indicators = ChartIndicators(
                             quote = listOf(ChartQuote(close = listOf(1300.0, 1400.0)))
                         )
@@ -755,13 +784,26 @@ class StockRepositoryImplTest {
             symbol = "USDKRW=X",
             range = "1mo",
             prices = "invalid json",
+            timestamps = "[]",
             lastUpdatedDate = today
+        )
+        coEvery { api.getChart("USDKRW=X", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "USDKRW=X", regularMarketPrice = 1400.0, chartPreviousClose = 1350.0),
+                        timestamp = listOf(1000L, 2000L),
+                        indicators = ChartIndicators(
+                            quote = listOf(ChartQuote(close = listOf(1300.0, 1400.0)))
+                        )
+                    )
+                )
+            )
         )
 
         val result = repository.getExchangeRateHistory("USD", "KRW", "1mo")
 
-        // Parse error returns empty list from cache, but since cache is "valid" (today's date),
-        // it returns empty from the cache path
-        assertThat(result).isEmpty()
+        // Parse error triggers API fetch
+        assertThat(result.prices).containsExactly(1300.0, 1400.0).inOrder()
     }
 }

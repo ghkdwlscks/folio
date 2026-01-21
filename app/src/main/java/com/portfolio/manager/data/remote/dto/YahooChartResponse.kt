@@ -16,6 +16,7 @@ data class ChartData(
 @Serializable
 data class ChartResult(
     val meta: ChartMeta,
+    val timestamp: List<Long>? = null,
     val indicators: ChartIndicators? = null
 )
 

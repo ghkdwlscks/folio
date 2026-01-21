@@ -10,6 +10,7 @@ import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
+import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
@@ -229,9 +230,9 @@ class DashboardViewModel @Inject constructor(
             }
 
             // Fetch exchange rate history for currency-adjusted returns
-            val exchangeRateHistory = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
-            val startExchangeRate = exchangeRateHistory.firstOrNull() ?: currentExchangeRate
-            val endExchangeRate = exchangeRateHistory.lastOrNull() ?: currentExchangeRate
+            val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
+            val startExchangeRate = exchangeRateData.prices.firstOrNull() ?: currentExchangeRate
+            val endExchangeRate = exchangeRateData.prices.lastOrNull() ?: currentExchangeRate
 
             // Fetch period returns for all unique symbols in parallel
             val symbols = stocks.map { it.symbol }.distinct()
@@ -288,72 +289,134 @@ class DashboardViewModel @Inject constructor(
         if (stocks.isEmpty()) return
 
         viewModelScope.launch {
-            val currentState = _uiState.value
-            val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
+            try {
+                val currentState = _uiState.value
+                val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
 
-            val symbols = stocks.map { it.symbol }.distinct()
-            val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
+                val symbols = stocks.map { it.symbol }.distinct()
+                val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
 
-            // Fetch exchange rate history for currency conversion
-            val exchangeRateHistory = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
+                // Fetch exchange rate history for currency conversion
+                val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
 
-            // Calculate weighted portfolio sparkline
-            val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
-            if (totalPortfolioValue <= 0) return@launch
+                // Calculate weighted portfolio sparkline
+                val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
+                if (totalPortfolioValue <= 0) return@launch
 
-            val stocksWithHistory = stocks.filter { (priceHistoryMap[it.symbol]?.size ?: 0) >= 2 }
-            if (stocksWithHistory.isEmpty()) {
-                updatePortfolioSparkline(emptyList())
-                return@launch
-            }
-
-            val minLength = stocksWithHistory.minOf { priceHistoryMap[it.symbol]?.size ?: 0 }
-            val effectiveLength = if (exchangeRateHistory.size >= 2) {
-                minOf(minLength, exchangeRateHistory.size)
-            } else {
-                minLength
-            }
-            if (effectiveLength < 2) {
-                updatePortfolioSparkline(emptyList())
-                return@launch
-            }
-
-            val portfolioValues = mutableListOf<Double>()
-            val baseValue = 100.0
-
-            for (i in 0 until effectiveLength) {
-                var totalValue = 0.0
-                val exchangeRate = if (exchangeRateHistory.size >= effectiveLength) {
-                    exchangeRateHistory[i]
-                } else {
-                    currentExchangeRate
+                // Filter stocks that have valid price history (at least 2 data points)
+                val stocksWithHistory = stocks.filter { stock ->
+                    val data = priceHistoryMap[stock.symbol]
+                    data != null && data.prices.size >= 2
+                }
+                if (stocksWithHistory.isEmpty()) {
+                    updatePortfolioSparkline(emptyList())
+                    return@launch
                 }
 
-                for (stock in stocksWithHistory) {
-                    val history = priceHistoryMap[stock.symbol] ?: continue
-                    val price = history[i]
-                    val value = price * stock.quantity
-
-                    // Convert to selected currency
-                    totalValue += if (showInKrw) {
-                        if (stock.currency == "KRW") value else value * exchangeRate
+                // Use date-based alignment: convert timestamps to dates (YYYY-MM-DD)
+                // This handles different market trading hours (US vs Korea)
+                val stockDatePrices = stocksWithHistory.associate { stock ->
+                    val data = priceHistoryMap[stock.symbol]!!
+                    val datePriceMap = if (data.timestamps.isNotEmpty() && data.timestamps.size == data.prices.size) {
+                        // Use timestamps to create date-price mapping
+                        data.timestamps.zip(data.prices).associate { (ts, price) ->
+                            timestampToDate(ts) to price
+                        }
                     } else {
-                        if (stock.currency == "USD") value else value / exchangeRate
+                        // Fallback: create synthetic dates based on index
+                        data.prices.mapIndexed { index, price ->
+                            "idx_$index" to price
+                        }.toMap()
                     }
+                    stock.symbol to datePriceMap
                 }
 
-                portfolioValues.add(totalValue)
-            }
+                // Build exchange rate by date map
+                val exchangeRateByDate = if (exchangeRateData.timestamps.isNotEmpty()) {
+                    exchangeRateData.timestamps.zip(exchangeRateData.prices).associate { (ts, rate) ->
+                        timestampToDate(ts) to rate
+                    }
+                } else {
+                    emptyMap()
+                }
 
-            // Normalize to base value
-            val startValue = portfolioValues.firstOrNull() ?: 0.0
-            val normalizedValues = if (startValue > 0) {
-                portfolioValues.map { baseValue * (it / startValue) }
-            } else {
-                portfolioValues
-            }
+                // Get ALL dates where ANY stock has data (union, not intersection)
+                val allDates = stockDatePrices.values.flatMap { it.keys }.toSet().sorted()
 
-            updatePortfolioSparkline(normalizedValues)
+                if (allDates.size < 2) {
+                    updatePortfolioSparkline(emptyList())
+                    return@launch
+                }
+
+                // Forward-fill: for each stock, create a complete price series
+                // If a date is missing, use the last known price
+                val filledStockPrices = stocksWithHistory.associate { stock ->
+                    val originalPrices = stockDatePrices[stock.symbol] ?: emptyMap()
+                    val filledPrices = mutableMapOf<String, Double>()
+                    var lastPrice: Double? = null
+
+                    for (date in allDates) {
+                        val price = originalPrices[date]
+                        if (price != null) {
+                            lastPrice = price
+                            filledPrices[date] = price
+                        } else if (lastPrice != null) {
+                            // Forward-fill with last known price
+                            filledPrices[date] = lastPrice
+                        }
+                        // If no price yet (before first data point), skip
+                    }
+                    stock.symbol to filledPrices
+                }
+
+                // Calculate portfolio value for each date
+                val portfolioValues = allDates.mapNotNull { date ->
+                    var totalValue = 0.0
+                    var hasData = false
+                    val exchangeRate = (exchangeRateByDate[date] ?: currentExchangeRate)
+                        .takeIf { it > 0 } ?: currentExchangeRate
+
+                    for (stock in stocksWithHistory) {
+                        val price = filledStockPrices[stock.symbol]?.get(date) ?: continue
+                        hasData = true
+                        val value = price * stock.quantity
+                        totalValue += convertValue(value, stock.currency, showInKrw, exchangeRate)
+                    }
+                    if (hasData) totalValue else null
+                }
+
+                if (portfolioValues.size < 2) {
+                    updatePortfolioSparkline(emptyList())
+                    return@launch
+                }
+
+                updatePortfolioSparkline(normalizeValues(portfolioValues))
+            } catch (e: Exception) {
+                updatePortfolioSparkline(emptyList())
+            }
+        }
+    }
+
+    private fun timestampToDate(timestamp: Long): String {
+        // Convert Unix timestamp (seconds) to date string YYYY-MM-DD
+        val instant = java.time.Instant.ofEpochSecond(timestamp)
+        return java.time.LocalDate.ofInstant(instant, java.time.ZoneId.systemDefault()).toString()
+    }
+
+    private fun convertValue(value: Double, currency: String, showInKrw: Boolean, exchangeRate: Double): Double {
+        return if (showInKrw) {
+            if (currency == "KRW") value else value * exchangeRate
+        } else {
+            if (currency == "USD") value else if (exchangeRate > 0) value / exchangeRate else value
+        }
+    }
+
+    private fun normalizeValues(values: List<Double>): List<Double> {
+        val startValue = values.firstOrNull() ?: 0.0
+        return if (startValue > 0) {
+            values.map { 100.0 * (it / startValue) }
+        } else {
+            values
         }
     }
 
@@ -441,7 +504,7 @@ class DashboardViewModel @Inject constructor(
                             dayChange = quote?.regularMarketChange,
                             dayChangePercent = quote?.regularMarketChangePercent,
                             currency = holding.currency,
-                            priceHistory = priceHistoryMap[holding.symbol] ?: emptyList()
+                            priceHistory = priceHistoryMap[holding.symbol]?.prices ?: emptyList()
                         )
                     }
                 }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
@@ -487,7 +550,7 @@ class DashboardViewModel @Inject constructor(
         holdings: List<HoldingEntity>,
         quotes: List<com.portfolio.manager.data.remote.dto.QuoteResult>,
         accounts: List<AccountEntity>,
-        priceHistoryMap: Map<String, List<Double>>
+        priceHistoryMap: Map<String, PriceHistoryData>
     ): List<Stock> {
         val accountMap = accounts.associateBy { it.id }
         val accountOrderMap = accounts.associate { it.id to it.orderIndex }
@@ -523,7 +586,7 @@ class DashboardViewModel @Inject constructor(
                 dayChangePercent = quote?.regularMarketChangePercent,
                 currency = firstHolding.currency,
                 accountDetails = accountDetails,
-                priceHistory = priceHistoryMap[symbol] ?: emptyList()
+                priceHistory = priceHistoryMap[symbol]?.prices ?: emptyList()
             )
         }
     }

@@ -6,6 +6,7 @@ import com.portfolio.manager.data.remote.YahooFinanceApi
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.PeriodReturn
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -115,27 +116,35 @@ class StockRepositoryImpl(
         }
     }
 
-    override suspend fun getExchangeRateHistory(from: String, to: String, range: String): List<Double> {
+    override suspend fun getExchangeRateHistory(from: String, to: String, range: String): PriceHistoryData {
         val symbol = "$from$to=X"
         val today = LocalDate.now().toString()
 
         // Check cache
         val cached = priceHistoryDao.getPriceHistory(symbol, range)
         if (cached != null && cached.lastUpdatedDate == today) {
-            return try {
-                json.decodeFromString<List<Double>>(cached.prices)
+            try {
+                val prices = json.decodeFromString<List<Double>>(cached.prices)
+                val timestamps = json.decodeFromString<List<Long>>(cached.timestamps)
+                if (timestamps.isNotEmpty() && timestamps.size == prices.size) {
+                    return PriceHistoryData(prices, timestamps)
+                }
             } catch (e: Exception) {
-                emptyList()
+                // Continue to fetch from API
             }
         }
 
         // Fetch from API
         return try {
             val response = api.getChart(symbol, interval = "1d", range = range)
-            val closes = response.chart.result?.firstOrNull()
-                ?.indicators?.quote?.firstOrNull()?.close
-                ?.filterNotNull()
-                ?: emptyList()
+            val result = response.chart.result?.firstOrNull()
+            val rawCloses = result?.indicators?.quote?.firstOrNull()?.close ?: emptyList()
+            val rawTimestamps = result?.timestamp ?: emptyList()
+
+            // Filter out null prices while keeping timestamps aligned
+            val paired = rawTimestamps.zip(rawCloses).filter { it.second != null }
+            val timestamps = paired.map { it.first }
+            val closes = paired.map { it.second!! }
 
             // Save to cache
             if (closes.isNotEmpty()) {
@@ -144,25 +153,29 @@ class StockRepositoryImpl(
                         symbol = symbol,
                         range = range,
                         prices = json.encodeToString(closes),
+                        timestamps = json.encodeToString(timestamps),
                         lastUpdatedDate = today
                     )
                 )
             }
 
-            closes
+            PriceHistoryData(closes, timestamps)
         } catch (e: Exception) {
             // Return cached data if available, even if stale
             cached?.let {
                 try {
-                    json.decodeFromString<List<Double>>(it.prices)
+                    PriceHistoryData(
+                        prices = json.decodeFromString<List<Double>>(it.prices),
+                        timestamps = json.decodeFromString<List<Long>>(it.timestamps)
+                    )
                 } catch (e: Exception) {
-                    emptyList()
+                    PriceHistoryData(emptyList(), emptyList())
                 }
-            } ?: emptyList()
+            } ?: PriceHistoryData(emptyList(), emptyList())
         }
     }
 
-    override suspend fun getPriceHistory(symbols: List<String>, range: String): Map<String, List<Double>> {
+    override suspend fun getPriceHistory(symbols: List<String>, range: String): Map<String, PriceHistoryData> {
         if (symbols.isEmpty()) return emptyMap()
 
         val today = LocalDate.now().toString()
@@ -171,20 +184,26 @@ class StockRepositoryImpl(
         val cached = priceHistoryDao.getPriceHistoryForSymbols(symbols, range)
         val cachedMap = cached.associateBy { it.symbol }
 
-        // Separate symbols into cached (valid for today) and needs fetch
-        val (validCached, needsFetch) = symbols.partition { symbol ->
-            cachedMap[symbol]?.lastUpdatedDate == today
-        }
+        // Separate symbols into cached (valid for today with proper timestamps) and needs fetch
+        val result = mutableMapOf<String, PriceHistoryData>()
+        val needsFetch = mutableListOf<String>()
 
-        // Build result from valid cache
-        val result = mutableMapOf<String, List<Double>>()
-        validCached.forEach { symbol ->
-            cachedMap[symbol]?.let { entity ->
-                result[symbol] = try {
-                    json.decodeFromString<List<Double>>(entity.prices)
+        symbols.forEach { symbol ->
+            val entity = cachedMap[symbol]
+            if (entity != null && entity.lastUpdatedDate == today) {
+                try {
+                    val prices = json.decodeFromString<List<Double>>(entity.prices)
+                    val timestamps = json.decodeFromString<List<Long>>(entity.timestamps)
+                    if (timestamps.isNotEmpty() && timestamps.size == prices.size) {
+                        result[symbol] = PriceHistoryData(prices, timestamps)
+                    } else {
+                        needsFetch.add(symbol)
+                    }
                 } catch (e: Exception) {
-                    emptyList()
+                    needsFetch.add(symbol)
                 }
+            } else {
+                needsFetch.add(symbol)
             }
         }
 
@@ -195,25 +214,31 @@ class StockRepositoryImpl(
                     async {
                         try {
                             val response = api.getChart(symbol, interval = "1d", range = range)
-                            val closes = response.chart.result?.firstOrNull()
-                                ?.indicators?.quote?.firstOrNull()?.close
-                                ?.filterNotNull()
-                                ?: emptyList()
-                            symbol to closes
+                            val chartResult = response.chart.result?.firstOrNull()
+                            val rawCloses = chartResult?.indicators?.quote?.firstOrNull()?.close ?: emptyList()
+                            val rawTimestamps = chartResult?.timestamp ?: emptyList()
+
+                            // Filter out null prices while keeping timestamps aligned
+                            val paired = rawTimestamps.zip(rawCloses).filter { it.second != null }
+                            val timestamps = paired.map { it.first }
+                            val closes = paired.map { it.second!! }
+
+                            Triple(symbol, closes, timestamps)
                         } catch (e: Exception) {
-                            symbol to emptyList<Double>()
+                            Triple(symbol, emptyList<Double>(), emptyList<Long>())
                         }
                     }
                 }
                 val fetched = fetchResults.awaitAll()
 
                 // Save to cache and add to result
-                val entitiesToSave = fetched.map { (symbol, prices) ->
-                    result[symbol] = prices
+                val entitiesToSave = fetched.map { (symbol, prices, timestamps) ->
+                    result[symbol] = PriceHistoryData(prices, timestamps)
                     PriceHistoryEntity(
                         symbol = symbol,
                         range = range,
                         prices = json.encodeToString(prices),
+                        timestamps = json.encodeToString(timestamps),
                         lastUpdatedDate = today
                     )
                 }

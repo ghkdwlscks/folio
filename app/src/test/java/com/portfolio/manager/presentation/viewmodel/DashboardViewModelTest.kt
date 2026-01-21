@@ -9,6 +9,7 @@ import com.portfolio.manager.domain.model.PeriodReturn
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
+import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import io.mockk.coEvery
@@ -68,9 +69,12 @@ class DashboardViewModelTest {
         // Default exchange rate mock
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
         // Default exchange rate history mock
-        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns listOf(1400.0, 1400.0)
+        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
+            prices = listOf(1400.0, 1400.0),
+            timestamps = listOf(1000L, 2000L)
+        )
         // Default price history mock (empty - graceful handling)
-        coEvery { stockRepository.getPriceHistory(any(), any()) } returns emptyMap()
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns emptyMap<String, PriceHistoryData>()
         // Default period returns mock
         coEvery { stockRepository.getPeriodReturn(any(), any()) } answers {
             val symbol = firstArg<String>()
