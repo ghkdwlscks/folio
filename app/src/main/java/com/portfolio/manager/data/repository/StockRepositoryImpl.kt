@@ -106,4 +106,26 @@ class StockRepositoryImpl(
             cached?.let { Result.success(it) } ?: Result.failure(e)
         }
     }
+
+    override suspend fun getPriceHistory(symbols: List<String>): Map<String, List<Double>> {
+        if (symbols.isEmpty()) return emptyMap()
+
+        return coroutineScope {
+            val results = symbols.map { symbol ->
+                async {
+                    try {
+                        val response = api.getChart(symbol, interval = "1d", range = "1mo")
+                        val closes = response.chart.result?.firstOrNull()
+                            ?.indicators?.quote?.firstOrNull()?.close
+                            ?.filterNotNull()
+                            ?: emptyList()
+                        symbol to closes
+                    } catch (e: Exception) {
+                        symbol to emptyList()
+                    }
+                }
+            }
+            results.awaitAll().toMap()
+        }
+    }
 }

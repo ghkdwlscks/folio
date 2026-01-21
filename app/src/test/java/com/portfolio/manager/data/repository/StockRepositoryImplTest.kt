@@ -366,4 +366,110 @@ class StockRepositoryImplTest {
 
         assertThat(result.isFailure).isTrue()
     }
+
+    @Test
+    fun `getPriceHistory - success - returns closing prices`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "AAPL",
+                            regularMarketPrice = 180.0,
+                            chartPreviousClose = 175.0
+                        ),
+                        indicators = ChartIndicators(
+                            quote = listOf(
+                                ChartQuote(close = listOf(150.0, 155.0, 160.0, 170.0, 180.0))
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"))
+
+        assertThat(result).containsKey("AAPL")
+        assertThat(result["AAPL"]).containsExactly(150.0, 155.0, 160.0, 170.0, 180.0).inOrder()
+    }
+
+    @Test
+    fun `getPriceHistory - multiple symbols - returns map of prices`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(170.0, 180.0))))
+                    )
+                )
+            )
+        )
+        coEvery { api.getChart("GOOGL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "GOOGL", regularMarketPrice = 140.0, chartPreviousClose = 135.0),
+                        indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(135.0, 140.0))))
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL", "GOOGL"))
+
+        assertThat(result).hasSize(2)
+        assertThat(result["AAPL"]).containsExactly(170.0, 180.0).inOrder()
+        assertThat(result["GOOGL"]).containsExactly(135.0, 140.0).inOrder()
+    }
+
+    @Test
+    fun `getPriceHistory - empty symbols - returns empty map`() = runTest {
+        val result = repository.getPriceHistory(emptyList())
+
+        assertThat(result).isEmpty()
+    }
+
+    @Test
+    fun `getPriceHistory - api failure - returns empty list for symbol`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } throws IOException("Network error")
+
+        val result = repository.getPriceHistory(listOf("AAPL"))
+
+        assertThat(result).containsKey("AAPL")
+        assertThat(result["AAPL"]).isEmpty()
+    }
+
+    @Test
+    fun `getPriceHistory - null result - returns empty list for symbol`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(result = null)
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"))
+
+        assertThat(result).containsKey("AAPL")
+        assertThat(result["AAPL"]).isEmpty()
+    }
+
+    @Test
+    fun `getPriceHistory - closes with nulls - filters them out`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        indicators = ChartIndicators(
+                            quote = listOf(ChartQuote(close = listOf(150.0, null, 160.0, null, 180.0)))
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"))
+
+        assertThat(result["AAPL"]).containsExactly(150.0, 160.0, 180.0).inOrder()
+    }
 }

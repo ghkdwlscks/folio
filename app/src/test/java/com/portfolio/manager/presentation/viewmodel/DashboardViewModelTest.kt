@@ -50,8 +50,12 @@ class DashboardViewModelTest {
 
         // SharedPreferences mock
         every { sharedPreferences.getBoolean(any(), any()) } returns false
+        every { sharedPreferences.getString(any(), any()) } returns null
+        every { sharedPreferences.getFloat(any(), any()) } answers { secondArg() }
         every { sharedPreferences.edit() } returns sharedPreferencesEditor
         every { sharedPreferencesEditor.putBoolean(any(), any()) } returns sharedPreferencesEditor
+        every { sharedPreferencesEditor.putString(any(), any()) } returns sharedPreferencesEditor
+        every { sharedPreferencesEditor.putFloat(any(), any()) } returns sharedPreferencesEditor
         every { sharedPreferencesEditor.apply() } returns Unit
 
         // Default account setup
@@ -61,6 +65,8 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
         // Default exchange rate mock
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
+        // Default price history mock (empty - graceful handling)
+        coEvery { stockRepository.getPriceHistory(any()) } returns emptyMap()
         // Default period returns mock
         coEvery { stockRepository.getPeriodReturn(any(), any()) } answers {
             val symbol = firstArg<String>()

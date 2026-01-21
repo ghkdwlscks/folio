@@ -284,9 +284,12 @@ class DashboardViewModel @Inject constructor(
 
         result.fold(
             onSuccess = { quotes ->
+                // Fetch price history for sparklines (non-blocking, failures return empty)
+                val priceHistoryMap = stockRepository.getPriceHistory(symbols)
+
                 val stocks = if (selectedAccountId == ALL_ACCOUNTS_ID) {
                     // Aggregate holdings by symbol when viewing all accounts
-                    aggregateHoldings(holdings, quotes, allAccounts)
+                    aggregateHoldings(holdings, quotes, allAccounts, priceHistoryMap)
                 } else {
                     // Normal view for single account
                     holdings.map { holding ->
@@ -301,7 +304,8 @@ class DashboardViewModel @Inject constructor(
                             currentPrice = quote?.regularMarketPrice ?: holding.averagePrice,
                             dayChange = quote?.regularMarketChange,
                             dayChangePercent = quote?.regularMarketChangePercent,
-                            currency = holding.currency
+                            currency = holding.currency,
+                            priceHistory = priceHistoryMap[holding.symbol] ?: emptyList()
                         )
                     }
                 }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
@@ -344,7 +348,8 @@ class DashboardViewModel @Inject constructor(
     private fun aggregateHoldings(
         holdings: List<HoldingEntity>,
         quotes: List<com.portfolio.manager.data.remote.dto.QuoteResult>,
-        accounts: List<AccountEntity>
+        accounts: List<AccountEntity>,
+        priceHistoryMap: Map<String, List<Double>>
     ): List<Stock> {
         val accountMap = accounts.associateBy { it.id }
         val accountOrderMap = accounts.associate { it.id to it.orderIndex }
@@ -379,7 +384,8 @@ class DashboardViewModel @Inject constructor(
                 dayChange = quote?.regularMarketChange,
                 dayChangePercent = quote?.regularMarketChangePercent,
                 currency = firstHolding.currency,
-                accountDetails = accountDetails
+                accountDetails = accountDetails,
+                priceHistory = priceHistoryMap[symbol] ?: emptyList()
             )
         }
     }
