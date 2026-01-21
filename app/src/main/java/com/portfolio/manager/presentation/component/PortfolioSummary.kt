@@ -74,7 +74,7 @@ fun PortfolioSummary(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
@@ -89,100 +89,79 @@ fun PortfolioSummary(
             onToggle = onCurrencyToggle,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(12.dp)
+                .padding(10.dp)
         )
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Total Portfolio Value",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White.copy(alpha = 0.8f)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
                 text = formatValue(totalValue),
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontSize = 36.sp,
+                style = MaterialTheme.typography.headlineLarge.copy(
                     letterSpacing = (-1).sp
                 ),
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Gain/Loss row with invested info
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = trendIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = trendColor
+                )
+                Text(
+                    text = "${if (isGain) "+" else ""}${formatValue(totalGainLoss)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = trendColor.copy(alpha = 0.3f)
+                ) {
+                    Text(
+                        text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent)}%",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Text(
+                    text = "·",
+                    color = Color.White.copy(alpha = 0.5f)
+                )
+                Text(
+                    text = "${formatValue(totalCost)} invested",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
+
             // Portfolio sparkline
             if (portfolioSparkline.size >= 2) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Sparkline(
                     prices = portfolioSparkline,
                     modifier = Modifier
-                        .width(200.dp)
-                        .height(40.dp),
+                        .fillMaxWidth()
+                        .height(32.dp),
                     lineColor = Color.White.copy(alpha = 0.9f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White.copy(alpha = 0.2f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = trendIcon,
-                        contentDescription = if (isGain) "Trending up" else "Trending down",
-                        modifier = Modifier.size(20.dp),
-                        tint = trendColor
-                    )
-                    Text(
-                        text = "${if (isGain) "+" else ""}${formatValue(totalGainLoss)}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = trendColor.copy(alpha = 0.3f)
-                    ) {
-                        Text(
-                            text = "${if (isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent)}%",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(
-                    label = "Invested",
-                    value = formatValue(totalCost)
-                )
-                StatItem(
-                    label = "Stocks",
-                    value = stocks.size.toString()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             PeriodSelector(
                 periods = TimePeriod.entries,
@@ -192,63 +171,51 @@ fun PortfolioSummary(
                 onPeriodSelected = onPeriodSelected
             )
 
-            // Portfolio Statistics Grid
+            // Portfolio Statistics Row
             if (portfolioStats != PortfolioStats()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                StatsGrid(stats = portfolioStats)
+                Spacer(modifier = Modifier.height(10.dp))
+                StatsRow(stats = portfolioStats)
             }
         }
     }
 }
 
 @Composable
-private fun StatsGrid(stats: PortfolioStats) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.1f)
+private fun StatsRow(stats: PortfolioStats) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatsItem(
-                    label = "MDD",
-                    value = "-${CurrencyFormatter.formatPercent(stats.maxDrawdown)}%",
-                    color = LossRedPastel
-                )
-                StatsItem(
-                    label = "Volatility",
-                    value = "${CurrencyFormatter.formatPercent(stats.volatility)}%",
-                    color = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatsItem(
-                    label = "Sharpe",
-                    value = String.format("%.2f", stats.sharpeRatio),
-                    color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel
-                )
-                StatsItem(
-                    label = "Best/Worst",
-                    value = "+${CurrencyFormatter.formatPercent(stats.bestDay)}% / ${CurrencyFormatter.formatPercent(stats.worstDay)}%",
-                    color = Color.White
-                )
-            }
-        }
+        CompactStatItem(
+            label = "MDD",
+            value = "-${CurrencyFormatter.formatPercent(stats.maxDrawdown)}%",
+            color = LossRedPastel
+        )
+        CompactStatItem(
+            label = "Vol",
+            value = "${CurrencyFormatter.formatPercent(stats.volatility)}%",
+            color = Color.White.copy(alpha = 0.8f)
+        )
+        CompactStatItem(
+            label = "Sharpe",
+            value = String.format("%.2f", stats.sharpeRatio),
+            color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel
+        )
+        CompactStatItem(
+            label = "Best",
+            value = "+${CurrencyFormatter.formatPercent(stats.bestDay)}%",
+            color = GainGreenPastel
+        )
+        CompactStatItem(
+            label = "Worst",
+            value = "${CurrencyFormatter.formatPercent(stats.worstDay)}%",
+            color = LossRedPastel
+        )
     }
 }
 
 @Composable
-private fun StatsItem(
+private fun CompactStatItem(
     label: String,
     value: String,
     color: Color
@@ -258,14 +225,15 @@ private fun StatsItem(
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             color = color
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.6f)
+            fontSize = 9.sp,
+            color = Color.White.copy(alpha = 0.5f)
         )
     }
 }
@@ -360,24 +328,3 @@ private fun CurrencyToggle(
     }
 }
 
-@Composable
-private fun StatItem(
-    label: String,
-    value: String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.7f)
-        )
-    }
-}
