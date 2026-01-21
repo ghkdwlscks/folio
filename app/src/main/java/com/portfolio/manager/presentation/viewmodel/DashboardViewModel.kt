@@ -373,20 +373,26 @@ class DashboardViewModel @Inject constructor(
                     stock.symbol to filledPrices
                 }
 
-                // Calculate portfolio value for each date
-                val portfolioValues = allDates.mapNotNull { date ->
+                // Only include dates where ALL stocks have data (actual or forward-filled)
+                // This excludes dates before a stock started trading
+                val validDates = allDates.filter { date ->
+                    stocksWithHistory.all { stock ->
+                        filledStockPrices[stock.symbol]?.containsKey(date) == true
+                    }
+                }
+
+                // Calculate portfolio value for each valid date
+                val portfolioValues = validDates.mapNotNull { date ->
                     var totalValue = 0.0
-                    var hasData = false
                     val exchangeRate = (exchangeRateByDate[date] ?: currentExchangeRate)
                         .takeIf { it > 0 } ?: currentExchangeRate
 
                     for (stock in stocksWithHistory) {
                         val price = filledStockPrices[stock.symbol]?.get(date) ?: continue
-                        hasData = true
                         val value = price * stock.quantity
                         totalValue += convertValue(value, stock.currency, showInKrw, exchangeRate)
                     }
-                    if (hasData) totalValue else null
+                    if (totalValue > 0) totalValue else null
                 }
 
                 if (portfolioValues.size < 2) {
