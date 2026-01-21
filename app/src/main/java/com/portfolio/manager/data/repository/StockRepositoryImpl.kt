@@ -115,6 +115,53 @@ class StockRepositoryImpl(
         }
     }
 
+    override suspend fun getExchangeRateHistory(from: String, to: String, range: String): List<Double> {
+        val symbol = "$from$to=X"
+        val today = LocalDate.now().toString()
+
+        // Check cache
+        val cached = priceHistoryDao.getPriceHistory(symbol, range)
+        if (cached != null && cached.lastUpdatedDate == today) {
+            return try {
+                json.decodeFromString<List<Double>>(cached.prices)
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        // Fetch from API
+        return try {
+            val response = api.getChart(symbol, interval = "1d", range = range)
+            val closes = response.chart.result?.firstOrNull()
+                ?.indicators?.quote?.firstOrNull()?.close
+                ?.filterNotNull()
+                ?: emptyList()
+
+            // Save to cache
+            if (closes.isNotEmpty()) {
+                priceHistoryDao.insertPriceHistory(
+                    PriceHistoryEntity(
+                        symbol = symbol,
+                        range = range,
+                        prices = json.encodeToString(closes),
+                        lastUpdatedDate = today
+                    )
+                )
+            }
+
+            closes
+        } catch (e: Exception) {
+            // Return cached data if available, even if stale
+            cached?.let {
+                try {
+                    json.decodeFromString<List<Double>>(it.prices)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            } ?: emptyList()
+        }
+    }
+
     override suspend fun getPriceHistory(symbols: List<String>, range: String): Map<String, List<Double>> {
         if (symbols.isEmpty()) return emptyMap()
 

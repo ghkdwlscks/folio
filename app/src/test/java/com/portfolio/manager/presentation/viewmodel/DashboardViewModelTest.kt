@@ -67,6 +67,8 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
         // Default exchange rate mock
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
+        // Default exchange rate history mock
+        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns listOf(1400.0, 1400.0)
         // Default price history mock (empty - graceful handling)
         coEvery { stockRepository.getPriceHistory(any(), any()) } returns emptyMap()
         // Default period returns mock

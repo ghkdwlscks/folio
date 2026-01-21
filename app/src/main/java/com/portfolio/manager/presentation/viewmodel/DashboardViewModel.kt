@@ -161,6 +161,10 @@ class DashboardViewModel @Inject constructor(
                 }
 
                 _uiState.value = currentState.copy(showInKrw = newShowInKrw)
+
+                // Reload sparkline and period returns with new currency
+                loadPeriodReturns(currentState.stocks, currentState.selectedPeriod)
+                loadPortfolioSparkline(currentState.stocks, currentState.selectedPeriod)
             }
         }
     }
@@ -213,6 +217,7 @@ class DashboardViewModel @Inject constructor(
 
         viewModelScope.launch {
             val currentState = _uiState.value
+            val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
             if (currentState is DashboardUiState.Success) {
                 _uiState.value = currentState.copy(isLoadingPeriodReturns = true)
             }
@@ -222,6 +227,11 @@ class DashboardViewModel @Inject constructor(
                 updatePeriodReturn(period, 0.0)
                 return@launch
             }
+
+            // Fetch exchange rate history for currency-adjusted returns
+            val exchangeRateHistory = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
+            val startExchangeRate = exchangeRateHistory.firstOrNull() ?: currentExchangeRate
+            val endExchangeRate = exchangeRateHistory.lastOrNull() ?: currentExchangeRate
 
             // Fetch period returns for all unique symbols in parallel
             val symbols = stocks.map { it.symbol }.distinct()
@@ -237,11 +247,25 @@ class DashboardViewModel @Inject constructor(
                     periodReturn.symbol to periodReturn.returnPercent
                 }
 
-            // Calculate weighted portfolio return
+            // Calculate weighted portfolio return with exchange rate consideration
             val weightedReturn = stocks.sumOf { stock ->
                 val weight = stock.totalValueInUsd(currentExchangeRate) / totalPortfolioValue
                 val stockReturn = returnsBySymbol[stock.symbol] ?: 0.0
-                weight * stockReturn
+
+                // Adjust return based on currency and display preference
+                val adjustedReturn = if (showInKrw && stock.currency == "USD") {
+                    // USD stock viewed in KRW: factor in exchange rate change
+                    val exchangeRateReturn = (endExchangeRate - startExchangeRate) / startExchangeRate * 100
+                    stockReturn + exchangeRateReturn + (stockReturn * exchangeRateReturn / 100)
+                } else if (!showInKrw && stock.currency == "KRW") {
+                    // KRW stock viewed in USD: factor in inverse exchange rate change
+                    val exchangeRateReturn = (startExchangeRate - endExchangeRate) / endExchangeRate * 100
+                    stockReturn + exchangeRateReturn + (stockReturn * exchangeRateReturn / 100)
+                } else {
+                    stockReturn
+                }
+
+                weight * adjustedReturn
             }
 
             updatePeriodReturn(period, weightedReturn)
@@ -264,8 +288,14 @@ class DashboardViewModel @Inject constructor(
         if (stocks.isEmpty()) return
 
         viewModelScope.launch {
+            val currentState = _uiState.value
+            val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
+
             val symbols = stocks.map { it.symbol }.distinct()
             val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
+
+            // Fetch exchange rate history for currency conversion
+            val exchangeRateHistory = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
 
             // Calculate weighted portfolio sparkline
             val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
@@ -278,7 +308,12 @@ class DashboardViewModel @Inject constructor(
             }
 
             val minLength = stocksWithHistory.minOf { priceHistoryMap[it.symbol]?.size ?: 0 }
-            if (minLength < 2) {
+            val effectiveLength = if (exchangeRateHistory.size >= 2) {
+                minOf(minLength, exchangeRateHistory.size)
+            } else {
+                minLength
+            }
+            if (effectiveLength < 2) {
                 updatePortfolioSparkline(emptyList())
                 return@launch
             }
@@ -286,31 +321,39 @@ class DashboardViewModel @Inject constructor(
             val portfolioValues = mutableListOf<Double>()
             val baseValue = 100.0
 
-            for (i in 0 until minLength) {
-                var weightedReturn = 0.0
-                var totalWeight = 0.0
+            for (i in 0 until effectiveLength) {
+                var totalValue = 0.0
+                val exchangeRate = if (exchangeRateHistory.size >= effectiveLength) {
+                    exchangeRateHistory[i]
+                } else {
+                    currentExchangeRate
+                }
 
                 for (stock in stocksWithHistory) {
                     val history = priceHistoryMap[stock.symbol] ?: continue
-                    val weight = stock.totalValueInUsd(currentExchangeRate) / totalPortfolioValue
-                    val startPrice = history.first()
-                    val currentPrice = history[i]
+                    val price = history[i]
+                    val value = price * stock.quantity
 
-                    if (startPrice > 0) {
-                        val stockReturn = (currentPrice - startPrice) / startPrice
-                        weightedReturn += weight * stockReturn
-                        totalWeight += weight
+                    // Convert to selected currency
+                    totalValue += if (showInKrw) {
+                        if (stock.currency == "KRW") value else value * exchangeRate
+                    } else {
+                        if (stock.currency == "USD") value else value / exchangeRate
                     }
                 }
 
-                if (totalWeight > 0) {
-                    weightedReturn /= totalWeight
-                }
-
-                portfolioValues.add(baseValue * (1 + weightedReturn))
+                portfolioValues.add(totalValue)
             }
 
-            updatePortfolioSparkline(portfolioValues)
+            // Normalize to base value
+            val startValue = portfolioValues.firstOrNull() ?: 0.0
+            val normalizedValues = if (startValue > 0) {
+                portfolioValues.map { baseValue * (it / startValue) }
+            } else {
+                portfolioValues
+            }
+
+            updatePortfolioSparkline(normalizedValues)
         }
     }
 
