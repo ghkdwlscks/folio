@@ -15,15 +15,25 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Portfolio Summary**: Total value, gain/loss with percentage, invested amount
 - **Portfolio Sparkline**: Weighted portfolio performance chart with proper aspect ratio
 - **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (period-specific)
-- **Period Returns**: Selectable time periods (1W, 1M, 6M, 1Y, Max) showing weighted portfolio returns
+- **Period Returns**: Selectable time periods (1W, 1M, 6M, 1Y) showing weighted portfolio returns (default: 1Y)
+- **Allocation Pie Chart**: Donut chart showing stock distribution with top 5 + "Others" legend
 - **Currency Toggle**: View totals in USD or KRW
 - **Holdings List**: Stock cards sorted by weight (largest positions first)
 - **Stock Sparklines**: Each card shows price history chart with configurable period
 - **Weight Display**: Each stock shows its percentage of total portfolio
-- **Account Filter**: View all accounts aggregated or filter by specific account
+- **Account Filter**: View all accounts aggregated or filter by specific account with scroll position preserved
 - **Delete Confirmation**: Dialog confirms before deleting any holding
 - **Refresh Indicator**: Loading spinner in refresh button during price updates
-- **Persisted Settings**: Period selections saved across app restarts
+- **Persisted Settings**: Period selections and currency preferences saved across app restarts
+
+### FIRE Calculator
+- **Portfolio Value Display**: Shows total portfolio value with currency toggle (USD/KRW)
+- **Settings Configuration**: Adjustable annual return rate and annual inflation rate inputs
+- **Real Return Calculation**: Displays real return (annual return - inflation)
+- **Sustainable Spending**: Shows monthly and annual sustainable spending based on real return
+- **FIRE Target Tracking**: Target monthly spending input with required portfolio calculation
+- **Progress Visualization**: Progress bar showing percentage toward FIRE goal with remaining amount
+- **Persisted Settings**: Annual return, inflation, and target spending saved across restarts
 
 ### Stock Data
 - **Real-time Prices**: Fetched from Yahoo Finance API
@@ -37,9 +47,11 @@ A personal Android app for manually tracking your stock portfolio with real-time
 
 ### UI/UX
 - **Material 3 Design**: Modern Android design language
+- **Navigation Drawer**: Menu button in top bar for feature navigation
 - **Pull to Refresh**: Manual price refresh with loading indicator
 - **Swipe Actions**: Edit and delete holdings
 - **Reorderable Accounts**: Drag to reorder account priority
+- **Skeleton Loading**: Shimmer animation placeholders during data loading
 - **Error Handling**: Snackbar notifications for operation failures
 
 ## Tech Stack
@@ -69,31 +81,32 @@ app/src/main/java/com/portfolio/manager/
 │   │   └── dto/            # Response DTOs
 │   └── repository/         # Repository implementations
 ├── domain/
-│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod, PortfolioStats
+│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod, PortfolioStats, FIRECalculation
 │   └── repository/         # Repository interfaces
 ├── presentation/
-│   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen
-│   ├── component/          # PortfolioSummary, StockCard, Sparkline
-│   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AccountsViewModel
+│   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen, FIRECalculatorScreen
+│   ├── component/          # PortfolioSummary, StockCard, Sparkline, AllocationPieChart, Skeleton
+│   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AccountsViewModel, FIRECalculatorViewModel
 │   ├── navigation/         # NavGraph
 │   ├── theme/              # Color, Theme
-│   └── util/               # CurrencyFormatter
+│   └── util/               # CurrencyFormatter, CurrencyConverter, TrendIndicator
 ├── di/                     # Hilt modules (Database, Network, Repository)
 └── util/                   # AppConstants, StockExtensions
 ```
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary with sparkline and statistics, period selector (1W-Max), holdings list with individual sparklines, account filter
+1. **Dashboard**: Portfolio summary with sparkline and statistics, period selector (1W-1Y), allocation pie chart, holdings list with individual sparklines, account filter
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation
 3. **Accounts**: Manage accounts with add, edit, delete, reorder, and error snackbar
+4. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking
 
 ## Data Flow
 
 ```
 Yahoo Finance API → StockRepository → DashboardViewModel → DashboardScreen
-                                                        ↓
-Room Database → HoldingsRepository ──────────────────────┘
+                                    ↘                    ↓
+Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIRECalculatorScreen
              → AccountRepository
 ```
 
