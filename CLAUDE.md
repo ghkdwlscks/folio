@@ -13,13 +13,16 @@ A personal Android app for manually tracking your stock portfolio with real-time
 
 ### Dashboard
 - **Portfolio Summary**: Total value, invested amount, gain/loss with percentage
-- **Period Returns**: Selectable time periods (1D, 1W, 1M, 6M, 1Y) showing weighted portfolio returns
+- **Portfolio Sparkline**: Weighted portfolio performance chart (logarithmic scale)
+- **Period Returns**: Selectable time periods (1D, 1W, 1M, 6M, 1Y, Max) showing weighted portfolio returns
 - **Currency Toggle**: View totals in USD or KRW
 - **Holdings List**: Stock cards sorted by weight (largest positions first)
+- **Stock Sparklines**: Each card shows price history chart with configurable period
 - **Weight Display**: Each stock shows its percentage of total portfolio
 - **Account Filter**: View all accounts aggregated or filter by specific account
 - **Delete Confirmation**: Dialog confirms before deleting any holding
 - **Refresh Indicator**: Loading spinner in refresh button during price updates
+- **Persisted Settings**: Period selections saved across app restarts
 
 ### Stock Data
 - **Real-time Prices**: Fetched from Yahoo Finance API
@@ -27,6 +30,7 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Day Change**: Shows daily price change and percentage
 - **Name Resolution**: Uses longName → shortName → symbol fallback
 - **Dynamic Exchange Rate**: Live USD/KRW rate from Yahoo Finance API (1-hour cache, fallback to AppConstants)
+- **Price History Cache**: Historical prices cached locally with daily refresh (handles stock splits)
 
 ### UI/UX
 - **Material 3 Design**: Modern Android design language
@@ -55,7 +59,8 @@ app/src/main/java/com/portfolio/manager/
 │   ├── local/              # Room DB, DAOs, Entities
 │   │   ├── AppDatabase.kt
 │   │   ├── AccountDao.kt, AccountEntity.kt
-│   │   └── HoldingDao.kt, HoldingEntity.kt, AccountHoldingCount
+│   │   ├── HoldingDao.kt, HoldingEntity.kt, AccountHoldingCount
+│   │   └── PriceHistoryDao.kt, PriceHistoryEntity.kt
 │   ├── remote/             # Yahoo Finance API
 │   │   ├── YahooFinanceApi.kt
 │   │   └── dto/            # Response DTOs
@@ -65,7 +70,7 @@ app/src/main/java/com/portfolio/manager/
 │   └── repository/         # Repository interfaces
 ├── presentation/
 │   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen
-│   ├── component/          # PortfolioSummary, StockCard
+│   ├── component/          # PortfolioSummary, StockCard, Sparkline
 │   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AccountsViewModel
 │   ├── navigation/         # NavGraph
 │   ├── theme/              # Color, Theme
@@ -76,7 +81,7 @@ app/src/main/java/com/portfolio/manager/
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary, period returns selector, holdings list with account filter, delete confirmation
+1. **Dashboard**: Portfolio summary with sparkline, period returns selector (1D-Max), holdings list with individual sparklines, account filter
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation
 3. **Accounts**: Manage accounts with add, edit, delete, reorder, and error snackbar
 
