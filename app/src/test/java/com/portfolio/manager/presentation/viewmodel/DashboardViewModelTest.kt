@@ -510,8 +510,8 @@ class DashboardViewModelTest {
     fun `selectSparklinePeriod - updates sparkline period and reloads data`() = runTest {
         // Track the saved sparkline period
         var savedSparklinePeriod = TimePeriod.ONE_YEAR.ordinal
-        every { sharedPreferences.getInt("sparkline_period", any()) } answers { savedSparklinePeriod }
-        every { sharedPreferencesEditor.putInt("sparkline_period", any()) } answers {
+        every { sharedPreferences.getInt("stock_sparkline_period", any()) } answers { savedSparklinePeriod }
+        every { sharedPreferencesEditor.putInt("stock_sparkline_period", any()) } answers {
             savedSparklinePeriod = secondArg()
             sharedPreferencesEditor
         }

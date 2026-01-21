@@ -73,30 +73,30 @@ class DashboardViewModel @Inject constructor(
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
     private var allAccountsCurrencyKrw: Boolean
-        get() = sharedPreferences.getBoolean(PREF_ALL_ACCOUNTS_CURRENCY_KRW, false)
-        set(value) = sharedPreferences.edit().putBoolean(PREF_ALL_ACCOUNTS_CURRENCY_KRW, value).apply()
+        get() = sharedPreferences.getBoolean(PREF_DASHBOARD_SHOW_IN_KRW, false)
+        set(value) = sharedPreferences.edit().putBoolean(PREF_DASHBOARD_SHOW_IN_KRW, value).apply()
 
     companion object {
-        private const val PREF_ALL_ACCOUNTS_CURRENCY_KRW = "all_accounts_currency_krw"
-        private const val PREF_CACHED_STOCKS = "cached_stocks"
-        private const val PREF_CACHED_EXCHANGE_RATE = "cached_exchange_rate"
-        private const val PREF_SPARKLINE_PERIOD = "sparkline_period"
-        private const val PREF_SUMMARY_PERIOD = "summary_period"
+        private const val PREF_DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
+        private const val PREF_DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
+        private const val PREF_DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
+        private const val PREF_STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
+        private const val PREF_PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
     }
 
     private var sparklinePeriod: TimePeriod
         get() {
-            val ordinal = sharedPreferences.getInt(PREF_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR.ordinal)
+            val ordinal = sharedPreferences.getInt(PREF_STOCK_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR.ordinal)
             return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
         }
-        set(value) = sharedPreferences.edit().putInt(PREF_SPARKLINE_PERIOD, value.ordinal).apply()
+        set(value) = sharedPreferences.edit().putInt(PREF_STOCK_SPARKLINE_PERIOD, value.ordinal).apply()
 
     private var summaryPeriod: TimePeriod
         get() {
-            val ordinal = sharedPreferences.getInt(PREF_SUMMARY_PERIOD, TimePeriod.ONE_YEAR.ordinal)
+            val ordinal = sharedPreferences.getInt(PREF_PORTFOLIO_SUMMARY_PERIOD, TimePeriod.ONE_YEAR.ordinal)
             return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
         }
-        set(value) = sharedPreferences.edit().putInt(PREF_SUMMARY_PERIOD, value.ordinal).apply()
+        set(value) = sharedPreferences.edit().putInt(PREF_PORTFOLIO_SUMMARY_PERIOD, value.ordinal).apply()
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -110,14 +110,14 @@ class DashboardViewModel @Inject constructor(
             stockRepository.getExchangeRate("USD", "KRW").onSuccess { rate ->
                 currentExchangeRate = rate
             }
-            observeHoldings()
+            loadAndObserveHoldings()
         }
     }
 
     private fun loadCachedState() {
         try {
-            val cachedStocksJson = sharedPreferences.getString(PREF_CACHED_STOCKS, null)
-            val cachedRate = sharedPreferences.getFloat(PREF_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
+            val cachedStocksJson = sharedPreferences.getString(PREF_DASHBOARD_CACHED_STOCKS_JSON, null)
+            val cachedRate = sharedPreferences.getFloat(PREF_DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
             if (cachedStocksJson != null) {
                 val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
                 currentExchangeRate = cachedRate
@@ -140,8 +140,8 @@ class DashboardViewModel @Inject constructor(
         try {
             val stocksJson = json.encodeToString(stocks)
             sharedPreferences.edit()
-                .putString(PREF_CACHED_STOCKS, stocksJson)
-                .putFloat(PREF_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
+                .putString(PREF_DASHBOARD_CACHED_STOCKS_JSON, stocksJson)
+                .putFloat(PREF_DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
                 .apply()
         } catch (_: Exception) {
             // Ignore cache errors
@@ -150,7 +150,7 @@ class DashboardViewModel @Inject constructor(
 
     fun selectAccount(accountId: Long) {
         selectedAccountId = accountId
-        observeHoldings()
+        loadAndObserveHoldings()
     }
 
     fun toggleCurrency() {
@@ -180,7 +180,7 @@ class DashboardViewModel @Inject constructor(
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(isRefreshing = true)
         }
-        observeHoldings()
+        loadAndObserveHoldings()
     }
 
     fun getSelectedAccountId(): Long = selectedAccountId
@@ -215,7 +215,7 @@ class DashboardViewModel @Inject constructor(
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(sparklinePeriod = period, isRefreshing = true)
         }
-        observeHoldings()
+        loadAndObserveHoldings()
     }
 
     private fun loadPeriodReturns(stocks: List<Stock>, period: TimePeriod) {
@@ -348,7 +348,7 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun observeHoldings() {
+    private fun loadAndObserveHoldings() {
         holdingsJob?.cancel()
         holdingsJob = viewModelScope.launch {
             val holdingsFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
