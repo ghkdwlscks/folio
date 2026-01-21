@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.ShowChart
@@ -103,6 +104,7 @@ fun DashboardScreen(
     onAddHolding: () -> Unit,
     onManageAccounts: () -> Unit,
     onEditHolding: (Long) -> Unit,
+    onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -118,6 +120,7 @@ fun DashboardScreen(
         topBar = {
             DashboardTopBar(
                 isRefreshing = isRefreshing,
+                onOpenDrawer = onOpenDrawer,
                 onManageAccounts = onManageAccounts,
                 onRefresh = { viewModel.refresh() }
             )
@@ -326,10 +329,19 @@ private fun DashboardContent(
 @Composable
 private fun DashboardTopBar(
     isRefreshing: Boolean,
+    onOpenDrawer: () -> Unit,
     onManageAccounts: () -> Unit,
     onRefresh: () -> Unit
 ) {
     TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onOpenDrawer) {
+                Icon(
+                    imageVector = Icons.Filled.Menu,
+                    contentDescription = "Open menu"
+                )
+            }
+        },
         title = {
             Text(
                 text = "Portfolio Manager",

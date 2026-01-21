@@ -24,7 +24,8 @@ object Routes {
 
 @Composable
 fun NavGraph(
-    navController: NavHostController
+    navController: NavHostController,
+    onOpenDrawer: () -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -36,7 +37,8 @@ fun NavGraph(
                 viewModel = viewModel,
                 onAddHolding = { navController.navigate(Routes.addHolding(viewModel.getSelectedAccountId())) },
                 onManageAccounts = { navController.navigate(Routes.ACCOUNTS) },
-                onEditHolding = { holdingId -> navController.navigate(Routes.editHolding(holdingId)) }
+                onEditHolding = { holdingId -> navController.navigate(Routes.editHolding(holdingId)) },
+                onOpenDrawer = onOpenDrawer
             )
         }
         composable(
