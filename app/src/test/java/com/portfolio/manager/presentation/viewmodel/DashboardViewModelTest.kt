@@ -52,10 +52,12 @@ class DashboardViewModelTest {
         every { sharedPreferences.getBoolean(any(), any()) } returns false
         every { sharedPreferences.getString(any(), any()) } returns null
         every { sharedPreferences.getFloat(any(), any()) } answers { secondArg() }
+        every { sharedPreferences.getInt(any(), any()) } answers { secondArg() }
         every { sharedPreferences.edit() } returns sharedPreferencesEditor
         every { sharedPreferencesEditor.putBoolean(any(), any()) } returns sharedPreferencesEditor
         every { sharedPreferencesEditor.putString(any(), any()) } returns sharedPreferencesEditor
         every { sharedPreferencesEditor.putFloat(any(), any()) } returns sharedPreferencesEditor
+        every { sharedPreferencesEditor.putInt(any(), any()) } returns sharedPreferencesEditor
         every { sharedPreferencesEditor.apply() } returns Unit
 
         // Default account setup
@@ -66,7 +68,7 @@ class DashboardViewModelTest {
         // Default exchange rate mock
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
         // Default price history mock (empty - graceful handling)
-        coEvery { stockRepository.getPriceHistory(any()) } returns emptyMap()
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns emptyMap()
         // Default period returns mock
         coEvery { stockRepository.getPeriodReturn(any(), any()) } answers {
             val symbol = firstArg<String>()
@@ -495,5 +497,46 @@ class DashboardViewModelTest {
         // Should remember KRW preference for all accounts (via SharedPreferences)
         state = viewModel.uiState.value as DashboardUiState.Success
         assertThat(state.showInKrw).isTrue()
+    }
+
+    @Test
+    fun `selectSparklinePeriod - updates sparkline period and reloads data`() = runTest {
+        // Track the saved sparkline period
+        var savedSparklinePeriod = TimePeriod.ONE_MONTH.ordinal
+        every { sharedPreferences.getInt("sparkline_period", any()) } answers { savedSparklinePeriod }
+        every { sharedPreferencesEditor.putInt("sparkline_period", any()) } answers {
+            savedSparklinePeriod = secondArg()
+            sharedPreferencesEditor
+        }
+
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 180.0))
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        // Initial state should have default period (ONE_MONTH based on ordinal 2)
+        var state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.sparklinePeriod).isEqualTo(TimePeriod.ONE_MONTH)
+
+        // Change sparkline period
+        viewModel.selectSparklinePeriod(TimePeriod.ONE_YEAR)
+
+        state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.sparklinePeriod).isEqualTo(TimePeriod.ONE_YEAR)
+    }
+
+    @Test
+    fun `selectSparklinePeriod - persists preference`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSparklinePeriod(TimePeriod.ONE_WEEK)
+
+        io.mockk.verify { sharedPreferencesEditor.putInt(any(), TimePeriod.ONE_WEEK.ordinal) }
     }
 }

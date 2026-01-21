@@ -44,7 +44,8 @@ sealed interface DashboardUiState {
         val isLoadingPeriodReturns: Boolean = false,
         val isRefreshing: Boolean = false,
         val exchangeRate: Double = KRW_TO_USD_RATE,
-        val showInKrw: Boolean = false
+        val showInKrw: Boolean = false,
+        val sparklinePeriod: TimePeriod = TimePeriod.ONE_MONTH
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -72,7 +73,15 @@ class DashboardViewModel @Inject constructor(
         private const val PREF_ALL_ACCOUNTS_CURRENCY_KRW = "all_accounts_currency_krw"
         private const val PREF_CACHED_STOCKS = "cached_stocks"
         private const val PREF_CACHED_EXCHANGE_RATE = "cached_exchange_rate"
+        private const val PREF_SPARKLINE_PERIOD = "sparkline_period"
     }
+
+    private var sparklinePeriod: TimePeriod
+        get() {
+            val ordinal = sharedPreferences.getInt(PREF_SPARKLINE_PERIOD, TimePeriod.ONE_MONTH.ordinal)
+            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_MONTH }
+        }
+        set(value) = sharedPreferences.edit().putInt(PREF_SPARKLINE_PERIOD, value.ordinal).apply()
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -102,7 +111,8 @@ class DashboardViewModel @Inject constructor(
                     selectedAccountId = selectedAccountId,
                     exchangeRate = cachedRate,
                     showInKrw = allAccountsCurrencyKrw,
-                    isRefreshing = true
+                    isRefreshing = true,
+                    sparklinePeriod = sparklinePeriod
                 )
             }
         } catch (_: Exception) {
@@ -175,6 +185,15 @@ class DashboardViewModel @Inject constructor(
             _uiState.value = currentState.copy(selectedPeriod = period)
             loadPeriodReturns(currentState.stocks, period)
         }
+    }
+
+    fun selectSparklinePeriod(period: TimePeriod) {
+        sparklinePeriod = period
+        val currentState = _uiState.value
+        if (currentState is DashboardUiState.Success) {
+            _uiState.value = currentState.copy(sparklinePeriod = period, isRefreshing = true)
+        }
+        observeHoldings()
     }
 
     private fun loadPeriodReturns(stocks: List<Stock>, period: TimePeriod) {
@@ -268,7 +287,8 @@ class DashboardViewModel @Inject constructor(
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
                 exchangeRate = currentExchangeRate,
-                showInKrw = showInKrw
+                showInKrw = showInKrw,
+                sparklinePeriod = sparklinePeriod
             )
             return
         }
@@ -285,7 +305,7 @@ class DashboardViewModel @Inject constructor(
         result.fold(
             onSuccess = { quotes ->
                 // Fetch price history for sparklines (non-blocking, failures return empty)
-                val priceHistoryMap = stockRepository.getPriceHistory(symbols)
+                val priceHistoryMap = stockRepository.getPriceHistory(symbols, sparklinePeriod.range)
 
                 val stocks = if (selectedAccountId == ALL_ACCOUNTS_ID) {
                     // Aggregate holdings by symbol when viewing all accounts
@@ -328,7 +348,8 @@ class DashboardViewModel @Inject constructor(
                     selectedPeriod = selectedPeriod,
                     isRefreshing = false,
                     exchangeRate = currentExchangeRate,
-                    showInKrw = showInKrw
+                    showInKrw = showInKrw,
+                    sparklinePeriod = sparklinePeriod
                 )
                 // Cache state for fast cold start (only for All Accounts view)
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {

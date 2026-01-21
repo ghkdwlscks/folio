@@ -369,7 +369,7 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getPriceHistory - success - returns closing prices`() = runTest {
-        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", "1d", "1y") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
@@ -388,7 +388,7 @@ class StockRepositoryImplTest {
             )
         )
 
-        val result = repository.getPriceHistory(listOf("AAPL"))
+        val result = repository.getPriceHistory(listOf("AAPL"), "1y")
 
         assertThat(result).containsKey("AAPL")
         assertThat(result["AAPL"]).containsExactly(150.0, 155.0, 160.0, 170.0, 180.0).inOrder()
@@ -396,7 +396,7 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getPriceHistory - multiple symbols - returns map of prices`() = runTest {
-        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", "1d", "5d") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
@@ -406,7 +406,7 @@ class StockRepositoryImplTest {
                 )
             )
         )
-        coEvery { api.getChart("GOOGL", "1d", "1mo") } returns YahooChartResponse(
+        coEvery { api.getChart("GOOGL", "1d", "5d") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
@@ -417,7 +417,7 @@ class StockRepositoryImplTest {
             )
         )
 
-        val result = repository.getPriceHistory(listOf("AAPL", "GOOGL"))
+        val result = repository.getPriceHistory(listOf("AAPL", "GOOGL"), "5d")
 
         assertThat(result).hasSize(2)
         assertThat(result["AAPL"]).containsExactly(170.0, 180.0).inOrder()
@@ -435,7 +435,7 @@ class StockRepositoryImplTest {
     fun `getPriceHistory - api failure - returns empty list for symbol`() = runTest {
         coEvery { api.getChart("AAPL", "1d", "1mo") } throws IOException("Network error")
 
-        val result = repository.getPriceHistory(listOf("AAPL"))
+        val result = repository.getPriceHistory(listOf("AAPL"), "1mo")
 
         assertThat(result).containsKey("AAPL")
         assertThat(result["AAPL"]).isEmpty()
@@ -447,7 +447,7 @@ class StockRepositoryImplTest {
             chart = ChartData(result = null)
         )
 
-        val result = repository.getPriceHistory(listOf("AAPL"))
+        val result = repository.getPriceHistory(listOf("AAPL"), "1mo")
 
         assertThat(result).containsKey("AAPL")
         assertThat(result["AAPL"]).isEmpty()
@@ -455,7 +455,7 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getPriceHistory - closes with nulls - filters them out`() = runTest {
-        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", "1d", "6mo") } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
@@ -468,8 +468,26 @@ class StockRepositoryImplTest {
             )
         )
 
-        val result = repository.getPriceHistory(listOf("AAPL"))
+        val result = repository.getPriceHistory(listOf("AAPL"), "6mo")
 
         assertThat(result["AAPL"]).containsExactly(150.0, 160.0, 180.0).inOrder()
+    }
+
+    @Test
+    fun `getPriceHistory - uses default range when not specified`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(170.0, 180.0))))
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"))
+
+        assertThat(result["AAPL"]).containsExactly(170.0, 180.0).inOrder()
     }
 }

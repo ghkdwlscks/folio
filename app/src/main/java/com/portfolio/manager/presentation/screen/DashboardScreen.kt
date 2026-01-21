@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -88,6 +89,10 @@ fun DashboardScreen(
         is DashboardUiState.Success -> state.isRefreshing
         else -> false
     }
+    val sparklinePeriod = when (val state = uiState) {
+        is DashboardUiState.Success -> state.sparklinePeriod
+        else -> TimePeriod.ONE_MONTH
+    }
 
     Scaffold(
         modifier = modifier
@@ -99,9 +104,11 @@ fun DashboardScreen(
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
                 isRefreshing = isRefreshing,
+                sparklinePeriod = sparklinePeriod,
                 onAccountSelected = { viewModel.selectAccount(it) },
                 onManageAccounts = onManageAccounts,
-                onRefresh = { viewModel.refresh() }
+                onRefresh = { viewModel.refresh() },
+                onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) }
             )
         },
         floatingActionButton = {
@@ -305,11 +312,14 @@ private fun DashboardTopBar(
     accounts: List<AccountWithCount>,
     selectedAccountId: Long,
     isRefreshing: Boolean,
+    sparklinePeriod: TimePeriod,
     onAccountSelected: (Long) -> Unit,
     onManageAccounts: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onSparklinePeriodSelected: (TimePeriod) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var sparklineMenuExpanded by remember { mutableStateOf(false) }
     val selectedAccount = accounts.find { it.account.id == selectedAccountId }
     val totalHoldings = accounts.sumOf { it.holdingsCount }
     val selectedName = if (selectedAccountId == ALL_ACCOUNTS_ID) {
@@ -384,6 +394,43 @@ private fun DashboardTopBar(
             }
         },
         actions = {
+            Box {
+                IconButton(onClick = { sparklineMenuExpanded = true }) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ShowChart,
+                            contentDescription = "Sparkline Period",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = sparklinePeriod.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = sparklineMenuExpanded,
+                    onDismissRequest = { sparklineMenuExpanded = false }
+                ) {
+                    TimePeriod.entries.forEach { period ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = period.label,
+                                    fontWeight = if (period == sparklinePeriod) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                onSparklinePeriodSelected(period)
+                                sparklineMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
             IconButton(onClick = onRefresh, enabled = !isRefreshing) {
                 if (isRefreshing) {
                     CircularProgressIndicator(

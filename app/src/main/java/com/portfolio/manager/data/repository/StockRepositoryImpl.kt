@@ -107,14 +107,14 @@ class StockRepositoryImpl(
         }
     }
 
-    override suspend fun getPriceHistory(symbols: List<String>): Map<String, List<Double>> {
+    override suspend fun getPriceHistory(symbols: List<String>, range: String): Map<String, List<Double>> {
         if (symbols.isEmpty()) return emptyMap()
 
         return coroutineScope {
             val results = symbols.map { symbol ->
                 async {
                     try {
-                        val response = api.getChart(symbol, interval = "1d", range = "1mo")
+                        val response = api.getChart(symbol, interval = "1d", range = range)
                         val closes = response.chart.result?.firstOrNull()
                             ?.indicators?.quote?.firstOrNull()?.close
                             ?.filterNotNull()

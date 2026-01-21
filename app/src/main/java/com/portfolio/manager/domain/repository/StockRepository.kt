@@ -8,5 +8,5 @@ interface StockRepository {
     suspend fun getQuotes(symbols: List<String>): Result<List<QuoteResult>>
     suspend fun getPeriodReturn(symbol: String, period: TimePeriod): Result<PeriodReturn>
     suspend fun getExchangeRate(from: String, to: String): Result<Double>
-    suspend fun getPriceHistory(symbols: List<String>): Map<String, List<Double>>
+    suspend fun getPriceHistory(symbols: List<String>, range: String = "1mo"): Map<String, List<Double>>
 }
