@@ -234,7 +234,7 @@ private fun ReorderableAccountsList(
 ) {
     val listState = rememberLazyListState()
     val localAccounts = remember(accounts) { accounts.toMutableStateList() }
-    var draggingItemIndex by remember { mutableIntStateOf(-1) }
+    var draggingItemId by remember { mutableStateOf<Long?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     val itemHeight = 80.dp
 
@@ -247,8 +247,8 @@ private fun ReorderableAccountsList(
         itemsIndexed(
             items = localAccounts,
             key = { _, account -> account.id }
-        ) { index, account ->
-            val isDragging = draggingItemIndex == index
+        ) { _, account ->
+            val isDragging = draggingItemId == account.id
             val elevation by animateDpAsState(
                 targetValue = if (isDragging) 8.dp else 2.dp,
                 label = "elevation"
@@ -270,23 +270,25 @@ private fun ReorderableAccountsList(
                     onDelete = { onDeleteAccount(account) },
                     elevation = elevation,
                     onDragStart = {
-                        draggingItemIndex = index
+                        draggingItemId = account.id
                     },
                     onDrag = { change ->
                         dragOffset += change
-                        val targetIndex = (index + (dragOffset / itemHeight.value).roundToInt())
+                        val currentIndex = localAccounts.indexOfFirst { it.id == draggingItemId }
+                        if (currentIndex == -1) return@AccountCard
+
+                        val targetIndex = (currentIndex + (dragOffset / itemHeight.value).roundToInt())
                             .coerceIn(0, localAccounts.lastIndex)
-                        if (targetIndex != index && targetIndex != draggingItemIndex) {
+                        if (targetIndex != currentIndex) {
                             localAccounts.apply {
-                                val item = removeAt(draggingItemIndex)
+                                val item = removeAt(currentIndex)
                                 add(targetIndex, item)
                             }
-                            draggingItemIndex = targetIndex
                             dragOffset = 0f
                         }
                     },
                     onDragEnd = {
-                        draggingItemIndex = -1
+                        draggingItemId = null
                         dragOffset = 0f
                         onReorder(localAccounts.toList())
                     }
