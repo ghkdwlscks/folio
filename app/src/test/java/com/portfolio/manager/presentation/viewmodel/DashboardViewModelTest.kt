@@ -1,5 +1,6 @@
 package com.portfolio.manager.presentation.viewmodel
 
+import android.content.SharedPreferences
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
@@ -32,6 +33,8 @@ class DashboardViewModelTest {
     private lateinit var stockRepository: StockRepository
     private lateinit var holdingsRepository: HoldingsRepository
     private lateinit var accountRepository: AccountRepository
+    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var sharedPreferencesEditor: SharedPreferences.Editor
     private val testDispatcher = UnconfinedTestDispatcher()
 
     private val defaultAccount = AccountEntity(1, "Default", 1000L)
@@ -42,6 +45,14 @@ class DashboardViewModelTest {
         stockRepository = mockk()
         holdingsRepository = mockk()
         accountRepository = mockk()
+        sharedPreferences = mockk()
+        sharedPreferencesEditor = mockk()
+
+        // SharedPreferences mock
+        every { sharedPreferences.getBoolean(any(), any()) } returns false
+        every { sharedPreferences.edit() } returns sharedPreferencesEditor
+        every { sharedPreferencesEditor.putBoolean(any(), any()) } returns sharedPreferencesEditor
+        every { sharedPreferencesEditor.apply() } returns Unit
 
         // Default account setup
         coEvery { accountRepository.getOrCreateDefaultAccount(any()) } returns defaultAccount
@@ -67,7 +78,7 @@ class DashboardViewModelTest {
     fun `empty holdings - returns empty success`() = runTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
 
         assertThat(viewModel.uiState.value).isInstanceOf(DashboardUiState.Success::class.java)
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -94,7 +105,7 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
         assertThat(state.stocks).hasSize(1)
@@ -113,7 +124,7 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
         coEvery { stockRepository.getQuotes(any()) } returns Result.failure(IOException("Network error"))
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
 
         assertThat(viewModel.uiState.value).isInstanceOf(DashboardUiState.Error::class.java)
         val errorState = viewModel.uiState.value as DashboardUiState.Error
@@ -137,7 +148,7 @@ class DashboardViewModelTest {
             Result.success(refreshedQuotes)
         )
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.refresh()
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -164,7 +175,7 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
         val samsungStock = state.stocks.find { it.symbol == "005930.KS" }
@@ -187,8 +198,9 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "TSLA", regularMarketPrice = 250.0))
         )
+        coEvery { accountRepository.getAccountById(2L) } returns account2
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectAccount(2L)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -212,7 +224,7 @@ class DashboardViewModelTest {
             listOf(QuoteResult(symbol = "AAPL", shortName = "Apple Inc.", regularMarketPrice = 180.0))
         )
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
         // Should show single aggregated stock, not 2 separate entries
@@ -245,7 +257,7 @@ class DashboardViewModelTest {
             )
         )
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
         assertThat(state.stocks).hasSize(2)
@@ -264,8 +276,9 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "AAPL", shortName = "Apple Inc.", regularMarketPrice = 180.0))
         )
+        coEvery { accountRepository.getAccountById(1L) } returns account1
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectAccount(1L)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
@@ -279,7 +292,7 @@ class DashboardViewModelTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
         coEvery { holdingsRepository.deleteHolding(any()) } returns Unit
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.deleteHolding(1L)
 
         coVerify { holdingsRepository.deleteHolding(1L) }
@@ -297,7 +310,7 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH) } returns
             Result.success(PeriodReturn("AAPL", TimePeriod.ONE_MONTH, 5.5))
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_MONTH)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -327,7 +340,7 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getPeriodReturn("GOOGL", TimePeriod.ONE_WEEK) } returns
             Result.success(PeriodReturn("GOOGL", TimePeriod.ONE_WEEK, 20.0))
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_WEEK)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -339,7 +352,7 @@ class DashboardViewModelTest {
     fun `selectPeriod - empty stocks - does not load period returns`() = runTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_YEAR)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -358,7 +371,7 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.SIX_MONTHS) } returns
             Result.failure(Exception("No data"))
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.SIX_MONTHS)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -369,7 +382,7 @@ class DashboardViewModelTest {
     fun `init - fetches exchange rate on startup`() = runTest {
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1350.0)
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
 
         coVerify { stockRepository.getExchangeRate("USD", "KRW") }
         val state = viewModel.uiState.value as DashboardUiState.Success
@@ -380,7 +393,7 @@ class DashboardViewModelTest {
     fun `init - exchange rate failure - uses default rate`() = runTest {
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.failure(IOException("Network error"))
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
         assertThat(state.exchangeRate).isEqualTo(1400.0) // Default KRW_TO_USD_RATE
@@ -397,9 +410,84 @@ class DashboardViewModelTest {
         )
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1300.0)
 
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository)
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
         assertThat(state.exchangeRate).isEqualTo(1300.0)
+    }
+
+    @Test
+    fun `toggleCurrency - updates showInKrw state for all accounts`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        val initialState = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(initialState.showInKrw).isFalse()
+
+        viewModel.toggleCurrency()
+
+        val toggledState = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(toggledState.showInKrw).isTrue()
+    }
+
+    @Test
+    fun `toggleCurrency - updates account preferred currency in db`() = runTest {
+        val account = AccountEntity(1, "Default", 1000L, preferredCurrency = "USD")
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account))
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(emptyList())
+        coEvery { accountRepository.getAccountById(1L) } returns account
+        coEvery { accountRepository.updatePreferredCurrency(any(), any()) } returns Unit
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectAccount(1L)
+        viewModel.toggleCurrency()
+
+        coVerify { accountRepository.updatePreferredCurrency(1L, "KRW") }
+    }
+
+    @Test
+    fun `selectAccount - loads currency preference from account`() = runTest {
+        val account = AccountEntity(1, "Default", 1000L, preferredCurrency = "KRW")
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account))
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(emptyList())
+        coEvery { accountRepository.getAccountById(1L) } returns account
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectAccount(1L)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.showInKrw).isTrue()
+    }
+
+    @Test
+    fun `selectAccount - all accounts uses SharedPreferences currency state`() = runTest {
+        // Track the saved preference value
+        var savedPref = false
+        every { sharedPreferences.getBoolean(any(), any()) } answers { savedPref }
+        every { sharedPreferencesEditor.putBoolean(any(), any()) } answers {
+            savedPref = secondArg()
+            sharedPreferencesEditor
+        }
+
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        // Toggle to KRW while in all accounts view
+        viewModel.toggleCurrency()
+        var state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.showInKrw).isTrue()
+
+        // Switch to an account and back to all
+        coEvery { accountRepository.getAccountById(1L) } returns defaultAccount
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(emptyList())
+        viewModel.selectAccount(1L)
+        viewModel.selectAccount(ALL_ACCOUNTS_ID)
+
+        // Should remember KRW preference for all accounts (via SharedPreferences)
+        state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.showInKrw).isTrue()
     }
 }

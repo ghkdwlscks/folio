@@ -9,5 +9,6 @@ data class AccountEntity(
     val id: Long = 0,
     val name: String,
     val createdAt: Long = System.currentTimeMillis(),
-    val orderIndex: Int = 0
+    val orderIndex: Int = 0,
+    val preferredCurrency: String = "USD"
 )

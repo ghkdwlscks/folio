@@ -13,4 +13,5 @@ interface AccountRepository {
     suspend fun getAccountCount(): Int
     suspend fun getMaxOrderIndex(): Int
     suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity
+    suspend fun updatePreferredCurrency(accountId: Long, currency: String)
 }

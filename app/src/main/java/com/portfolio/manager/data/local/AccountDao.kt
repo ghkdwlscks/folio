@@ -41,6 +41,9 @@ interface AccountDao {
     @Query("SELECT * FROM accounts LIMIT 1")
     suspend fun getFirstAccount(): AccountEntity?
 
+    @Query("UPDATE accounts SET preferredCurrency = :currency WHERE id = :accountId")
+    suspend fun updatePreferredCurrency(accountId: Long, currency: String)
+
     @Transaction
     suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity {
         val existing = getFirstAccount()

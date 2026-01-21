@@ -126,6 +126,8 @@ fun DashboardScreen(
                     selectedPeriod = state.selectedPeriod,
                     isLoadingPeriodReturns = state.isLoadingPeriodReturns,
                     onPeriodSelected = { viewModel.selectPeriod(it) },
+                    showInKrw = state.showInKrw,
+                    onCurrencyToggle = { viewModel.toggleCurrency() },
                     onDeleteHolding = { id, symbol, quantity ->
                         deleteConfirmation = DeleteConfirmation(id, symbol, quantity)
                     },
@@ -235,6 +237,8 @@ private fun DashboardContent(
     selectedPeriod: TimePeriod,
     isLoadingPeriodReturns: Boolean,
     onPeriodSelected: (TimePeriod) -> Unit,
+    showInKrw: Boolean,
+    onCurrencyToggle: () -> Unit,
     onDeleteHolding: (Long, String, Int) -> Unit,
     onEditHolding: (Long) -> Unit,
     modifier: Modifier = Modifier
@@ -254,6 +258,8 @@ private fun DashboardContent(
                 selectedPeriod = selectedPeriod,
                 isLoadingPeriodReturns = isLoadingPeriodReturns,
                 onPeriodSelected = onPeriodSelected,
+                showInKrw = showInKrw,
+                onCurrencyToggle = onCurrencyToggle,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }

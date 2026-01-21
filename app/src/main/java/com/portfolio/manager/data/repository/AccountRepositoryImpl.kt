@@ -44,4 +44,8 @@ class AccountRepositoryImpl(
     override suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity {
         return dao.getOrCreateDefaultAccount(defaultName)
     }
+
+    override suspend fun updatePreferredCurrency(accountId: Long, currency: String) {
+        dao.updatePreferredCurrency(accountId, currency)
+    }
 }

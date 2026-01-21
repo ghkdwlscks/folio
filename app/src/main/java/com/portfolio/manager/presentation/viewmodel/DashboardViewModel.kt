@@ -2,6 +2,7 @@ package com.portfolio.manager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.SharedPreferences
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.model.Stock
@@ -40,7 +41,8 @@ sealed interface DashboardUiState {
         val selectedPeriod: TimePeriod = TimePeriod.ONE_DAY,
         val isLoadingPeriodReturns: Boolean = false,
         val isRefreshing: Boolean = false,
-        val exchangeRate: Double = KRW_TO_USD_RATE
+        val exchangeRate: Double = KRW_TO_USD_RATE,
+        val showInKrw: Boolean = false
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -49,7 +51,8 @@ sealed interface DashboardUiState {
 class DashboardViewModel @Inject constructor(
     private val stockRepository: StockRepository,
     private val holdingsRepository: HoldingsRepository,
-    private val accountRepository: AccountRepository
+    private val accountRepository: AccountRepository,
+    private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
@@ -58,6 +61,14 @@ class DashboardViewModel @Inject constructor(
     private var selectedAccountId: Long = ALL_ACCOUNTS_ID
     private var holdingsJob: Job? = null
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
+
+    private var allAccountsCurrencyKrw: Boolean
+        get() = sharedPreferences.getBoolean(PREF_ALL_ACCOUNTS_CURRENCY_KRW, false)
+        set(value) = sharedPreferences.edit().putBoolean(PREF_ALL_ACCOUNTS_CURRENCY_KRW, value).apply()
+
+    companion object {
+        private const val PREF_ALL_ACCOUNTS_CURRENCY_KRW = "all_accounts_currency_krw"
+    }
 
     init {
         viewModelScope.launch {
@@ -76,6 +87,24 @@ class DashboardViewModel @Inject constructor(
         observeHoldings()
     }
 
+    fun toggleCurrency() {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState is DashboardUiState.Success) {
+                val newShowInKrw = !currentState.showInKrw
+                val newCurrency = if (newShowInKrw) "KRW" else "USD"
+
+                if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                    allAccountsCurrencyKrw = newShowInKrw
+                } else {
+                    accountRepository.updatePreferredCurrency(selectedAccountId, newCurrency)
+                }
+
+                _uiState.value = currentState.copy(showInKrw = newShowInKrw)
+            }
+        }
+    }
+
     fun refresh() {
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
@@ -89,6 +118,14 @@ class DashboardViewModel @Inject constructor(
     fun deleteHolding(holdingId: Long) {
         viewModelScope.launch {
             holdingsRepository.deleteHolding(holdingId)
+        }
+    }
+
+    private suspend fun getShowInKrwForCurrentAccount(): Boolean {
+        return if (selectedAccountId == ALL_ACCOUNTS_ID) {
+            allAccountsCurrencyKrw
+        } else {
+            accountRepository.getAccountById(selectedAccountId)?.preferredCurrency == "KRW"
         }
     }
 
@@ -185,11 +222,13 @@ class DashboardViewModel @Inject constructor(
         allAccounts: List<AccountEntity>
     ) {
         if (holdings.isEmpty()) {
+            val showInKrw = getShowInKrwForCurrentAccount()
             _uiState.value = DashboardUiState.Success(
                 stocks = emptyList(),
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
-                exchangeRate = currentExchangeRate
+                exchangeRate = currentExchangeRate,
+                showInKrw = showInKrw
             )
             return
         }
@@ -236,6 +275,7 @@ class DashboardViewModel @Inject constructor(
                 } else {
                     TimePeriod.ONE_DAY
                 }
+                val showInKrw = getShowInKrwForCurrentAccount()
                 _uiState.value = DashboardUiState.Success(
                     stocks = stocks,
                     accounts = accounts,
@@ -243,7 +283,8 @@ class DashboardViewModel @Inject constructor(
                     periodReturns = previousReturns,
                     selectedPeriod = selectedPeriod,
                     isRefreshing = false,
-                    exchangeRate = currentExchangeRate
+                    exchangeRate = currentExchangeRate,
+                    showInKrw = showInKrw
                 )
                 // Load period returns for the selected period
                 loadPeriodReturns(stocks, selectedPeriod)

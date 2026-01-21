@@ -1,6 +1,7 @@
 package com.portfolio.manager.di
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.room.Room
 import com.portfolio.manager.data.local.AccountDao
 import com.portfolio.manager.data.local.AppDatabase
@@ -24,8 +25,18 @@ object DatabaseModule {
             AppDatabase::class.java,
             "portfolio_database"
         )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .addMigrations(
+                AppDatabase.MIGRATION_1_2,
+                AppDatabase.MIGRATION_2_3,
+                AppDatabase.MIGRATION_3_4
+            )
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
+        return context.getSharedPreferences("portfolio_prefs", Context.MODE_PRIVATE)
     }
 
     @Provides

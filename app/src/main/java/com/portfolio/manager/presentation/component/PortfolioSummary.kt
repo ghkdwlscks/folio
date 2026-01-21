@@ -20,10 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,9 +42,10 @@ fun PortfolioSummary(
     selectedPeriod: TimePeriod = TimePeriod.ONE_DAY,
     isLoadingPeriodReturns: Boolean = false,
     onPeriodSelected: (TimePeriod) -> Unit = {},
+    showInKrw: Boolean = false,
+    onCurrencyToggle: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var showInKrw by remember { mutableStateOf(false) }
 
     val totalValueUsd = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
     val totalCostUsd = stocks.sumOf { it.totalCostInUsd(exchangeRate) }
@@ -85,7 +82,7 @@ fun PortfolioSummary(
     ) {
         CurrencyToggle(
             showInKrw = showInKrw,
-            onToggle = { showInKrw = !showInKrw },
+            onToggle = onCurrencyToggle,
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(12.dp)

@@ -130,4 +130,13 @@ class AccountRepositoryImplTest {
         assertThat(result).isEqualTo(defaultAccount)
         coVerify { dao.getOrCreateDefaultAccount("Default") }
     }
+
+    @Test
+    fun `updatePreferredCurrency - calls dao`() = runTest {
+        coEvery { dao.updatePreferredCurrency(1L, "KRW") } returns Unit
+
+        repository.updatePreferredCurrency(1L, "KRW")
+
+        coVerify { dao.updatePreferredCurrency(1L, "KRW") }
+    }
 }
