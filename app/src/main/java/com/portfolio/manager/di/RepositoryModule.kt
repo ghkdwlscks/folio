@@ -2,6 +2,7 @@ package com.portfolio.manager.di
 
 import com.portfolio.manager.data.local.AccountDao
 import com.portfolio.manager.data.local.HoldingDao
+import com.portfolio.manager.data.local.PriceHistoryDao
 import com.portfolio.manager.data.remote.YahooFinanceApi
 import com.portfolio.manager.data.repository.AccountRepositoryImpl
 import com.portfolio.manager.data.repository.HoldingsRepositoryImpl
@@ -33,7 +34,10 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideStockRepository(api: YahooFinanceApi): StockRepository {
-        return StockRepositoryImpl(api)
+    fun provideStockRepository(
+        api: YahooFinanceApi,
+        priceHistoryDao: PriceHistoryDao
+    ): StockRepository {
+        return StockRepositoryImpl(api, priceHistoryDao)
     }
 }

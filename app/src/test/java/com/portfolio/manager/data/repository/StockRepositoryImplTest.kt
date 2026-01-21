@@ -1,6 +1,8 @@
 package com.portfolio.manager.data.repository
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.data.local.PriceHistoryDao
+import com.portfolio.manager.data.local.PriceHistoryEntity
 import com.portfolio.manager.data.remote.YahooFinanceApi
 import com.portfolio.manager.data.remote.dto.ChartData
 import com.portfolio.manager.data.remote.dto.ChartIndicators
@@ -10,21 +12,29 @@ import com.portfolio.manager.data.remote.dto.ChartResult
 import com.portfolio.manager.data.remote.dto.YahooChartResponse
 import com.portfolio.manager.domain.model.TimePeriod
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 import java.io.IOException
+import java.time.LocalDate
 
 class StockRepositoryImplTest {
 
     private lateinit var api: YahooFinanceApi
+    private lateinit var priceHistoryDao: PriceHistoryDao
     private lateinit var repository: StockRepositoryImpl
 
     @Before
     fun setup() {
         api = mockk()
-        repository = StockRepositoryImpl(api)
+        priceHistoryDao = mockk()
+        repository = StockRepositoryImpl(api, priceHistoryDao)
+
+        // Default: no cached data
+        coEvery { priceHistoryDao.getPriceHistoryForSymbols(any(), any()) } returns emptyList()
+        coEvery { priceHistoryDao.insertPriceHistories(any()) } returns Unit
     }
 
     @Test
@@ -337,7 +347,7 @@ class StockRepositoryImplTest {
     @Test
     fun `getExchangeRate - api failure no cache - returns failure`() = runTest {
         // Fresh repository with no cache
-        val freshRepository = StockRepositoryImpl(api)
+        val freshRepository = StockRepositoryImpl(api, priceHistoryDao)
         coEvery { api.getChart("USDKRW=X", any(), any()) } throws IOException("Network error")
 
         val result = freshRepository.getExchangeRate("USD", "KRW")
@@ -489,5 +499,103 @@ class StockRepositoryImplTest {
         val result = repository.getPriceHistory(listOf("AAPL"))
 
         assertThat(result["AAPL"]).containsExactly(170.0, 180.0).inOrder()
+    }
+
+    @Test
+    fun `getPriceHistory - uses cache when data is from today`() = runTest {
+        val today = LocalDate.now().toString()
+        coEvery { priceHistoryDao.getPriceHistoryForSymbols(listOf("AAPL"), "1y") } returns listOf(
+            PriceHistoryEntity(
+                symbol = "AAPL",
+                range = "1y",
+                prices = "[150.0,160.0,170.0]",
+                lastUpdatedDate = today
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"), "1y")
+
+        assertThat(result["AAPL"]).containsExactly(150.0, 160.0, 170.0).inOrder()
+        // API should not be called since cache is valid
+        coVerify(exactly = 0) { api.getChart("AAPL", any(), any()) }
+    }
+
+    @Test
+    fun `getPriceHistory - fetches from API when cache is stale`() = runTest {
+        val yesterday = LocalDate.now().minusDays(1).toString()
+        coEvery { priceHistoryDao.getPriceHistoryForSymbols(listOf("AAPL"), "1y") } returns listOf(
+            PriceHistoryEntity(
+                symbol = "AAPL",
+                range = "1y",
+                prices = "[100.0,110.0]",
+                lastUpdatedDate = yesterday
+            )
+        )
+        coEvery { api.getChart("AAPL", "1d", "1y") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(150.0, 160.0, 170.0))))
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"), "1y")
+
+        assertThat(result["AAPL"]).containsExactly(150.0, 160.0, 170.0).inOrder()
+        coVerify { api.getChart("AAPL", "1d", "1y") }
+        coVerify { priceHistoryDao.insertPriceHistories(any()) }
+    }
+
+    @Test
+    fun `getPriceHistory - saves fetched data to cache`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(170.0, 180.0))))
+                    )
+                )
+            )
+        )
+
+        repository.getPriceHistory(listOf("AAPL"), "1mo")
+
+        coVerify { priceHistoryDao.insertPriceHistories(any()) }
+    }
+
+    @Test
+    fun `getPriceHistory - mixed cache hit and miss`() = runTest {
+        val today = LocalDate.now().toString()
+        // AAPL is cached, GOOGL is not
+        coEvery { priceHistoryDao.getPriceHistoryForSymbols(listOf("AAPL", "GOOGL"), "1y") } returns listOf(
+            PriceHistoryEntity(
+                symbol = "AAPL",
+                range = "1y",
+                prices = "[150.0,160.0]",
+                lastUpdatedDate = today
+            )
+        )
+        coEvery { api.getChart("GOOGL", "1d", "1y") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "GOOGL", regularMarketPrice = 140.0, chartPreviousClose = 135.0),
+                        indicators = ChartIndicators(quote = listOf(ChartQuote(close = listOf(130.0, 140.0))))
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL", "GOOGL"), "1y")
+
+        assertThat(result["AAPL"]).containsExactly(150.0, 160.0).inOrder()
+        assertThat(result["GOOGL"]).containsExactly(130.0, 140.0).inOrder()
+        // Only GOOGL should be fetched from API
+        coVerify(exactly = 0) { api.getChart("AAPL", any(), any()) }
+        coVerify(exactly = 1) { api.getChart("GOOGL", "1d", "1y") }
     }
 }

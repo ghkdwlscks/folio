@@ -1,5 +1,7 @@
 package com.portfolio.manager.data.repository
 
+import com.portfolio.manager.data.local.PriceHistoryDao
+import com.portfolio.manager.data.local.PriceHistoryEntity
 import com.portfolio.manager.data.remote.YahooFinanceApi
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.PeriodReturn
@@ -8,10 +10,16 @@ import com.portfolio.manager.domain.repository.StockRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.time.LocalDate
 
 class StockRepositoryImpl(
-    private val api: YahooFinanceApi
+    private val api: YahooFinanceApi,
+    private val priceHistoryDao: PriceHistoryDao
 ) : StockRepository {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     // Exchange rate cache
     private var cachedExchangeRate: Double? = null
@@ -110,22 +118,62 @@ class StockRepositoryImpl(
     override suspend fun getPriceHistory(symbols: List<String>, range: String): Map<String, List<Double>> {
         if (symbols.isEmpty()) return emptyMap()
 
-        return coroutineScope {
-            val results = symbols.map { symbol ->
-                async {
-                    try {
-                        val response = api.getChart(symbol, interval = "1d", range = range)
-                        val closes = response.chart.result?.firstOrNull()
-                            ?.indicators?.quote?.firstOrNull()?.close
-                            ?.filterNotNull()
-                            ?: emptyList()
-                        symbol to closes
-                    } catch (e: Exception) {
-                        symbol to emptyList()
-                    }
+        val today = LocalDate.now().toString()
+
+        // Check cache for all symbols
+        val cached = priceHistoryDao.getPriceHistoryForSymbols(symbols, range)
+        val cachedMap = cached.associateBy { it.symbol }
+
+        // Separate symbols into cached (valid for today) and needs fetch
+        val (validCached, needsFetch) = symbols.partition { symbol ->
+            cachedMap[symbol]?.lastUpdatedDate == today
+        }
+
+        // Build result from valid cache
+        val result = mutableMapOf<String, List<Double>>()
+        validCached.forEach { symbol ->
+            cachedMap[symbol]?.let { entity ->
+                result[symbol] = try {
+                    json.decodeFromString<List<Double>>(entity.prices)
+                } catch (e: Exception) {
+                    emptyList()
                 }
             }
-            results.awaitAll().toMap()
         }
+
+        // Fetch missing/stale data from API
+        if (needsFetch.isNotEmpty()) {
+            coroutineScope {
+                val fetchResults = needsFetch.map { symbol ->
+                    async {
+                        try {
+                            val response = api.getChart(symbol, interval = "1d", range = range)
+                            val closes = response.chart.result?.firstOrNull()
+                                ?.indicators?.quote?.firstOrNull()?.close
+                                ?.filterNotNull()
+                                ?: emptyList()
+                            symbol to closes
+                        } catch (e: Exception) {
+                            symbol to emptyList<Double>()
+                        }
+                    }
+                }
+                val fetched = fetchResults.awaitAll()
+
+                // Save to cache and add to result
+                val entitiesToSave = fetched.map { (symbol, prices) ->
+                    result[symbol] = prices
+                    PriceHistoryEntity(
+                        symbol = symbol,
+                        range = range,
+                        prices = json.encodeToString(prices),
+                        lastUpdatedDate = today
+                    )
+                }
+                priceHistoryDao.insertPriceHistories(entitiesToSave)
+            }
+        }
+
+        return result
     }
 }

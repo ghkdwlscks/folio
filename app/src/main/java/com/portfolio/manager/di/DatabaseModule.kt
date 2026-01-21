@@ -6,6 +6,7 @@ import androidx.room.Room
 import com.portfolio.manager.data.local.AccountDao
 import com.portfolio.manager.data.local.AppDatabase
 import com.portfolio.manager.data.local.HoldingDao
+import com.portfolio.manager.data.local.PriceHistoryDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +29,8 @@ object DatabaseModule {
             .addMigrations(
                 AppDatabase.MIGRATION_1_2,
                 AppDatabase.MIGRATION_2_3,
-                AppDatabase.MIGRATION_3_4
+                AppDatabase.MIGRATION_3_4,
+                AppDatabase.MIGRATION_4_5
             )
             .build()
     }
@@ -47,5 +49,10 @@ object DatabaseModule {
     @Provides
     fun provideAccountDao(database: AppDatabase): AccountDao {
         return database.accountDao()
+    }
+
+    @Provides
+    fun providePriceHistoryDao(database: AppDatabase): PriceHistoryDao {
+        return database.priceHistoryDao()
     }
 }
