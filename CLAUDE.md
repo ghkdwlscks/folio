@@ -17,7 +17,7 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (period-specific)
 - **Period Returns**: Selectable time periods (1W, 1M, 6M, 1Y) showing weighted portfolio returns (default: 1Y)
 - **Allocation Pie Chart**: Donut chart showing stock distribution with top 5 + "Others" legend
-- **Currency Toggle**: View totals in USD or KRW
+- **Currency Toggle**: View totals in USD or KRW with animated sliding indicator
 - **Holdings List**: Stock cards sorted by weight (largest positions first)
 - **Stock Sparklines**: Each card shows price history chart with configurable period
 - **Weight Display**: Each stock shows its percentage of total portfolio
@@ -46,12 +46,18 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Forward-fill Logic**: Missing dates use last known price; excludes dates before first data point
 
 ### UI/UX
-- **Material 3 Design**: Modern Android design language
+- **Material 3 Design**: Modern Android design language with dynamic colors
 - **Navigation Drawer**: Menu button in top bar for feature navigation
 - **Pull to Refresh**: Manual price refresh with loading indicator
 - **Swipe Actions**: Edit and delete holdings
-- **Reorderable Accounts**: Drag to reorder account priority
+- **Account Reordering**: Up/down buttons to reorder account priority
 - **Skeleton Loading**: Shimmer animation placeholders during data loading
+- **Card Elevation**: Subtle shadows for visual depth hierarchy
+- **Press Animations**: Scale effect on card tap for tactile feedback
+- **List Animations**: Smooth item placement animations
+- **FAB Scroll Behavior**: Floating action button hides on scroll down, shows on scroll up
+- **Crossfade Transitions**: Smooth transitions between loading and content states
+- **Animated Period Returns**: Slide and fade transitions when switching periods
 - **Error Handling**: Snackbar notifications for operation failures
 
 ## Tech Stack
@@ -82,6 +88,7 @@ app/src/main/java/com/portfolio/manager/
 │   └── repository/         # Repository implementations
 ├── domain/
 │   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod, PortfolioStats, FIRECalculation
+│   ├── service/            # PortfolioStatsCalculator, PriceHistoryProcessor
 │   └── repository/         # Repository interfaces
 ├── presentation/
 │   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen, FIRECalculatorScreen
@@ -98,7 +105,7 @@ app/src/main/java/com/portfolio/manager/
 
 1. **Dashboard**: Portfolio summary with sparkline and statistics, period selector (1W-1Y), allocation pie chart, holdings list with individual sparklines, account filter
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation
-3. **Accounts**: Manage accounts with add, edit, delete, reorder, and error snackbar
+3. **Accounts**: Manage accounts with add, edit, delete, reorder (up/down buttons), and error snackbar
 4. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking
 
 ## Data Flow
@@ -120,6 +127,7 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Error handling with try-catch in ViewModel operations
 - Batch queries to avoid N+1 problems (e.g., `getHoldingsCountByAccountFlow`)
 - Room `@Transaction` for atomic operations
+- Domain services for complex calculations (PortfolioStatsCalculator, PriceHistoryProcessor)
 
 ## AppConstants
 
@@ -173,7 +181,9 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 ```
 app/src/test/java/com/portfolio/manager/
 ├── data/repository/          # Repository tests
-├── domain/model/             # Model tests
+├── domain/
+│   ├── model/                # Model tests
+│   └── service/              # Service tests (PortfolioStatsCalculator, PriceHistoryProcessor)
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests
 │   └── util/                 # Utility tests
@@ -199,6 +209,7 @@ Use backticks: `` `subject - scenario - expected result` ``
 
 **Must have 100% coverage:**
 - Domain models
+- Domain services
 - Repository implementations
 - ViewModels
 - Utility functions

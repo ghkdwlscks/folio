@@ -7,13 +7,13 @@ A personal Android app for tracking your stock portfolio with real-time price up
 - **Multiple Accounts** - Organize holdings across different accounts (e.g., Retirement, Trading)
 - **Multi-Market Support** - Track US stocks (AAPL) and Korean stocks (005930.KS)
 - **Real-Time Prices** - Live quotes from Yahoo Finance API
-- **Period Returns** - View portfolio performance over 1D, 1W, 1M, 6M, 1Y
+- **Portfolio Analytics** - Sparkline charts, MDD, Volatility, Sharpe Ratio
+- **Period Returns** - View portfolio performance over 1W, 1M, 6M, 1Y
+- **Allocation Chart** - Donut chart showing portfolio distribution
 - **Currency Toggle** - Switch between USD and KRW display
+- **FIRE Calculator** - Plan financial independence with sustainable spending calculations
 - **Weight Analysis** - See each holding's percentage of total portfolio
 - **Aggregated View** - View all accounts combined or filter by account
-- **Input Validation** - Enforced bounds for quantity and price entries
-- **Delete Confirmation** - Confirmation dialog before removing holdings
-- **Error Notifications** - Snackbar alerts for operation failures
 
 ## Tech Stack
 
@@ -34,8 +34,8 @@ A personal Android app for tracking your stock portfolio with real-time price up
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/portfolio_manager.git
-cd portfolio_manager
+git clone https://github.com/ghkdwlscks/PortfolioManager.git
+cd PortfolioManager
 
 # Build debug APK
 ./gradlew assembleDebug
@@ -48,11 +48,12 @@ The APK will be at `app/build/outputs/apk/debug/app-debug.apk`
 
 ## Usage
 
-1. **Add Account** - Tap the account dropdown and select "Manage Accounts"
+1. **Add Account** - Go to Settings and create accounts
 2. **Add Holding** - Tap the + button to add a stock
 3. **Enter Details** - Symbol (e.g., AAPL or 005930.KS), quantity, average price
 4. **View Portfolio** - Dashboard shows total value, gain/loss, and period returns
 5. **Switch Currency** - Tap USD/KRW toggle in portfolio summary
+6. **FIRE Planning** - Access FIRE Calculator from navigation drawer
 
 ## License
 
