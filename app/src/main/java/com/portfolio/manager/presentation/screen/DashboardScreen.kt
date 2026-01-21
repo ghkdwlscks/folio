@@ -51,6 +51,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.presentation.component.AllocationItem
+import com.portfolio.manager.presentation.component.AllocationPieChart
 import com.portfolio.manager.presentation.component.PortfolioSummary
 import com.portfolio.manager.presentation.component.StockCard
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
@@ -270,6 +272,25 @@ private fun DashboardContent(
                 portfolioSparkline = portfolioSparkline,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
+        }
+
+        if (stocks.size >= 2) {
+            item {
+                val allocationItems = stocks.map { stock ->
+                    val weight = if (totalPortfolioValue > 0) {
+                        (stock.totalValueInUsd(exchangeRate) / totalPortfolioValue) * 100
+                    } else {
+                        0.0
+                    }
+                    AllocationItem(
+                        symbol = stock.symbol,
+                        name = stock.name,
+                        value = stock.totalValueInUsd(exchangeRate),
+                        weight = weight
+                    )
+                }
+                AllocationPieChart(items = allocationItems)
+            }
         }
 
         item {
