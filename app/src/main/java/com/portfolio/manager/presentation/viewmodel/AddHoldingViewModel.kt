@@ -100,10 +100,20 @@ class AddHoldingViewModel @Inject constructor(
         _uiState.update { it.copy(selectedAccountId = accountId) }
     }
 
+    private fun normalizeSymbol(symbol: String): String {
+        val trimmed = symbol.trim().uppercase()
+        // If 6-digit number, append .KS for Korean stocks
+        return if (trimmed.length == 6 && trimmed.all { it.isDigit() }) {
+            "$trimmed.KS"
+        } else {
+            trimmed
+        }
+    }
+
     suspend fun saveHolding(): Boolean {
         _uiState.update { it.copy(errorMessage = null) }
         val state = _uiState.value
-        val symbolValue = state.symbol.trim().uppercase()
+        val symbolValue = normalizeSymbol(state.symbol)
         val quantityValue = state.quantity.toIntOrNull()
         val priceValue = state.averagePrice.toDoubleOrNull()
         val targetAccountId = state.selectedAccountId

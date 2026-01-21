@@ -89,7 +89,7 @@ fun AddHoldingScreen(
                 value = uiState.symbol,
                 onValueChange = { viewModel.updateSymbol(it) },
                 label = { Text("Symbol") },
-                placeholder = { Text("e.g., AAPL or 005930.KS") },
+                placeholder = { Text("e.g., AAPL or 005930") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 enabled = !uiState.isEditMode,

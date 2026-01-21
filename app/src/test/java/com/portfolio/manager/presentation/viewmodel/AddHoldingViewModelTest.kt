@@ -427,4 +427,91 @@ class AddHoldingViewModelTest {
 
         assertThat(result).isTrue()
     }
+
+    @Test
+    fun `saveHolding - 6-digit number - appends KS suffix`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("005930")
+        viewModel.updateQuantity("50")
+        viewModel.updateAveragePrice("72000")
+        viewModel.updateCurrency("KRW")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match {
+                it.symbol == "005930.KS" &&
+                it.name == "005930.KS"
+            })
+        }
+    }
+
+    @Test
+    fun `saveHolding - symbol with KS suffix - remains unchanged`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("005930.KS")
+        viewModel.updateQuantity("50")
+        viewModel.updateAveragePrice("72000")
+        viewModel.updateCurrency("KRW")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match {
+                it.symbol == "005930.KS"
+            })
+        }
+    }
+
+    @Test
+    fun `saveHolding - 5-digit number - no KS suffix added`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("12345")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("100")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match {
+                it.symbol == "12345"
+            })
+        }
+    }
+
+    @Test
+    fun `saveHolding - 7-digit number - no KS suffix added`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("1234567")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("100")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match {
+                it.symbol == "1234567"
+            })
+        }
+    }
 }
