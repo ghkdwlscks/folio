@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.theme.GainGreenPastel
@@ -46,6 +47,7 @@ fun PortfolioSummary(
     showInKrw: Boolean = false,
     onCurrencyToggle: () -> Unit = {},
     portfolioSparkline: List<Double> = emptyList(),
+    portfolioStats: PortfolioStats = PortfolioStats(),
     modifier: Modifier = Modifier
 ) {
 
@@ -189,7 +191,82 @@ fun PortfolioSummary(
                 isLoading = isLoadingPeriodReturns,
                 onPeriodSelected = onPeriodSelected
             )
+
+            // Portfolio Statistics Grid
+            if (portfolioStats != PortfolioStats()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                StatsGrid(stats = portfolioStats)
+            }
         }
+    }
+}
+
+@Composable
+private fun StatsGrid(stats: PortfolioStats) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.1f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatsItem(
+                    label = "MDD",
+                    value = "-${CurrencyFormatter.formatPercent(stats.maxDrawdown)}%",
+                    color = LossRedPastel
+                )
+                StatsItem(
+                    label = "Volatility",
+                    value = "${CurrencyFormatter.formatPercent(stats.volatility)}%",
+                    color = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatsItem(
+                    label = "Sharpe",
+                    value = String.format("%.2f", stats.sharpeRatio),
+                    color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel
+                )
+                StatsItem(
+                    label = "Best/Worst",
+                    value = "+${CurrencyFormatter.formatPercent(stats.bestDay)}% / ${CurrencyFormatter.formatPercent(stats.worstDay)}%",
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsItem(
+    label: String,
+    value: String,
+    color: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.6f)
+        )
     }
 }
 

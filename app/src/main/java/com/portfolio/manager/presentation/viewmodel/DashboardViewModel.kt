@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import android.content.SharedPreferences
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
+import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.model.TimePeriod
+import kotlin.math.pow
+import kotlin.math.sqrt
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.PriceHistoryData
@@ -47,7 +50,8 @@ sealed interface DashboardUiState {
         val exchangeRate: Double = KRW_TO_USD_RATE,
         val showInKrw: Boolean = false,
         val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR,
-        val portfolioSparkline: List<Double> = emptyList()
+        val portfolioSparkline: List<Double> = emptyList(),
+        val portfolioStats: PortfolioStats = PortfolioStats()
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -386,14 +390,71 @@ class DashboardViewModel @Inject constructor(
                 }
 
                 if (portfolioValues.size < 2) {
-                    updatePortfolioSparkline(emptyList())
+                    updatePortfolioSparkline(emptyList(), PortfolioStats())
                     return@launch
                 }
 
-                updatePortfolioSparkline(normalizeValues(portfolioValues))
+                val stats = calculatePortfolioStats(portfolioValues)
+                updatePortfolioSparkline(normalizeValues(portfolioValues), stats)
             } catch (e: Exception) {
-                updatePortfolioSparkline(emptyList())
+                updatePortfolioSparkline(emptyList(), PortfolioStats())
             }
+        }
+    }
+
+    private fun calculatePortfolioStats(portfolioValues: List<Double>): PortfolioStats {
+        if (portfolioValues.size < 2) return PortfolioStats()
+
+        // Calculate daily returns as percentages
+        val dailyReturns = portfolioValues.zipWithNext { a, b ->
+            if (a > 0) ((b - a) / a) * 100 else 0.0
+        }
+
+        return PortfolioStats(
+            maxDrawdown = calculateMDD(portfolioValues),
+            volatility = calculateVolatility(dailyReturns),
+            sharpeRatio = calculateSharpeRatio(dailyReturns),
+            bestDay = dailyReturns.maxOrNull() ?: 0.0,
+            worstDay = dailyReturns.minOrNull() ?: 0.0
+        )
+    }
+
+    private fun calculateMDD(values: List<Double>): Double {
+        if (values.size < 2) return 0.0
+        var maxDrawdown = 0.0
+        var peak = values[0]
+
+        for (value in values) {
+            if (value > peak) peak = value
+            if (peak > 0) {
+                val drawdown = (peak - value) / peak * 100
+                if (drawdown > maxDrawdown) maxDrawdown = drawdown
+            }
+        }
+        return maxDrawdown
+    }
+
+    private fun calculateVolatility(dailyReturns: List<Double>): Double {
+        if (dailyReturns.isEmpty()) return 0.0
+        val mean = dailyReturns.average()
+        val variance = dailyReturns.map { (it - mean).pow(2) }.average()
+        return sqrt(variance)
+    }
+
+    private fun calculateSharpeRatio(dailyReturns: List<Double>): Double {
+        if (dailyReturns.isEmpty()) return 0.0
+        val riskFreeRate = 0.02 // 2% annual risk-free rate
+        val avgDailyReturn = dailyReturns.average()
+        val dailyVolatility = calculateVolatility(dailyReturns)
+
+        // Annualize: multiply returns by 252 trading days, volatility by sqrt(252)
+        val annualizedReturn = avgDailyReturn * 252
+        val annualizedVolatility = dailyVolatility * sqrt(252.0)
+
+        return if (annualizedVolatility > 0) {
+            (annualizedReturn - riskFreeRate) / annualizedVolatility
+        } else {
+            0.0
         }
     }
 
@@ -420,10 +481,13 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun updatePortfolioSparkline(sparkline: List<Double>) {
+    private fun updatePortfolioSparkline(sparkline: List<Double>, stats: PortfolioStats = PortfolioStats()) {
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
-            _uiState.value = currentState.copy(portfolioSparkline = sparkline)
+            _uiState.value = currentState.copy(
+                portfolioSparkline = sparkline,
+                portfolioStats = stats
+            )
         }
     }
 

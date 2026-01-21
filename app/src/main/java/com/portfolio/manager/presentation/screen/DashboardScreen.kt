@@ -49,6 +49,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.component.AllocationItem
@@ -133,6 +134,7 @@ fun DashboardScreen(
                     showInKrw = state.showInKrw,
                     onCurrencyToggle = { viewModel.toggleCurrency() },
                     portfolioSparkline = state.portfolioSparkline,
+                    portfolioStats = state.portfolioStats,
                     sparklinePeriod = state.sparklinePeriod,
                     onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
                     onDeleteHolding = { id, symbol, quantity ->
@@ -224,6 +226,7 @@ private fun DashboardContent(
     showInKrw: Boolean,
     onCurrencyToggle: () -> Unit,
     portfolioSparkline: List<Double>,
+    portfolioStats: PortfolioStats,
     sparklinePeriod: TimePeriod,
     onSparklinePeriodSelected: (TimePeriod) -> Unit,
     onDeleteHolding: (Long, String, Int) -> Unit,
@@ -248,6 +251,7 @@ private fun DashboardContent(
                 showInKrw = showInKrw,
                 onCurrencyToggle = onCurrencyToggle,
                 portfolioSparkline = portfolioSparkline,
+                portfolioStats = portfolioStats,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }

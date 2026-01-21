@@ -6,6 +6,7 @@ import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.PeriodReturn
+import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
@@ -544,5 +545,121 @@ class DashboardViewModelTest {
         viewModel.selectSparklinePeriod(TimePeriod.ONE_WEEK)
 
         io.mockk.verify { sharedPreferencesEditor.putInt(any(), TimePeriod.ONE_WEEK.ordinal) }
+    }
+
+    @Test
+    fun `portfolioStats - calculated from portfolio values`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        // Price history with timestamps for sparkline calculation (each timestamp is a different day)
+        // 1704067200 = Jan 1, 2024, 86400 = 1 day in seconds
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 105.0, 102.0, 110.0, 108.0),
+                timestamps = listOf(day1, day1 + 86400, day1 + 172800, day1 + 259200, day1 + 345600)
+            )
+        )
+        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
+            prices = listOf(1400.0, 1400.0, 1400.0, 1400.0, 1400.0),
+            timestamps = listOf(day1, day1 + 86400, day1 + 172800, day1 + 259200, day1 + 345600)
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // Stats should be calculated (non-zero)
+        assertThat(state.portfolioStats.maxDrawdown).isGreaterThan(0.0)
+        assertThat(state.portfolioStats.volatility).isGreaterThan(0.0)
+    }
+
+    @Test
+    fun `portfolioStats - empty when no price history`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        // Empty price history
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns emptyMap()
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // Stats should be default (zeros)
+        assertThat(state.portfolioStats).isEqualTo(PortfolioStats())
+    }
+
+    @Test
+    fun `portfolioStats - MDD calculation - peak to trough`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        // Price goes: 100 -> 120 (peak) -> 96 (20% drawdown from peak)
+        // 1704067200 = Jan 1, 2024, 86400 = 1 day in seconds
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 120.0, 96.0),
+                timestamps = listOf(day1, day1 + 86400, day1 + 172800)
+            )
+        )
+        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
+            prices = listOf(1400.0, 1400.0, 1400.0),
+            timestamps = listOf(day1, day1 + 86400, day1 + 172800)
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // MDD should be 20% (from 120 to 96)
+        assertThat(state.portfolioStats.maxDrawdown).isWithin(0.1).of(20.0)
+    }
+
+    @Test
+    fun `portfolioStats - best and worst day calculated`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        // Price: 100 -> 110 (+10%) -> 99 (-10%)
+        // 1704067200 = Jan 1, 2024, 86400 = 1 day in seconds
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 110.0, 99.0),
+                timestamps = listOf(day1, day1 + 86400, day1 + 172800)
+            )
+        )
+        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
+            prices = listOf(1400.0, 1400.0, 1400.0),
+            timestamps = listOf(day1, day1 + 86400, day1 + 172800)
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // Best day: +10%
+        assertThat(state.portfolioStats.bestDay).isWithin(0.1).of(10.0)
+        // Worst day: -10% (from 110 to 99)
+        assertThat(state.portfolioStats.worstDay).isWithin(0.1).of(-10.0)
     }
 }
