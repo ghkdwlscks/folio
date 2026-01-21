@@ -1,7 +1,5 @@
 package com.portfolio.manager.presentation.screen
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,17 +9,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -44,24 +42,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.presentation.viewmodel.AccountsUiState
 import com.portfolio.manager.presentation.viewmodel.AccountsViewModel
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,11 +133,28 @@ fun AccountsScreen(
                         modifier = Modifier.padding(paddingValues)
                     )
                 } else {
-                    ReorderableAccountsList(
+                    AccountsList(
                         accounts = state.accounts,
                         onEditAccount = { editingAccount = it },
                         onDeleteAccount = { viewModel.deleteAccount(it.id) },
-                        onReorder = { viewModel.reorderAccounts(it) },
+                        onMoveUp = { index ->
+                            if (index > 0) {
+                                val reordered = state.accounts.toMutableList().apply {
+                                    val item = removeAt(index)
+                                    add(index - 1, item)
+                                }
+                                viewModel.reorderAccounts(reordered)
+                            }
+                        },
+                        onMoveDown = { index ->
+                            if (index < state.accounts.lastIndex) {
+                                val reordered = state.accounts.toMutableList().apply {
+                                    val item = removeAt(index)
+                                    add(index + 1, item)
+                                }
+                                viewModel.reorderAccounts(reordered)
+                            }
+                        },
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
@@ -225,75 +232,30 @@ private fun EmptyAccountsContent(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ReorderableAccountsList(
+private fun AccountsList(
     accounts: List<AccountEntity>,
     onEditAccount: (AccountEntity) -> Unit,
     onDeleteAccount: (AccountEntity) -> Unit,
-    onReorder: (List<AccountEntity>) -> Unit,
+    onMoveUp: (Int) -> Unit,
+    onMoveDown: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
-    val localAccounts = remember(accounts) { accounts.toMutableStateList() }
-    var draggingItemId by remember { mutableStateOf<Long?>(null) }
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val itemHeight = 80.dp
-
     LazyColumn(
-        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         itemsIndexed(
-            items = localAccounts,
+            items = accounts,
             key = { _, account -> account.id }
-        ) { _, account ->
-            val isDragging = draggingItemId == account.id
-            val elevation by animateDpAsState(
-                targetValue = if (isDragging) 8.dp else 2.dp,
-                label = "elevation"
+        ) { index, account ->
+            AccountCard(
+                account = account,
+                onEdit = { onEditAccount(account) },
+                onDelete = { onDeleteAccount(account) },
+                onMoveUp = { onMoveUp(index) }.takeIf { index > 0 },
+                onMoveDown = { onMoveDown(index) }.takeIf { index < accounts.lastIndex }
             )
-
-            Box(
-                modifier = Modifier
-                    .zIndex(if (isDragging) 1f else 0f)
-                    .offset {
-                        IntOffset(
-                            x = 0,
-                            y = if (isDragging) dragOffset.roundToInt() else 0
-                        )
-                    }
-            ) {
-                AccountCard(
-                    account = account,
-                    onEdit = { onEditAccount(account) },
-                    onDelete = { onDeleteAccount(account) },
-                    elevation = elevation,
-                    onDragStart = {
-                        draggingItemId = account.id
-                    },
-                    onDrag = { change ->
-                        dragOffset += change
-                        val currentIndex = localAccounts.indexOfFirst { it.id == draggingItemId }
-                        if (currentIndex == -1) return@AccountCard
-
-                        val targetIndex = (currentIndex + (dragOffset / itemHeight.value).roundToInt())
-                            .coerceIn(0, localAccounts.lastIndex)
-                        if (targetIndex != currentIndex) {
-                            localAccounts.apply {
-                                val item = removeAt(currentIndex)
-                                add(targetIndex, item)
-                            }
-                            dragOffset = 0f
-                        }
-                    },
-                    onDragEnd = {
-                        draggingItemId = null
-                        dragOffset = 0f
-                        onReorder(localAccounts.toList())
-                    }
-                )
-            }
         }
     }
 }
@@ -303,52 +265,66 @@ private fun AccountCard(
     account: AccountEntity,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    elevation: androidx.compose.ui.unit.Dp = 2.dp,
-    onDragStart: () -> Unit = {},
-    onDrag: (Float) -> Unit = {},
-    onDragEnd: () -> Unit = {},
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(elevation, shape = MaterialTheme.shapes.medium),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Filled.Menu,
-                contentDescription = "Drag to reorder",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .padding(8.dp)
-                    .pointerInput(Unit) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { onDragStart() },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onDrag(dragAmount.y)
-                            },
-                            onDragEnd = { onDragEnd() },
-                            onDragCancel = { onDragEnd() }
-                        )
-                    }
-            )
-            Column(modifier = Modifier.weight(1f)) {
+            // Reorder buttons
+            Column {
+                IconButton(
+                    onClick = { onMoveUp?.invoke() },
+                    enabled = onMoveUp != null,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowUp,
+                        contentDescription = "Move up",
+                        tint = if (onMoveUp != null)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                }
+                IconButton(
+                    onClick = { onMoveDown?.invoke() },
+                    enabled = onMoveDown != null,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Move down",
+                        tint = if (onMoveDown != null)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                }
+            }
+
+            // Account name
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
                 Text(
                     text = account.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
             }
+
+            // Edit and delete buttons
             Row {
                 IconButton(onClick = onEdit) {
                     Icon(
