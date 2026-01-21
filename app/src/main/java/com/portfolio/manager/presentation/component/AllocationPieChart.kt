@@ -92,7 +92,7 @@ fun AllocationPieChart(
                     items.take(5).forEachIndexed { index, item ->
                         LegendItem(
                             color = ChartColors[index % ChartColors.size],
-                            symbol = item.symbol,
+                            label = item.name,
                             weight = item.weight
                         )
                     }
@@ -100,7 +100,7 @@ fun AllocationPieChart(
                         val othersWeight = items.drop(5).sumOf { it.weight }
                         LegendItem(
                             color = ChartColors[5 % ChartColors.size],
-                            symbol = "Others (${items.size - 5})",
+                            label = "Others (${items.size - 5})",
                             weight = othersWeight
                         )
                     }
@@ -149,7 +149,7 @@ private fun DonutChart(
 @Composable
 private fun LegendItem(
     color: androidx.compose.ui.graphics.Color,
-    symbol: String,
+    label: String,
     weight: Double
 ) {
     Row(
@@ -164,12 +164,12 @@ private fun LegendItem(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = symbol,
+            text = label,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f).padding(end = 8.dp)
         )
         Text(
             text = "${CurrencyFormatter.formatPercent(weight)}%",
