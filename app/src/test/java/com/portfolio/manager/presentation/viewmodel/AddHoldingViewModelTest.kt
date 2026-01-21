@@ -514,4 +514,37 @@ class AddHoldingViewModelTest {
             })
         }
     }
+
+    @Test
+    fun `onSymbolFocusLost - 6-digit number - sets currency to KRW`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("005930")
+        viewModel.onSymbolFocusLost()
+
+        assertThat(viewModel.uiState.value.currency).isEqualTo("KRW")
+    }
+
+    @Test
+    fun `onSymbolFocusLost - non-6-digit symbol - keeps current currency`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("AAPL")
+        viewModel.onSymbolFocusLost()
+
+        assertThat(viewModel.uiState.value.currency).isEqualTo("USD")
+    }
+
+    @Test
+    fun `onSymbolFocusLost - 5-digit number - keeps current currency`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("12345")
+        viewModel.onSymbolFocusLost()
+
+        assertThat(viewModel.uiState.value.currency).isEqualTo("USD")
+    }
 }

@@ -100,6 +100,14 @@ class AddHoldingViewModel @Inject constructor(
         _uiState.update { it.copy(selectedAccountId = accountId) }
     }
 
+    fun onSymbolFocusLost() {
+        val symbol = _uiState.value.symbol.trim()
+        // If 6-digit number (Korean stock), auto-select KRW currency
+        if (symbol.length == 6 && symbol.all { it.isDigit() }) {
+            _uiState.update { it.copy(currency = "KRW") }
+        }
+    }
+
     private fun normalizeSymbol(symbol: String): String {
         val trimmed = symbol.trim().uppercase()
         // If 6-digit number, append .KS for Korean stocks

@@ -28,6 +28,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
@@ -90,7 +91,13 @@ fun AddHoldingScreen(
                 onValueChange = { viewModel.updateSymbol(it) },
                 label = { Text("Symbol") },
                 placeholder = { Text("e.g., AAPL or 005930") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused) {
+                            viewModel.onSymbolFocusLost()
+                        }
+                    },
                 singleLine = true,
                 enabled = !uiState.isEditMode,
                 isError = uiState.errorMessage != null,
