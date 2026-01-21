@@ -45,7 +45,7 @@ sealed interface DashboardUiState {
         val isRefreshing: Boolean = false,
         val exchangeRate: Double = KRW_TO_USD_RATE,
         val showInKrw: Boolean = false,
-        val sparklinePeriod: TimePeriod = TimePeriod.ONE_MONTH
+        val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -78,8 +78,8 @@ class DashboardViewModel @Inject constructor(
 
     private var sparklinePeriod: TimePeriod
         get() {
-            val ordinal = sharedPreferences.getInt(PREF_SPARKLINE_PERIOD, TimePeriod.ONE_MONTH.ordinal)
-            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_MONTH }
+            val ordinal = sharedPreferences.getInt(PREF_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR.ordinal)
+            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
         }
         set(value) = sharedPreferences.edit().putInt(PREF_SPARKLINE_PERIOD, value.ordinal).apply()
 

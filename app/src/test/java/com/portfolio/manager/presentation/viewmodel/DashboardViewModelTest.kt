@@ -502,7 +502,7 @@ class DashboardViewModelTest {
     @Test
     fun `selectSparklinePeriod - updates sparkline period and reloads data`() = runTest {
         // Track the saved sparkline period
-        var savedSparklinePeriod = TimePeriod.ONE_MONTH.ordinal
+        var savedSparklinePeriod = TimePeriod.ONE_YEAR.ordinal
         every { sharedPreferences.getInt("sparkline_period", any()) } answers { savedSparklinePeriod }
         every { sharedPreferencesEditor.putInt("sparkline_period", any()) } answers {
             savedSparklinePeriod = secondArg()
@@ -519,15 +519,15 @@ class DashboardViewModelTest {
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
 
-        // Initial state should have default period (ONE_MONTH based on ordinal 2)
+        // Initial state should have default period (ONE_YEAR)
         var state = viewModel.uiState.value as DashboardUiState.Success
-        assertThat(state.sparklinePeriod).isEqualTo(TimePeriod.ONE_MONTH)
+        assertThat(state.sparklinePeriod).isEqualTo(TimePeriod.ONE_YEAR)
 
         // Change sparkline period
-        viewModel.selectSparklinePeriod(TimePeriod.ONE_YEAR)
+        viewModel.selectSparklinePeriod(TimePeriod.ONE_MONTH)
 
         state = viewModel.uiState.value as DashboardUiState.Success
-        assertThat(state.sparklinePeriod).isEqualTo(TimePeriod.ONE_YEAR)
+        assertThat(state.sparklinePeriod).isEqualTo(TimePeriod.ONE_MONTH)
     }
 
     @Test

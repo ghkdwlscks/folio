@@ -91,7 +91,7 @@ fun DashboardScreen(
     }
     val sparklinePeriod = when (val state = uiState) {
         is DashboardUiState.Success -> state.sparklinePeriod
-        else -> TimePeriod.ONE_MONTH
+        else -> TimePeriod.ONE_YEAR
     }
 
     Scaffold(
