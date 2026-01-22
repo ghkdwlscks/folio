@@ -37,6 +37,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -281,7 +282,9 @@ private fun DashboardStateContent(
                     onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
                     onDeleteHolding = onDeleteHolding,
                     onEditHolding = onEditHolding,
-                    listState = listState
+                    listState = listState,
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = { viewModel.refresh() }
                 )
             }
             is DashboardUiState.Error -> {
@@ -294,7 +297,7 @@ private fun DashboardStateContent(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun DashboardContent(
     stocks: List<Stock>,
@@ -312,16 +315,23 @@ private fun DashboardContent(
     onDeleteHolding: (Long, String, Int) -> Unit,
     onEditHolding: (Long) -> Unit,
     listState: LazyListState,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 88.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
     ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         item {
             PortfolioSummary(
                 stocks = stocks,
@@ -374,6 +384,7 @@ private fun DashboardContent(
                 onEditAccountHolding = onEditHolding.takeIf { isAggregated },
                 modifier = Modifier.animateItemPlacement()
             )
+        }
         }
     }
 }
@@ -513,6 +524,8 @@ private fun AccountTabSelector(
                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
             ),
             border = FilterChipDefaults.filterChipBorder(
+                enabled = true,
+                selected = selectedAccountId == ALL_ACCOUNTS_ID,
                 borderColor = MaterialTheme.colorScheme.outline,
                 selectedBorderColor = MaterialTheme.colorScheme.primary,
                 selectedBorderWidth = 1.dp
@@ -529,6 +542,8 @@ private fun AccountTabSelector(
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
                 border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
                     borderColor = MaterialTheme.colorScheme.outline,
                     selectedBorderColor = MaterialTheme.colorScheme.primary,
                     selectedBorderWidth = 1.dp
