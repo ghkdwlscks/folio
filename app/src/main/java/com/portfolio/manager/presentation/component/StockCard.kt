@@ -144,13 +144,13 @@ fun StockCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    // Row 1: Stock name (full width)
+                    // Row 1: Stock name (can wrap to 2 lines if needed)
                     Text(
                         text = stock.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1
+                        maxLines = 2
                     )
                     // Row 2 & 3: shares info + weight on left, sparkline on right
                     Row(
@@ -218,10 +218,36 @@ fun StockCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Total: ${CurrencyFormatter.format(stock.totalValue, stock.currency)}",
+                        text = "Total ${CurrencyFormatter.format(stock.totalValue, stock.currency)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    // Day change row (compact: icon + percentage only)
+                    if (stock.dayChange != null && stock.dayChange != 0.0 && stock.dayChangePercent != null) {
+                        val dayTrend = createTrendIndicator(stock.dayChange)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Today",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                            Icon(
+                                imageVector = dayTrend.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(10.dp),
+                                tint = dayTrend.color
+                            )
+                            Text(
+                                text = "${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(stock.dayChangePercent)}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = dayTrend.color
+                            )
+                        }
+                    }
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = trend.backgroundColor

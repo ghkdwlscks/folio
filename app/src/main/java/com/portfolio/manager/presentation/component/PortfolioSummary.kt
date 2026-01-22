@@ -69,7 +69,22 @@ fun PortfolioSummary(
     val totalGainLoss = totalValue - totalCost
     val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
 
+    // Calculate day change (sum of each stock's day change * quantity, converted to display currency)
+    val dayChangeUsd = stocks.sumOf { stock ->
+        val change = stock.dayChange ?: 0.0
+        val valueChange = change * stock.quantity
+        if (stock.currency == "KRW") valueChange / exchangeRate else valueChange
+    }
+    val dayChangeKrw = stocks.sumOf { stock ->
+        val change = stock.dayChange ?: 0.0
+        val valueChange = change * stock.quantity
+        if (stock.currency == "KRW") valueChange else valueChange * exchangeRate
+    }
+    val dayChange = if (showInKrw) dayChangeKrw else dayChangeUsd
+    val dayChangePercent = if (totalValue > 0) (dayChange / (totalValue - dayChange)) * 100 else 0.0
+
     val trend = createTrendIndicator(totalGainLoss, usePastel = true)
+    val dayTrend = createTrendIndicator(dayChange, usePastel = true)
 
     val formatValue: (Double) -> String = if (showInKrw) {
         { CurrencyFormatter.formatKrw(it) }
@@ -115,7 +130,7 @@ fun PortfolioSummary(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Gain/Loss row with invested info
+            // Total Gain/Loss row
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -153,6 +168,38 @@ fun PortfolioSummary(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.7f)
                 )
+            }
+
+            // Day change row
+            if (dayChange != 0.0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Today",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                    Icon(
+                        imageVector = dayTrend.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = dayTrend.color
+                    )
+                    Text(
+                        text = "${if (dayTrend.isGain) "+" else ""}${formatValue(dayChange)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = dayTrend.color
+                    )
+                    Text(
+                        text = "(${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = dayTrend.color.copy(alpha = 0.8f)
+                    )
+                }
             }
 
             // Portfolio sparkline
