@@ -416,12 +416,36 @@ class DashboardViewModel @Inject constructor(
         }
 
         val currentState = _uiState.value
-        val isRefreshing = currentState is DashboardUiState.Success && currentState.isRefreshing
-        if (!isRefreshing) {
+        val currentSuccess = currentState as? DashboardUiState.Success
+        val isRefreshing = currentSuccess?.isRefreshing == true
+
+        val symbols = holdings.map { it.symbol }.distinct()
+        val existingStocks = currentSuccess?.stocks ?: emptyList()
+        val existingSymbols = existingStocks.map { it.symbol }.toSet()
+        val newSymbols = symbols.filter { it !in existingSymbols }
+
+        // If we have existing data and no new symbols, just merge holdings with existing prices
+        if (currentSuccess != null && newSymbols.isEmpty() && !isRefreshing) {
+            val updatedStocks = mergeHoldingsWithExistingStocks(holdings, existingStocks, allAccounts)
+            _uiState.value = currentSuccess.copy(
+                stocks = updatedStocks,
+                accounts = accounts,
+                selectedAccountId = selectedAccountId
+            )
+            // Cache and update portfolio calculations
+            if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                saveStateToCache(updatedStocks, currentExchangeRate)
+            }
+            loadPeriodReturns(updatedStocks, currentSuccess.selectedPeriod)
+            loadPortfolioSparkline(updatedStocks, currentSuccess.selectedPeriod)
+            return
+        }
+
+        // Full refresh needed: new symbols, manual refresh, or no existing data
+        if (!isRefreshing && currentSuccess == null) {
             _uiState.value = DashboardUiState.Loading
         }
 
-        val symbols = holdings.map { it.symbol }.distinct()
         val result = stockRepository.getQuotes(symbols)
 
         result.fold(
@@ -451,16 +475,8 @@ class DashboardViewModel @Inject constructor(
                         )
                     }
                 }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
-                val previousReturns = if (currentState is DashboardUiState.Success) {
-                    currentState.periodReturns
-                } else {
-                    emptyMap()
-                }
-                val selectedPeriod = if (currentState is DashboardUiState.Success) {
-                    currentState.selectedPeriod
-                } else {
-                    summaryPeriod
-                }
+                val previousReturns = currentSuccess?.periodReturns ?: emptyMap()
+                val selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod
                 val showInKrw = getShowInKrwForCurrentAccount()
                 _uiState.value = DashboardUiState.Success(
                     stocks = stocks,
@@ -471,7 +487,9 @@ class DashboardViewModel @Inject constructor(
                     isRefreshing = false,
                     exchangeRate = currentExchangeRate,
                     showInKrw = showInKrw,
-                    sparklinePeriod = sparklinePeriod
+                    sparklinePeriod = sparklinePeriod,
+                    portfolioSparkline = currentSuccess?.portfolioSparkline ?: emptyList(),
+                    portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats()
                 )
                 // Cache state for fast cold start (only for All Accounts view)
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
@@ -487,6 +505,67 @@ class DashboardViewModel @Inject constructor(
                 )
             }
         )
+    }
+
+    private fun mergeHoldingsWithExistingStocks(
+        holdings: List<HoldingEntity>,
+        existingStocks: List<Stock>,
+        allAccounts: List<AccountEntity>
+    ): List<Stock> {
+        val existingStockMap = existingStocks.associateBy { it.symbol }
+        val accountMap = allAccounts.associateBy { it.id }
+        val accountOrderMap = allAccounts.associate { it.id to it.orderIndex }
+
+        return if (selectedAccountId == ALL_ACCOUNTS_ID) {
+            // Aggregate holdings by symbol
+            holdings.groupBy { it.symbol }.map { (symbol, holdingGroup) ->
+                val existingStock = existingStockMap[symbol]
+                val totalQuantity = holdingGroup.sumOf { it.quantity }
+                val totalCost = holdingGroup.sumOf { it.quantity * it.averagePrice }
+                val weightedAvgPrice = if (totalQuantity > 0) totalCost / totalQuantity else 0.0
+
+                val accountDetails = holdingGroup.map { holding ->
+                    StockAccountDetail(
+                        holdingId = holding.id,
+                        accountId = holding.accountId,
+                        accountName = accountMap[holding.accountId]?.name ?: "Unknown",
+                        quantity = holding.quantity,
+                        averagePrice = holding.averagePrice
+                    )
+                }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
+
+                Stock(
+                    id = holdingGroup.first().id,
+                    symbol = symbol,
+                    name = existingStock?.name ?: symbol,
+                    quantity = totalQuantity,
+                    averagePrice = weightedAvgPrice,
+                    currentPrice = existingStock?.currentPrice ?: weightedAvgPrice,
+                    dayChange = existingStock?.dayChange,
+                    dayChangePercent = existingStock?.dayChangePercent,
+                    currency = holdingGroup.first().currency,
+                    accountDetails = accountDetails,
+                    priceHistory = existingStock?.priceHistory ?: emptyList()
+                )
+            }
+        } else {
+            // Single account view
+            holdings.map { holding ->
+                val existingStock = existingStockMap[holding.symbol]
+                Stock(
+                    id = holding.id,
+                    symbol = holding.symbol,
+                    name = existingStock?.name ?: holding.symbol,
+                    quantity = holding.quantity,
+                    averagePrice = holding.averagePrice,
+                    currentPrice = existingStock?.currentPrice ?: holding.averagePrice,
+                    dayChange = existingStock?.dayChange,
+                    dayChangePercent = existingStock?.dayChangePercent,
+                    currency = holding.currency,
+                    priceHistory = existingStock?.priceHistory ?: emptyList()
+                )
+            }
+        }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
     }
 
     private fun aggregateHoldings(
