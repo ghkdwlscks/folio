@@ -1,5 +1,8 @@
 package com.portfolio.manager.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class PortfolioStats(
     val maxDrawdown: Double = 0.0,      // MDD as percentage
     val volatility: Double = 0.0,        // Daily return std dev %

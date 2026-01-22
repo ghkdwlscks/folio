@@ -65,9 +65,7 @@ class DashboardViewModel @Inject constructor(
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
-    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
-
+    // Declare all properties BEFORE _uiState since loadCachedStateOrDefault() uses them
     private var selectedAccountId: Long = ALL_ACCOUNTS_ID
     private var holdingsJob: Job? = null
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
@@ -80,6 +78,8 @@ class DashboardViewModel @Inject constructor(
         private const val PREF_DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
         private const val PREF_DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
         private const val PREF_DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
+        private const val PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
+        private const val PREF_DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
         private const val PREF_STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
         private const val PREF_PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
     }
@@ -100,10 +100,43 @@ class DashboardViewModel @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    // Now initialize _uiState - all dependencies are ready
+    private val _uiState = MutableStateFlow(loadCachedStateOrDefault())
+    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    private fun loadCachedStateOrDefault(): DashboardUiState {
+        return try {
+            val cachedStocksJson = sharedPreferences.getString(PREF_DASHBOARD_CACHED_STOCKS_JSON, null)
+                ?: return DashboardUiState.Loading
+            val cachedRate = sharedPreferences.getFloat(PREF_DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
+            val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
+            currentExchangeRate = cachedRate
+
+            val portfolioSparkline = sharedPreferences.getString(PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, null)?.let {
+                try { json.decodeFromString<List<Double>>(it) } catch (_: Exception) { emptyList() }
+            } ?: emptyList()
+            val portfolioStats = sharedPreferences.getString(PREF_DASHBOARD_CACHED_PORTFOLIO_STATS, null)?.let {
+                try { json.decodeFromString<PortfolioStats>(it) } catch (_: Exception) { PortfolioStats() }
+            } ?: PortfolioStats()
+
+            DashboardUiState.Success(
+                stocks = stocks,
+                selectedAccountId = selectedAccountId,
+                selectedPeriod = summaryPeriod,
+                exchangeRate = cachedRate,
+                showInKrw = allAccountsCurrencyKrw,
+                isRefreshing = true,
+                sparklinePeriod = sparklinePeriod,
+                portfolioSparkline = portfolioSparkline,
+                portfolioStats = portfolioStats
+            )
+        } catch (_: Exception) {
+            DashboardUiState.Loading
+        }
+    }
+
     init {
         viewModelScope.launch {
-            // Load cached state immediately for fast startup
-            loadCachedState()
             // Ensure default account exists (atomic operation to prevent race condition)
             accountRepository.getOrCreateDefaultAccount(DEFAULT_ACCOUNT_NAME)
             // Fetch exchange rate
@@ -111,28 +144,6 @@ class DashboardViewModel @Inject constructor(
                 currentExchangeRate = rate
             }
             loadAndObserveHoldings()
-        }
-    }
-
-    private fun loadCachedState() {
-        try {
-            val cachedStocksJson = sharedPreferences.getString(PREF_DASHBOARD_CACHED_STOCKS_JSON, null)
-            val cachedRate = sharedPreferences.getFloat(PREF_DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
-            if (cachedStocksJson != null) {
-                val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
-                currentExchangeRate = cachedRate
-                _uiState.value = DashboardUiState.Success(
-                    stocks = stocks,
-                    selectedAccountId = selectedAccountId,
-                    selectedPeriod = summaryPeriod,
-                    exchangeRate = cachedRate,
-                    showInKrw = allAccountsCurrencyKrw,
-                    isRefreshing = true,
-                    sparklinePeriod = sparklinePeriod
-                )
-            }
-        } catch (_: Exception) {
-            // Ignore cache errors, will load fresh data
         }
     }
 
@@ -345,6 +356,17 @@ class DashboardViewModel @Inject constructor(
                 portfolioSparkline = sparkline,
                 portfolioStats = stats
             )
+            // Cache portfolio sparkline for fast cold start (only for All Accounts with valid data)
+            if (selectedAccountId == ALL_ACCOUNTS_ID && sparkline.isNotEmpty()) {
+                try {
+                    sharedPreferences.edit()
+                        .putString(PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, json.encodeToString(sparkline))
+                        .putString(PREF_DASHBOARD_CACHED_PORTFOLIO_STATS, json.encodeToString(stats))
+                        .apply()
+                } catch (_: Exception) {
+                    // Ignore cache errors
+                }
+            }
         }
     }
 
