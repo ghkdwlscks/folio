@@ -196,7 +196,9 @@ class DashboardViewModel @Inject constructor(
                 _uiState.value = currentState.copy(showInKrw = newShowInKrw)
 
                 // Reload sparkline and period returns with new currency
-                loadPeriodReturns(currentState.stocks, currentState.selectedPeriod)
+                if (currentState.stocks.isNotEmpty()) {
+                    loadBenchmarkReturns(currentState.selectedPeriod)
+                }
                 loadPortfolioSparkline(currentState.stocks, currentState.selectedPeriod)
             }
         }
@@ -231,7 +233,9 @@ class DashboardViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(selectedPeriod = period)
-            loadPeriodReturns(currentState.stocks, period)
+            if (currentState.stocks.isNotEmpty()) {
+                loadBenchmarkReturns(period)
+            }
             loadPortfolioSparkline(currentState.stocks, period)
         }
     }
@@ -264,66 +268,34 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun loadPeriodReturns(stocks: List<Stock>, period: TimePeriod) {
-        if (stocks.isEmpty()) return
-
+    private fun loadBenchmarkReturns(period: TimePeriod) {
         viewModelScope.launch {
             val currentState = _uiState.value
             val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
-            if (currentState is DashboardUiState.Success) {
-                _uiState.value = currentState.copy(isLoadingPeriodReturns = true)
-            }
-
-            val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
-            if (totalPortfolioValue <= 0) {
-                updatePeriodReturn(period, 0.0, BenchmarkReturns(null, null))
-                return@launch
-            }
 
             // Fetch exchange rate history for currency-adjusted returns
             val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
             val startExchangeRate = exchangeRateData.prices.firstOrNull() ?: currentExchangeRate
             val endExchangeRate = exchangeRateData.prices.lastOrNull() ?: currentExchangeRate
 
-            // Fetch period returns for all unique symbols in parallel, plus benchmarks
-            val symbols = stocks.map { it.symbol }.distinct()
-            val portfolioDeferred = symbols.map { symbol ->
-                async { stockRepository.getPeriodReturn(symbol, period) }
-            }
-            val sp500Deferred = async { stockRepository.getPeriodReturn(BENCHMARK_SP500, period) }
-            val kospiDeferred = async { stockRepository.getPeriodReturn(BENCHMARK_KOSPI, period) }
+            // Fetch benchmark price histories
+            val sp500Deferred = async { stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range) }
+            val kospiDeferred = async { stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range) }
 
-            val periodReturns = portfolioDeferred.awaitAll()
-            val sp500Result = sp500Deferred.await()
-            val kospiResult = kospiDeferred.await()
+            val sp500History = sp500Deferred.await()[BENCHMARK_SP500]
+            val kospiHistory = kospiDeferred.await()[BENCHMARK_KOSPI]
 
-            // Create a map of symbol to return percent
-            val returnsBySymbol = periodReturns
-                .filter { it.isSuccess }
-                .associate {
-                    val periodReturn = it.getOrNull()!!
-                    periodReturn.symbol to periodReturn.returnPercent
-                }
-
-            // Calculate weighted portfolio return with exchange rate consideration
-            val weightedReturn = stocks.sumOf { stock ->
-                val weight = stock.totalValueInUsd(currentExchangeRate) / totalPortfolioValue
-                val stockReturn = returnsBySymbol[stock.symbol] ?: 0.0
-                val adjustedReturn = PriceHistoryProcessor.adjustReturnForExchangeRate(
-                    stockReturn, stock.currency, showInKrw, startExchangeRate, endExchangeRate
-                )
-                weight * adjustedReturn
-            }
-
-            // Build benchmark returns with currency adjustment
-            val sp500Return = sp500Result.getOrNull()?.returnPercent?.let { rawReturn ->
+            // Calculate benchmark returns from price history (same as sparkline)
+            val sp500Return = sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                val rawReturn = ((prices.last() - prices.first()) / prices.first()) * 100
                 if (showInKrw) {
                     PriceHistoryProcessor.adjustReturnForExchangeRate(
                         rawReturn, "USD", showInKrw, startExchangeRate, endExchangeRate
                     )
                 } else rawReturn
             }
-            val kospiReturn = kospiResult.getOrNull()?.returnPercent?.let { rawReturn ->
+            val kospiReturn = kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                val rawReturn = ((prices.last() - prices.first()) / prices.first()) * 100
                 if (!showInKrw) {
                     PriceHistoryProcessor.adjustReturnForExchangeRate(
                         rawReturn, "KRW", showInKrw, startExchangeRate, endExchangeRate
@@ -332,22 +304,28 @@ class DashboardViewModel @Inject constructor(
             }
 
             val benchmarks = BenchmarkReturns(sp500 = sp500Return, kospi = kospiReturn)
-            updatePeriodReturn(period, weightedReturn, benchmarks)
+            updateBenchmarkReturns(period, benchmarks)
         }
     }
 
-    private fun updatePeriodReturn(period: TimePeriod, returnPercent: Double, benchmarks: BenchmarkReturns) {
+    private fun updatePeriodReturn(period: TimePeriod, returnPercent: Double) {
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             val updatedReturns = currentState.periodReturns.toMutableMap()
             updatedReturns[period] = returnPercent
-            val updatedBenchmarks = currentState.benchmarkReturns.toMutableMap()
-            updatedBenchmarks[period] = benchmarks
             _uiState.value = currentState.copy(
                 periodReturns = updatedReturns,
-                benchmarkReturns = updatedBenchmarks,
                 isLoadingPeriodReturns = false
             )
+        }
+    }
+
+    private fun updateBenchmarkReturns(period: TimePeriod, benchmarks: BenchmarkReturns) {
+        val currentState = _uiState.value
+        if (currentState is DashboardUiState.Success) {
+            val updatedBenchmarks = currentState.benchmarkReturns.toMutableMap()
+            updatedBenchmarks[period] = benchmarks
+            _uiState.value = currentState.copy(benchmarkReturns = updatedBenchmarks)
         }
     }
 
@@ -372,6 +350,7 @@ class DashboardViewModel @Inject constructor(
                 }
                 if (stocksWithHistory.isEmpty()) {
                     updatePortfolioSparkline(emptyList())
+                    updatePeriodReturn(period, 0.0)
                     return@launch
                 }
 
@@ -382,6 +361,7 @@ class DashboardViewModel @Inject constructor(
 
                 if (allDates.size < 2) {
                     updatePortfolioSparkline(emptyList())
+                    updatePeriodReturn(period, 0.0)
                     return@launch
                 }
 
@@ -399,6 +379,7 @@ class DashboardViewModel @Inject constructor(
 
                 if (portfolioValues.size < 2) {
                     updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
+                    updatePeriodReturn(period, 0.0)
                     return@launch
                 }
 
@@ -411,6 +392,12 @@ class DashboardViewModel @Inject constructor(
                     timestamps = timestamps,
                     stats = stats
                 )
+
+                // Calculate period return from same portfolio values data
+                val startValue = portfolioValues.first()
+                val endValue = portfolioValues.last()
+                val periodReturn = if (startValue > 0) ((endValue - startValue) / startValue) * 100 else 0.0
+                updatePeriodReturn(period, periodReturn)
             } catch (e: Exception) {
                 updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
             }
@@ -510,7 +497,7 @@ class DashboardViewModel @Inject constructor(
             if (selectedAccountId == ALL_ACCOUNTS_ID) {
                 saveStateToCache(updatedStocks, currentExchangeRate)
             }
-            loadPeriodReturns(updatedStocks, currentSuccess.selectedPeriod)
+            loadBenchmarkReturns(currentSuccess.selectedPeriod)
             loadPortfolioSparkline(updatedStocks, currentSuccess.selectedPeriod)
             return
         }
@@ -573,7 +560,7 @@ class DashboardViewModel @Inject constructor(
                     saveStateToCache(stocks, currentExchangeRate)
                 }
                 // Load period returns and portfolio sparkline for the selected period
-                loadPeriodReturns(stocks, selectedPeriod)
+                loadBenchmarkReturns(selectedPeriod)
                 loadPortfolioSparkline(stocks, selectedPeriod)
             },
             onFailure = { exception ->

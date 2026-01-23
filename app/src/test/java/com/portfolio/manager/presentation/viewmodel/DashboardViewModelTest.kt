@@ -324,8 +324,14 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 180.0))
         )
-        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_MONTH, 5.5))
+        // Period return is now calculated from price history: (105.5 - 100) / 100 * 100 = 5.5%
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(listOf("AAPL"), "1mo") } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 105.5),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_MONTH)
@@ -352,16 +358,25 @@ class DashboardViewModelTest {
         // GOOGL: totalValue = 5 * 200 = 1000 USD
         // Total: 2000 USD
         // Weights: AAPL 50%, GOOGL 50%
-        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_WEEK) } returns
-            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_WEEK, 10.0))
-        coEvery { stockRepository.getPeriodReturn("GOOGL", TimePeriod.ONE_WEEK) } returns
-            Result.success(PeriodReturn("GOOGL", TimePeriod.ONE_WEEK, 20.0))
+        // Period return is calculated from portfolio values
+        // Start: 10*100 + 5*200 = 2000, End: 10*110 + 5*240 = 2300 -> 15% return
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(any(), "5d") } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            ),
+            "GOOGL" to PriceHistoryData(
+                prices = listOf(200.0, 240.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_WEEK)
 
         val state = viewModel.uiState.value as DashboardUiState.Success
-        // Weighted return: 0.5 * 10% + 0.5 * 20% = 15%
+        // Portfolio: Start=2000, End=2300 -> (2300-2000)/2000*100 = 15%
         assertThat(state.periodReturns[TimePeriod.ONE_WEEK]).isWithin(0.01).of(15.0)
     }
 
@@ -674,12 +689,28 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
         )
-        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_MONTH, 5.0))
-        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("^GSPC", TimePeriod.ONE_MONTH, 3.0))
-        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_MONTH, 2.0))
+        // Benchmark returns are now calculated from price history
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(listOf("AAPL"), "1mo") } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 105.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // S&P 500: (103 - 100) / 100 * 100 = 3%
+        coEvery { stockRepository.getPriceHistory(listOf("^GSPC"), "1mo") } returns mapOf(
+            "^GSPC" to PriceHistoryData(
+                prices = listOf(100.0, 103.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // KOSPI: (102 - 100) / 100 * 100 = 2%
+        coEvery { stockRepository.getPriceHistory(listOf("^KS11"), "1mo") } returns mapOf(
+            "^KS11" to PriceHistoryData(
+                prices = listOf(100.0, 102.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_MONTH)
@@ -698,12 +729,24 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
         )
-        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_YEAR) } returns
-            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_YEAR, 10.0))
-        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_YEAR) } returns
-            Result.failure(Exception("Network error"))
-        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_YEAR) } returns
-            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_YEAR, 5.0))
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(listOf("AAPL"), "1y") } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // S&P 500 returns empty (simulates failure/insufficient data)
+        coEvery { stockRepository.getPriceHistory(listOf("^GSPC"), "1y") } returns mapOf(
+            "^GSPC" to PriceHistoryData(prices = emptyList(), timestamps = emptyList())
+        )
+        // KOSPI: (105 - 100) / 100 * 100 = 5%
+        coEvery { stockRepository.getPriceHistory(listOf("^KS11"), "1y") } returns mapOf(
+            "^KS11" to PriceHistoryData(
+                prices = listOf(100.0, 105.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_YEAR)
@@ -722,12 +765,20 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
         )
-        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_YEAR) } returns
-            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_YEAR, 10.0))
-        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_YEAR) } returns
-            Result.failure(Exception("Network error"))
-        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_YEAR) } returns
-            Result.failure(Exception("Network error"))
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(listOf("AAPL"), "1y") } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // Both benchmarks return empty (simulates failure/insufficient data)
+        coEvery { stockRepository.getPriceHistory(listOf("^GSPC"), "1y") } returns mapOf(
+            "^GSPC" to PriceHistoryData(prices = emptyList(), timestamps = emptyList())
+        )
+        coEvery { stockRepository.getPriceHistory(listOf("^KS11"), "1y") } returns mapOf(
+            "^KS11" to PriceHistoryData(prices = emptyList(), timestamps = emptyList())
+        )
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
         viewModel.selectPeriod(TimePeriod.ONE_YEAR)
@@ -746,16 +797,31 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
         )
-        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_MONTH, 10.0))
-        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("^GSPC", TimePeriod.ONE_MONTH, 10.0))
-        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_MONTH, 5.0))
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(listOf("AAPL"), "1mo") } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // S&P 500: (110 - 100) / 100 * 100 = 10%
+        coEvery { stockRepository.getPriceHistory(listOf("^GSPC"), "1mo") } returns mapOf(
+            "^GSPC" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // KOSPI: (105 - 100) / 100 * 100 = 5%
+        coEvery { stockRepository.getPriceHistory(listOf("^KS11"), "1mo") } returns mapOf(
+            "^KS11" to PriceHistoryData(
+                prices = listOf(100.0, 105.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
         // Exchange rate went from 1300 to 1400 = ~7.7% increase
         coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
             prices = listOf(1300.0, 1400.0),
-            timestamps = listOf(1000L, 2000L)
+            timestamps = listOf(day1, day1 + 86400)
         )
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
@@ -779,16 +845,31 @@ class DashboardViewModelTest {
         coEvery { stockRepository.getQuotes(any()) } returns Result.success(
             listOf(QuoteResult(symbol = "005930.KS", regularMarketPrice = 70000.0))
         )
-        coEvery { stockRepository.getPeriodReturn("005930.KS", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("005930.KS", TimePeriod.ONE_MONTH, 10.0))
-        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("^GSPC", TimePeriod.ONE_MONTH, 5.0))
-        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_MONTH) } returns
-            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_MONTH, 10.0))
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(listOf("005930.KS"), "1mo") } returns mapOf(
+            "005930.KS" to PriceHistoryData(
+                prices = listOf(70000.0, 77000.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // S&P 500: (105 - 100) / 100 * 100 = 5%
+        coEvery { stockRepository.getPriceHistory(listOf("^GSPC"), "1mo") } returns mapOf(
+            "^GSPC" to PriceHistoryData(
+                prices = listOf(100.0, 105.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+        // KOSPI: (110 - 100) / 100 * 100 = 10%
+        coEvery { stockRepository.getPriceHistory(listOf("^KS11"), "1mo") } returns mapOf(
+            "^KS11" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
         // Exchange rate went from 1300 to 1400 (KRW weakened)
         coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
             prices = listOf(1300.0, 1400.0),
-            timestamps = listOf(1000L, 2000L)
+            timestamps = listOf(day1, day1 + 86400)
         )
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
