@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
@@ -49,6 +50,7 @@ fun PortfolioSummary(
     stocks: List<Stock>,
     exchangeRate: Double,
     periodReturns: Map<TimePeriod, Double> = emptyMap(),
+    benchmarkReturns: Map<TimePeriod, BenchmarkReturns> = emptyMap(),
     selectedPeriod: TimePeriod = TimePeriod.ONE_YEAR,
     isLoadingPeriodReturns: Boolean = false,
     onPeriodSelected: (TimePeriod) -> Unit = {},
@@ -229,6 +231,19 @@ fun PortfolioSummary(
                 onPeriodSelected = onPeriodSelected
             )
 
+            // Benchmark comparison row
+            val currentBenchmarks = benchmarkReturns[selectedPeriod]
+            val portfolioReturn = periodReturns[selectedPeriod]
+            if (portfolioReturn != null && currentBenchmarks != null &&
+                (currentBenchmarks.sp500 != null || currentBenchmarks.kospi != null)) {
+                Spacer(modifier = Modifier.height(10.dp))
+                BenchmarkComparisonRow(
+                    portfolioReturn = portfolioReturn,
+                    sp500Return = currentBenchmarks.sp500,
+                    kospiReturn = currentBenchmarks.kospi
+                )
+            }
+
             // Portfolio Statistics Row
             if (portfolioStats != PortfolioStats()) {
                 Spacer(modifier = Modifier.height(14.dp))
@@ -293,6 +308,77 @@ private fun CompactStatItem(
             fontSize = 9.sp,
             color = Color.White.copy(alpha = 0.5f)
         )
+    }
+}
+
+@Composable
+private fun BenchmarkComparisonRow(
+    portfolioReturn: Double,
+    sp500Return: Double?,
+    kospiReturn: Double?
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        BenchmarkItem(
+            label = "Portfolio",
+            returnPercent = portfolioReturn,
+            isPortfolio = true
+        )
+        sp500Return?.let {
+            BenchmarkItem(
+                label = "S&P 500",
+                returnPercent = it,
+                difference = portfolioReturn - it
+            )
+        }
+        kospiReturn?.let {
+            BenchmarkItem(
+                label = "KOSPI",
+                returnPercent = it,
+                difference = portfolioReturn - it
+            )
+        }
+    }
+}
+
+@Composable
+private fun BenchmarkItem(
+    label: String,
+    returnPercent: Double,
+    isPortfolio: Boolean = false,
+    difference: Double? = null
+) {
+    val returnColor = when {
+        returnPercent >= 0 -> GainGreenPastel
+        else -> LossRedPastel
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 9.sp,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+        Text(
+            text = "${if (returnPercent >= 0) "+" else ""}${CurrencyFormatter.formatPercent(returnPercent)}%",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isPortfolio) FontWeight.Bold else FontWeight.SemiBold,
+            color = returnColor
+        )
+        if (difference != null) {
+            val diffColor = if (difference >= 0) GainGreenPastel else LossRedPastel
+            Text(
+                text = "(${if (difference >= 0) "+" else ""}${CurrencyFormatter.formatPercent(difference)}%)",
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 8.sp,
+                color = diffColor.copy(alpha = 0.7f)
+            )
+        }
     }
 }
 

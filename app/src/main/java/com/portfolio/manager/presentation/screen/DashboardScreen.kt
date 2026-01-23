@@ -62,6 +62,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
@@ -240,6 +241,7 @@ private fun DashboardStateContent(
                     stocks = state.stocks,
                     exchangeRate = state.exchangeRate,
                     periodReturns = state.periodReturns,
+                    benchmarkReturns = state.benchmarkReturns,
                     selectedPeriod = state.selectedPeriod,
                     isLoadingPeriodReturns = state.isLoadingPeriodReturns,
                     onPeriodSelected = { viewModel.selectPeriod(it) },
@@ -274,6 +276,7 @@ private fun DashboardContent(
     stocks: List<Stock>,
     exchangeRate: Double,
     periodReturns: Map<TimePeriod, Double>,
+    benchmarkReturns: Map<TimePeriod, BenchmarkReturns>,
     selectedPeriod: TimePeriod,
     isLoadingPeriodReturns: Boolean,
     onPeriodSelected: (TimePeriod) -> Unit,
@@ -309,6 +312,7 @@ private fun DashboardContent(
                 stocks = stocks,
                 exchangeRate = exchangeRate,
                 periodReturns = periodReturns,
+                benchmarkReturns = benchmarkReturns,
                 selectedPeriod = selectedPeriod,
                 isLoadingPeriodReturns = isLoadingPeriodReturns,
                 onPeriodSelected = onPeriodSelected,

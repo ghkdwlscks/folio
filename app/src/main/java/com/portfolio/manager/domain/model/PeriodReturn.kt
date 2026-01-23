@@ -12,3 +12,8 @@ data class PeriodReturn(
     val period: TimePeriod,
     val returnPercent: Double
 )
+
+data class BenchmarkReturns(
+    val sp500: Double?,
+    val kospi: Double?
+)

@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
+import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.PeriodReturn
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.TimePeriod
@@ -661,5 +662,154 @@ class DashboardViewModelTest {
         assertThat(state.portfolioStats.bestDay).isWithin(0.1).of(10.0)
         // Worst day: -10% (from 110 to 99)
         assertThat(state.portfolioStats.worstDay).isWithin(0.1).of(-10.0)
+    }
+
+    @Test
+    fun `selectPeriod - fetches benchmark returns in parallel`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_MONTH, 5.0))
+        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("^GSPC", TimePeriod.ONE_MONTH, 3.0))
+        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_MONTH, 2.0))
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_MONTH]?.sp500).isWithin(0.01).of(3.0)
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_MONTH]?.kospi).isWithin(0.01).of(2.0)
+    }
+
+    @Test
+    fun `selectPeriod - benchmark fetch failure - returns null for failed benchmark`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_YEAR) } returns
+            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_YEAR, 10.0))
+        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_YEAR) } returns
+            Result.failure(Exception("Network error"))
+        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_YEAR) } returns
+            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_YEAR, 5.0))
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_YEAR)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_YEAR]?.sp500).isNull()
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_YEAR]?.kospi).isWithin(0.01).of(5.0)
+    }
+
+    @Test
+    fun `selectPeriod - both benchmarks fail - returns null for both`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_YEAR) } returns
+            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_YEAR, 10.0))
+        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_YEAR) } returns
+            Result.failure(Exception("Network error"))
+        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_YEAR) } returns
+            Result.failure(Exception("Network error"))
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_YEAR)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_YEAR]?.sp500).isNull()
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_YEAR]?.kospi).isNull()
+    }
+
+    @Test
+    fun `selectPeriod - currency toggle KRW - adjusts S&P 500 for exchange rate`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        coEvery { stockRepository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("AAPL", TimePeriod.ONE_MONTH, 10.0))
+        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("^GSPC", TimePeriod.ONE_MONTH, 10.0))
+        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_MONTH, 5.0))
+        // Exchange rate went from 1300 to 1400 = ~7.7% increase
+        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
+            prices = listOf(1300.0, 1400.0),
+            timestamps = listOf(1000L, 2000L)
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.toggleCurrency() // Switch to KRW
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // S&P 500 return in KRW should include exchange rate appreciation
+        // ~10% + ~7.7% + (10% * 7.7% / 100) = ~18.5%
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_MONTH]?.sp500).isGreaterThan(17.0)
+        // KOSPI should remain unchanged (already in KRW)
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_MONTH]?.kospi).isWithin(0.01).of(5.0)
+    }
+
+    @Test
+    fun `selectPeriod - USD view - adjusts KOSPI for exchange rate`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "005930.KS", "Samsung", 10, 70000.0, "KRW")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "005930.KS", regularMarketPrice = 70000.0))
+        )
+        coEvery { stockRepository.getPeriodReturn("005930.KS", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("005930.KS", TimePeriod.ONE_MONTH, 10.0))
+        coEvery { stockRepository.getPeriodReturn("^GSPC", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("^GSPC", TimePeriod.ONE_MONTH, 5.0))
+        coEvery { stockRepository.getPeriodReturn("^KS11", TimePeriod.ONE_MONTH) } returns
+            Result.success(PeriodReturn("^KS11", TimePeriod.ONE_MONTH, 10.0))
+        // Exchange rate went from 1300 to 1400 (KRW weakened)
+        coEvery { stockRepository.getExchangeRateHistory(any(), any(), any()) } returns PriceHistoryData(
+            prices = listOf(1300.0, 1400.0),
+            timestamps = listOf(1000L, 2000L)
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        // Default is USD view, so KOSPI should be adjusted
+        viewModel.selectPeriod(TimePeriod.ONE_MONTH)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // S&P 500 should remain unchanged in USD view
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_MONTH]?.sp500).isWithin(0.01).of(5.0)
+        // KOSPI should be adjusted for exchange rate (inverse effect)
+        // KOSPI gained 10%, but KRW weakened ~7.7%, so USD value is less
+        assertThat(state.benchmarkReturns[TimePeriod.ONE_MONTH]?.kospi).isLessThan(10.0)
+    }
+
+    @Test
+    fun `empty holdings - benchmarkReturns not populated`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectPeriod(TimePeriod.ONE_YEAR)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.benchmarkReturns).isEmpty()
     }
 }

@@ -9,6 +9,7 @@ import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.service.PortfolioStatsCalculator
 import com.portfolio.manager.domain.service.PriceHistoryProcessor
 import com.portfolio.manager.domain.service.StockHolding
@@ -45,6 +46,7 @@ sealed interface DashboardUiState {
         val accounts: List<AccountWithCount> = emptyList(),
         val selectedAccountId: Long = 1L,
         val periodReturns: Map<TimePeriod, Double> = emptyMap(),
+        val benchmarkReturns: Map<TimePeriod, BenchmarkReturns> = emptyMap(),
         val selectedPeriod: TimePeriod = TimePeriod.ONE_YEAR,
         val isLoadingPeriodReturns: Boolean = false,
         val isRefreshing: Boolean = false,
@@ -82,6 +84,8 @@ class DashboardViewModel @Inject constructor(
         private const val PREF_DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
         private const val PREF_STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
         private const val PREF_PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
+        private const val BENCHMARK_SP500 = "^GSPC"
+        private const val BENCHMARK_KOSPI = "^KS11"
     }
 
     private var sparklinePeriod: TimePeriod
@@ -241,7 +245,7 @@ class DashboardViewModel @Inject constructor(
 
             val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
             if (totalPortfolioValue <= 0) {
-                updatePeriodReturn(period, 0.0)
+                updatePeriodReturn(period, 0.0, BenchmarkReturns(null, null))
                 return@launch
             }
 
@@ -250,11 +254,17 @@ class DashboardViewModel @Inject constructor(
             val startExchangeRate = exchangeRateData.prices.firstOrNull() ?: currentExchangeRate
             val endExchangeRate = exchangeRateData.prices.lastOrNull() ?: currentExchangeRate
 
-            // Fetch period returns for all unique symbols in parallel
+            // Fetch period returns for all unique symbols in parallel, plus benchmarks
             val symbols = stocks.map { it.symbol }.distinct()
-            val periodReturns = symbols.map { symbol ->
+            val portfolioDeferred = symbols.map { symbol ->
                 async { stockRepository.getPeriodReturn(symbol, period) }
-            }.awaitAll()
+            }
+            val sp500Deferred = async { stockRepository.getPeriodReturn(BENCHMARK_SP500, period) }
+            val kospiDeferred = async { stockRepository.getPeriodReturn(BENCHMARK_KOSPI, period) }
+
+            val periodReturns = portfolioDeferred.awaitAll()
+            val sp500Result = sp500Deferred.await()
+            val kospiResult = kospiDeferred.await()
 
             // Create a map of symbol to return percent
             val returnsBySymbol = periodReturns
@@ -274,17 +284,37 @@ class DashboardViewModel @Inject constructor(
                 weight * adjustedReturn
             }
 
-            updatePeriodReturn(period, weightedReturn)
+            // Build benchmark returns with currency adjustment
+            val sp500Return = sp500Result.getOrNull()?.returnPercent?.let { rawReturn ->
+                if (showInKrw) {
+                    PriceHistoryProcessor.adjustReturnForExchangeRate(
+                        rawReturn, "USD", showInKrw, startExchangeRate, endExchangeRate
+                    )
+                } else rawReturn
+            }
+            val kospiReturn = kospiResult.getOrNull()?.returnPercent?.let { rawReturn ->
+                if (!showInKrw) {
+                    PriceHistoryProcessor.adjustReturnForExchangeRate(
+                        rawReturn, "KRW", showInKrw, startExchangeRate, endExchangeRate
+                    )
+                } else rawReturn
+            }
+
+            val benchmarks = BenchmarkReturns(sp500 = sp500Return, kospi = kospiReturn)
+            updatePeriodReturn(period, weightedReturn, benchmarks)
         }
     }
 
-    private fun updatePeriodReturn(period: TimePeriod, returnPercent: Double) {
+    private fun updatePeriodReturn(period: TimePeriod, returnPercent: Double, benchmarks: BenchmarkReturns) {
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             val updatedReturns = currentState.periodReturns.toMutableMap()
             updatedReturns[period] = returnPercent
+            val updatedBenchmarks = currentState.benchmarkReturns.toMutableMap()
+            updatedBenchmarks[period] = benchmarks
             _uiState.value = currentState.copy(
                 periodReturns = updatedReturns,
+                benchmarkReturns = updatedBenchmarks,
                 isLoadingPeriodReturns = false
             )
         }
