@@ -353,10 +353,17 @@ private fun DashboardContent(
             )
         }
 
-        if (stocks.size >= 2) {
+        if (stocks.isNotEmpty()) {
             item {
+                val totalValueForDisplay = if (showInKrw) {
+                    stocks.sumOf { it.totalValueInKrw(exchangeRate) }
+                } else {
+                    totalPortfolioValue
+                }
                 AllocationPieChart(
-                    items = createAllocationItems(stocks, totalPortfolioValue, exchangeRate)
+                    items = createAllocationItems(stocks, totalPortfolioValue, exchangeRate),
+                    totalValue = totalValueForDisplay,
+                    showInKrw = showInKrw
                 )
             }
         }
