@@ -5,7 +5,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -39,8 +36,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -122,7 +117,6 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
-    val accountTabScrollState = rememberScrollState()
     val listState = rememberLazyListState()
 
     // Track scroll direction for FAB visibility
@@ -172,10 +166,9 @@ fun DashboardScreen(
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            AccountTabSelectorWrapper(
+            AccountDropdownWrapper(
                 viewModel = viewModel,
-                scrollState = accountTabScrollState,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             DashboardStateContent(
                 viewModel = viewModel,
@@ -424,9 +417,8 @@ private data class AccountTabState(
 )
 
 @Composable
-private fun AccountTabSelectorWrapper(
+private fun AccountDropdownWrapper(
     viewModel: DashboardViewModel,
-    scrollState: ScrollState,
     modifier: Modifier = Modifier
 ) {
     val initialState = AccountTabState(emptyList(), ALL_ACCOUNTS_ID)
@@ -450,11 +442,10 @@ private fun AccountTabSelectorWrapper(
     }.collectAsState(initial = initialState)
 
     if (tabState.accounts.isNotEmpty()) {
-        AccountTabSelector(
+        AccountDropdown(
             accounts = tabState.accounts,
             selectedAccountId = tabState.selectedAccountId,
             onAccountSelected = { viewModel.selectAccount(it) },
-            scrollState = scrollState,
             modifier = modifier
         )
     }
@@ -510,57 +501,75 @@ private fun DashboardTopBar(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountTabSelector(
+private fun AccountDropdown(
     accounts: List<AccountWithCount>,
     selectedAccountId: Long,
     onAccountSelected: (Long) -> Unit,
-    scrollState: ScrollState,
     modifier: Modifier = Modifier
 ) {
+    var expanded by remember { mutableStateOf(false) }
     val totalHoldings = accounts.sumOf { it.holdingsCount }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(scrollState),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        FilterChip(
-            selected = selectedAccountId == ALL_ACCOUNTS_ID,
-            onClick = { onAccountSelected(ALL_ACCOUNTS_ID) },
-            label = { Text("All ($totalHoldings)") },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ),
-            border = FilterChipDefaults.filterChipBorder(
-                enabled = true,
-                selected = selectedAccountId == ALL_ACCOUNTS_ID,
-                borderColor = MaterialTheme.colorScheme.outline,
-                selectedBorderColor = MaterialTheme.colorScheme.primary,
-                selectedBorderWidth = 1.dp
+    val selectedLabel = if (selectedAccountId == ALL_ACCOUNTS_ID) {
+        "All ($totalHoldings)"
+    } else {
+        accounts.find { it.account.id == selectedAccountId }?.let {
+            "${it.account.name} (${it.holdingsCount})"
+        } ?: "All ($totalHoldings)"
+    }
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .clickable { expanded = true }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = selectedLabel,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground
             )
-        )
-        accounts.forEach { accountWithCount ->
-            val isSelected = selectedAccountId == accountWithCount.account.id
-            FilterChip(
-                selected = isSelected,
-                onClick = { onAccountSelected(accountWithCount.account.id) },
-                label = { Text("${accountWithCount.account.name} (${accountWithCount.holdingsCount})") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = isSelected,
-                    borderColor = MaterialTheme.colorScheme.outline,
-                    selectedBorderColor = MaterialTheme.colorScheme.primary,
-                    selectedBorderWidth = 1.dp
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = "Select account",
+                tint = MaterialTheme.colorScheme.onBackground
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = "All ($totalHoldings)",
+                        fontWeight = if (selectedAccountId == ALL_ACCOUNTS_ID) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                onClick = {
+                    onAccountSelected(ALL_ACCOUNTS_ID)
+                    expanded = false
+                }
+            )
+            accounts.forEach { accountWithCount ->
+                val isSelected = selectedAccountId == accountWithCount.account.id
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "${accountWithCount.account.name} (${accountWithCount.holdingsCount})",
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    onClick = {
+                        onAccountSelected(accountWithCount.account.id)
+                        expanded = false
+                    }
                 )
-            )
+            }
         }
     }
 }
