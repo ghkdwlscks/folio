@@ -89,12 +89,10 @@ class FIRECalculatorViewModel @Inject constructor(
                 val symbols = holdings.map { it.symbol }.distinct()
                 val quotesResult = stockRepository.getQuotes(symbols)
 
-                if (quotesResult.isFailure) {
+                val quotes = quotesResult.getOrElse {
                     _uiState.value = FIRECalculatorUiState.Error("Failed to fetch stock prices")
                     return@launch
                 }
-
-                val quotes = quotesResult.getOrThrow()
                 val pricesBySymbol = quotes.associateBy { it.symbol }
 
                 // Calculate total portfolio value in USD
@@ -102,7 +100,11 @@ class FIRECalculatorViewModel @Inject constructor(
                     val quote = pricesBySymbol[holding.symbol]
                     val currentPrice = quote?.regularMarketPrice ?: holding.averagePrice
                     val value = holding.quantity * currentPrice
-                    if (holding.currency == "KRW") value / currentExchangeRate else value
+                    if (holding.currency == "KRW" && currentExchangeRate > 0) {
+                        value / currentExchangeRate
+                    } else {
+                        value
+                    }
                 }
 
                 updateState(totalValueUsd)
@@ -116,7 +118,7 @@ class FIRECalculatorViewModel @Inject constructor(
         if (showInKrw) usdValue * currentExchangeRate else usdValue
 
     private fun convertToUsd(displayValue: Double, wasInKrw: Boolean): Double =
-        if (wasInKrw) displayValue / currentExchangeRate else displayValue
+        if (wasInKrw && currentExchangeRate > 0) displayValue / currentExchangeRate else displayValue
 
     private fun updateState(totalPortfolioValueUsd: Double) {
         val displayValue = convertToDisplayCurrency(totalPortfolioValueUsd)
@@ -158,12 +160,14 @@ class FIRECalculatorViewModel @Inject constructor(
         showInKrw = !showInKrw
 
         // Convert target monthly spending to new currency
-        targetMonthlySpending = if (wasInKrw) {
+        targetMonthlySpending = if (wasInKrw && currentExchangeRate > 0) {
             // Was KRW, now USD: divide by exchange rate
             targetMonthlySpending / currentExchangeRate
-        } else {
+        } else if (!wasInKrw) {
             // Was USD, now KRW: multiply by exchange rate
             targetMonthlySpending * currentExchangeRate
+        } else {
+            targetMonthlySpending
         }
 
         recalculate()

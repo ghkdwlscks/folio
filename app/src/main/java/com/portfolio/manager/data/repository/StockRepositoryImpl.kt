@@ -13,6 +13,8 @@ import com.portfolio.manager.domain.repository.StockRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.portfolio.manager.util.JsonSerializer
 import kotlinx.serialization.encodeToString
 import java.time.LocalDate
@@ -25,9 +27,10 @@ class StockRepositoryImpl(
 
     private val json = JsonSerializer.instance
 
-    // Exchange rate cache
-    private var cachedExchangeRate: Double? = null
-    private var cacheTimestamp: Long = 0
+    // Exchange rate cache with thread-safe access
+    private val exchangeRateMutex = Mutex()
+    @Volatile private var cachedExchangeRate: Double? = null
+    @Volatile private var cacheTimestamp: Long = 0
     private val cacheValidityMs = 60 * 60 * 1000L // 1 hour
 
     /**
@@ -53,9 +56,10 @@ class StockRepositoryImpl(
      * Filters out any null prices while keeping timestamps aligned.
      */
     private fun parsePriceData(rawCloses: List<Double?>, rawTimestamps: List<Long>): PriceHistoryData {
-        val paired = rawTimestamps.zip(rawCloses).filter { it.second != null }
+        val paired = rawTimestamps.zip(rawCloses)
+            .mapNotNull { (timestamp, price) -> price?.let { timestamp to it } }
         val timestamps = paired.map { it.first }
-        val prices = paired.map { it.second!! }
+        val prices = paired.map { it.second }
         return PriceHistoryData(prices, timestamps)
     }
 
@@ -163,27 +167,43 @@ class StockRepositoryImpl(
     }
 
     override suspend fun getExchangeRate(from: String, to: String): Result<Double> {
-        // Check cache validity
+        // Check cache validity (read without lock for performance)
         val now = System.currentTimeMillis()
         val cached = cachedExchangeRate
-        if (cached != null && (now - cacheTimestamp) < cacheValidityMs) {
+        if (cached != null && cached > 0 && (now - cacheTimestamp) < cacheValidityMs) {
             return Result.success(cached)
         }
 
-        return try {
-            val symbol = "$from$to=X"
-            val response = api.getChart(symbol)
-            val rate = response.chart.result?.firstOrNull()?.meta?.regularMarketPrice
-                ?: return Result.failure(Exception("No exchange rate data"))
+        // Use mutex to prevent concurrent API calls
+        return exchangeRateMutex.withLock {
+            // Double-check cache after acquiring lock
+            val cachedAfterLock = cachedExchangeRate
+            val nowAfterLock = System.currentTimeMillis()
+            if (cachedAfterLock != null && cachedAfterLock > 0 && (nowAfterLock - cacheTimestamp) < cacheValidityMs) {
+                return@withLock Result.success(cachedAfterLock)
+            }
 
-            // Update cache
-            cachedExchangeRate = rate
-            cacheTimestamp = now
+            try {
+                val symbol = "$from$to=X"
+                val response = api.getChart(symbol)
+                val rate = response.chart.result?.firstOrNull()?.meta?.regularMarketPrice
+                    ?: return@withLock Result.failure(Exception("No exchange rate data"))
 
-            Result.success(rate)
-        } catch (e: Exception) {
-            // Return cached value if available, even if expired
-            cached?.let { Result.success(it) } ?: Result.failure(e)
+                // Validate rate is positive
+                if (rate <= 0) {
+                    return@withLock cachedAfterLock?.let { Result.success(it) }
+                        ?: Result.failure(Exception("Invalid exchange rate"))
+                }
+
+                // Update cache
+                cachedExchangeRate = rate
+                cacheTimestamp = nowAfterLock
+
+                Result.success(rate)
+            } catch (e: Exception) {
+                // Return cached value if available, even if expired
+                cachedAfterLock?.let { Result.success(it) } ?: Result.failure(e)
+            }
         }
     }
 
