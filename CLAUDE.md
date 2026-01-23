@@ -12,23 +12,25 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Input Validation**: Quantity (1-1,000,000) and price (0.0001-1,000,000,000) bounds enforced
 
 ### Dashboard
-- **Portfolio Summary**: Total value, gain/loss with percentage, invested amount
-- **Portfolio Sparkline**: Weighted portfolio performance chart with proper aspect ratio
+- **Portfolio Summary**: Total value, gain/loss with percentage, invested amount, day change
+- **Portfolio Sparkline**: Weighted portfolio performance chart with logarithmic scaling and proper aspect ratio
 - **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (period-specific)
 - **Period Returns**: Selectable time periods (1W, 1M, 6M, 1Y) showing weighted portfolio returns (default: 1Y)
-- **Allocation Pie Chart**: Donut chart showing stock distribution with top 5 + "Others" legend
-- **Currency Toggle**: View totals in USD or KRW with animated sliding indicator
+- **Allocation Pie Chart**: Donut chart showing stock distribution with top 5 + "Others" legend, color bars, auto-sizing text
+- **Currency Toggle**: View totals in USD or KRW with animated sliding indicator (compact custom layout)
 - **Holdings List**: Stock cards sorted by weight (largest positions first)
 - **Stock Sparklines**: Each card shows price history chart with configurable period
 - **Weight Display**: Each stock shows its percentage of total portfolio
-- **Account Filter**: View all accounts aggregated or filter by specific account with scroll position preserved
+- **Account Filter**: Dropdown menu to view all accounts aggregated or filter by specific account
+- **Multi-Account Details**: Expandable stock cards showing per-account holdings breakdown
 - **Delete Confirmation**: Dialog confirms before deleting any holding
 - **Refresh Indicator**: Loading spinner in refresh button during price updates
 - **Persisted Settings**: Period selections and currency preferences saved across app restarts
+- **Portfolio Caching**: Fast cold start with cached All Accounts view
 
 ### FIRE Calculator
 - **Portfolio Value Display**: Shows total portfolio value with currency toggle (USD/KRW)
-- **Settings Configuration**: Adjustable annual return rate and annual inflation rate inputs
+- **Settings Configuration**: Adjustable annual return rate and annual inflation rate sliders
 - **Real Return Calculation**: Displays real return (annual return - inflation)
 - **Sustainable Spending**: Shows monthly and annual sustainable spending based on real return
 - **FIRE Target Tracking**: Target monthly spending input with required portfolio calculation
@@ -36,8 +38,9 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Persisted Settings**: Annual return, inflation, and target spending saved across restarts
 
 ### Stock Data
-- **Real-time Prices**: Fetched from Yahoo Finance API
+- **Real-time Prices**: Fetched from Yahoo Finance API (parallel async requests)
 - **Multi-market Support**: US stocks (AAPL) and Korean stocks (005930.KS)
+- **Korean Stock Auto-Detection**: 6-digit codes auto-append .KS suffix
 - **Day Change**: Shows daily price change and percentage
 - **Name Resolution**: Uses longName → shortName → symbol fallback
 - **Dynamic Exchange Rate**: Live USD/KRW rate from Yahoo Finance API (1-hour cache, fallback to AppConstants)
@@ -46,31 +49,34 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Forward-fill Logic**: Missing dates use last known price; excludes dates before first data point
 
 ### UI/UX
-- **Material 3 Design**: Modern Android design language with dynamic colors
+- **Material 3 Design**: Modern Android design language with dynamic colors (Android 12+)
 - **Navigation Drawer**: Menu button in top bar for feature navigation
-- **Pull to Refresh**: Manual price refresh with loading indicator
+- **Pull to Refresh**: Manual price refresh with hidden center indicator
 - **Swipe Actions**: Edit and delete holdings
 - **Account Reordering**: Up/down buttons to reorder account priority
 - **Skeleton Loading**: Shimmer animation placeholders during data loading
 - **Card Elevation**: Subtle shadows for visual depth hierarchy
-- **Press Animations**: Scale effect on card tap for tactile feedback
+- **Press Animations**: Scale effect (0.98x) on card tap for tactile feedback
 - **List Animations**: Smooth item placement animations
 - **FAB Scroll Behavior**: Floating action button hides on scroll down, shows on scroll up
 - **Crossfade Transitions**: Smooth transitions between loading and content states
 - **Animated Period Returns**: Slide and fade transitions when switching periods
+- **Heatmap Intensity**: Stock card colors based on gain/loss percentage
 - **Error Handling**: Snackbar notifications for operation failures
 
 ## Tech Stack
 
-- **Language**: Kotlin
+- **Language**: Kotlin 1.9.25
+- **Target SDK**: 35 (Android 15)
 - **Min SDK**: 26 (Android 8.0)
-- **UI**: Jetpack Compose + Material 3
+- **UI**: Jetpack Compose (Compiler 1.5.15, BOM 2024.12.01) + Material 3
 - **Architecture**: MVVM + Clean Architecture
-- **DI**: Hilt
-- **Database**: Room
-- **Networking**: Retrofit + OkHttp + Kotlin Serialization
+- **DI**: Hilt 2.51.1 (with KSP)
+- **Database**: Room 2.6.1 (version 6, with 5 migrations)
+- **Networking**: Retrofit 2.9.0 + OkHttp 4.12.0 + Kotlin Serialization 1.6.0
+- **Navigation**: Navigation Compose 2.8.5
 - **Async**: Coroutines + Flow
-- **Build**: Gradle Kotlin DSL
+- **Build**: Gradle Kotlin DSL, Java 17
 
 ## Architecture
 
@@ -80,31 +86,34 @@ app/src/main/java/com/portfolio/manager/
 │   ├── local/              # Room DB, DAOs, Entities
 │   │   ├── AppDatabase.kt
 │   │   ├── AccountDao.kt, AccountEntity.kt
-│   │   ├── HoldingDao.kt, HoldingEntity.kt, AccountHoldingCount
+│   │   ├── HoldingDao.kt, HoldingEntity.kt
 │   │   └── PriceHistoryDao.kt, PriceHistoryEntity.kt
 │   ├── remote/             # Yahoo Finance API
 │   │   ├── YahooFinanceApi.kt
-│   │   └── dto/            # Response DTOs
+│   │   └── dto/            # YahooChartResponse, YahooQuoteResponse
 │   └── repository/         # Repository implementations
+│       ├── AccountRepositoryImpl.kt
+│       ├── HoldingsRepositoryImpl.kt
+│       └── StockRepositoryImpl.kt
 ├── domain/
-│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod, PortfolioStats, FIRECalculation
+│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod, PortfolioStats, FIRECalculation, FIRETargetCalculation
 │   ├── service/            # PortfolioStatsCalculator, PriceHistoryProcessor
 │   └── repository/         # Repository interfaces
 ├── presentation/
 │   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen, FIRECalculatorScreen
-│   ├── component/          # PortfolioSummary, StockCard, Sparkline, AllocationPieChart, Skeleton
+│   ├── component/          # PortfolioSummary, StockCard, Sparkline, AllocationPieChart, CurrencyToggle, Skeleton, ErrorContent
 │   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AccountsViewModel, FIRECalculatorViewModel
 │   ├── navigation/         # NavGraph
 │   ├── theme/              # Color, Theme
-│   └── util/               # CurrencyFormatter, CurrencyConverter, TrendIndicator
+│   └── util/               # CurrencyFormatter, CurrencyConverter, TrendIndicator, PresentationConstants
 ├── di/                     # Hilt modules (Database, Network, Repository)
-└── util/                   # AppConstants, StockExtensions
+└── util/                   # AppConstants, StockExtensions, JsonSerializer
 ```
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary with sparkline and statistics, period selector (1W-1Y), allocation pie chart, holdings list with individual sparklines, account filter
-2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation
+1. **Dashboard**: Portfolio summary with sparkline and statistics, period selector (1W-1Y), allocation pie chart, holdings list with individual sparklines, account dropdown filter, expandable multi-account details
+2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation, account chips (add mode), symbol lock (edit mode)
 3. **Accounts**: Manage accounts with add, edit, delete, reorder (up/down buttons), and error snackbar
 4. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking
 
@@ -180,14 +189,16 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 
 ```
 app/src/test/java/com/portfolio/manager/
-├── data/repository/          # Repository tests
+├── data/
+│   ├── remote/               # YahooFinanceApiTest
+│   └── repository/           # Repository tests
 ├── domain/
-│   ├── model/                # Model tests
+│   ├── model/                # Model tests (Stock, PortfolioStats, FIRECalculation)
 │   └── service/              # Service tests (PortfolioStatsCalculator, PriceHistoryProcessor)
 ├── presentation/
-│   ├── viewmodel/            # ViewModel tests
-│   └── util/                 # Utility tests
-└── util/                     # Extension tests
+│   ├── viewmodel/            # ViewModel tests (all 4 viewmodels)
+│   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, TrendIndicator)
+└── util/                     # Extension tests (StockExtensions, AppConstants)
 ```
 
 ### Test Tools
@@ -195,6 +206,7 @@ app/src/test/java/com/portfolio/manager/
 - **MockK**: Mocking library
 - **Truth**: Assertions
 - **Coroutines Test**: `runTest`, `UnconfinedTestDispatcher`
+- **OkHttp MockWebServer**: API testing
 - **Kover**: Coverage verification (100% required)
 
 ### Test Naming
@@ -213,11 +225,17 @@ Use backticks: `` `subject - scenario - expected result` ``
 - Repository implementations
 - ViewModels
 - Utility functions
+- Remote API interface
 
 **Excluded (Kover config):**
-- Hilt/Dagger generated classes
+- Hilt/Dagger generated classes (`*_Factory`, `*_HiltModules*`, `*Hilt_*`, `*_Impl`, `*_MembersInjector`)
 - BuildConfig
-- DI modules
+- DI modules (`*.di.*`)
+- UI components (`*.presentation.screen.*`, `*.presentation.component.*`)
+- Theme (`*.presentation.theme.*`)
+- Navigation (`*.presentation.navigation.*`)
+- MainActivity (`*.MainActivity*`)
+- Room/Local data (`*.data.local.*`)
 
 ## Claude Instructions
 
