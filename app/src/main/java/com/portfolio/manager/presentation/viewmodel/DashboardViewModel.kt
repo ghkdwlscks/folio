@@ -18,9 +18,13 @@ import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.presentation.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
+import com.portfolio.manager.util.AppConstants.BENCHMARK_KOSPI
+import com.portfolio.manager.util.AppConstants.BENCHMARK_SP500
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
 import com.portfolio.manager.util.enum
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,27 +83,13 @@ class DashboardViewModel @Inject constructor(
     private var holdingsJob: Job? = null
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
-    private var allAccountsCurrencyKrw by sharedPreferences.boolean(PREF_DASHBOARD_SHOW_IN_KRW, false)
+    private var allAccountsCurrencyKrw by sharedPreferences.boolean(PreferenceKeys.DASHBOARD_SHOW_IN_KRW, false)
 
-    companion object {
-        private const val PREF_DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
-        private const val PREF_DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
-        private const val PREF_DASHBOARD_CACHED_ACCOUNTS_JSON = "dashboard_cached_accounts_json"
-        private const val PREF_DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
-        private const val PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
-        private const val PREF_DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
-        private const val PREF_STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
-        private const val PREF_PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
-        private const val PREF_SORT_OPTION = "sort_option"
-        private const val BENCHMARK_SP500 = "^GSPC"
-        private const val BENCHMARK_KOSPI = "^KS11"
-    }
+    private var sparklinePeriod by sharedPreferences.enum(PreferenceKeys.STOCK_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR)
 
-    private var sparklinePeriod by sharedPreferences.enum(PREF_STOCK_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR)
+    private var summaryPeriod by sharedPreferences.enum(PreferenceKeys.PORTFOLIO_SUMMARY_PERIOD, TimePeriod.ONE_YEAR)
 
-    private var summaryPeriod by sharedPreferences.enum(PREF_PORTFOLIO_SUMMARY_PERIOD, TimePeriod.ONE_YEAR)
-
-    private var currentSortOption by sharedPreferences.enum(PREF_SORT_OPTION, SortOption.WEIGHT)
+    private var currentSortOption by sharedPreferences.enum(PreferenceKeys.SORT_OPTION, SortOption.WEIGHT)
 
     private val json = JsonSerializer.instance
 
@@ -109,19 +99,19 @@ class DashboardViewModel @Inject constructor(
 
     private fun loadCachedStateOrDefault(): DashboardUiState {
         return try {
-            val cachedStocksJson = sharedPreferences.getString(PREF_DASHBOARD_CACHED_STOCKS_JSON, null)
+            val cachedStocksJson = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, null)
                 ?: return DashboardUiState.Loading
-            val cachedRate = sharedPreferences.getFloat(PREF_DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
+            val cachedRate = sharedPreferences.getFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
             val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
             currentExchangeRate = cachedRate
 
-            val accounts = sharedPreferences.getString(PREF_DASHBOARD_CACHED_ACCOUNTS_JSON, null)?.let {
+            val accounts = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, null)?.let {
                 try { json.decodeFromString<List<AccountWithCount>>(it) } catch (_: Exception) { emptyList() }
             } ?: emptyList()
-            val portfolioSparkline = sharedPreferences.getString(PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, null)?.let {
+            val portfolioSparkline = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, null)?.let {
                 try { json.decodeFromString<List<Double>>(it) } catch (_: Exception) { emptyList() }
             } ?: emptyList()
-            val portfolioStats = sharedPreferences.getString(PREF_DASHBOARD_CACHED_PORTFOLIO_STATS, null)?.let {
+            val portfolioStats = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, null)?.let {
                 try { json.decodeFromString<PortfolioStats>(it) } catch (_: Exception) { PortfolioStats() }
             } ?: PortfolioStats()
 
@@ -160,9 +150,9 @@ class DashboardViewModel @Inject constructor(
             val stocksJson = json.encodeToString(stocks)
             val accountsJson = json.encodeToString(accounts)
             sharedPreferences.edit()
-                .putString(PREF_DASHBOARD_CACHED_STOCKS_JSON, stocksJson)
-                .putString(PREF_DASHBOARD_CACHED_ACCOUNTS_JSON, accountsJson)
-                .putFloat(PREF_DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
+                .putString(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, stocksJson)
+                .putString(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, accountsJson)
+                .putFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
                 .apply()
         } catch (_: Exception) {
             // Ignore cache errors
@@ -455,8 +445,8 @@ class DashboardViewModel @Inject constructor(
             if (selectedAccountId == ALL_ACCOUNTS_ID && sparkline.isNotEmpty()) {
                 try {
                     sharedPreferences.edit()
-                        .putString(PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, json.encodeToString(sparkline))
-                        .putString(PREF_DASHBOARD_CACHED_PORTFOLIO_STATS, json.encodeToString(stats))
+                        .putString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, json.encodeToString(sparkline))
+                        .putString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, json.encodeToString(stats))
                         .apply()
                 } catch (_: Exception) {
                     // Ignore cache errors
@@ -747,11 +737,7 @@ class DashboardViewModel @Inject constructor(
             } else {
                 stock.totalValueInUsd(currentExchangeRate)
             }
-            val price = if (state.showInKrw) {
-                if (stock.currency == "KRW") stock.currentPrice else stock.currentPrice * currentExchangeRate
-            } else {
-                if (stock.currency == "USD") stock.currentPrice else stock.currentPrice / currentExchangeRate
-            }
+            val price = CurrencyConverter.convert(stock.currentPrice, stock.currency, state.showInKrw, currentExchangeRate)
             RebalanceItemData(
                 holdingId = holding.id,
                 symbol = stock.symbol,

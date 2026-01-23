@@ -7,7 +7,9 @@ import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.presentation.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
 import com.portfolio.manager.util.double
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -45,20 +47,15 @@ class FIRECalculatorViewModel @Inject constructor(
 
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
-    private var annualReturn by sharedPreferences.double(PREF_ANNUAL_RETURN, DEFAULT_ANNUAL_RETURN)
+    private var annualReturn by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_RETURN, DEFAULT_ANNUAL_RETURN)
 
-    private var annualInflation by sharedPreferences.double(PREF_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION)
+    private var annualInflation by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION)
 
-    private var targetMonthlySpending by sharedPreferences.double(PREF_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
+    private var targetMonthlySpending by sharedPreferences.double(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
 
-    private var showInKrw by sharedPreferences.boolean(PREF_FIRE_SHOW_IN_KRW, false)
+    private var showInKrw by sharedPreferences.boolean(PreferenceKeys.FIRE_SHOW_IN_KRW, false)
 
     companion object {
-        private const val PREF_ANNUAL_RETURN = "fire_annual_return"
-        private const val PREF_ANNUAL_INFLATION = "fire_annual_inflation"
-        private const val PREF_TARGET_MONTHLY_SPENDING = "fire_target_monthly_spending"
-        private const val PREF_FIRE_SHOW_IN_KRW = "fire_show_in_krw"
-
         const val DEFAULT_ANNUAL_RETURN = 7.0
         const val DEFAULT_ANNUAL_INFLATION = 2.0
         const val DEFAULT_TARGET_MONTHLY_SPENDING = 3000.0
@@ -100,11 +97,7 @@ class FIRECalculatorViewModel @Inject constructor(
                     val quote = pricesBySymbol[holding.symbol]
                     val currentPrice = quote?.regularMarketPrice ?: holding.averagePrice
                     val value = holding.quantity * currentPrice
-                    if (holding.currency == "KRW" && currentExchangeRate > 0) {
-                        value / currentExchangeRate
-                    } else {
-                        value
-                    }
+                    CurrencyConverter.toUsd(value, holding.currency, currentExchangeRate)
                 }
 
                 updateState(totalValueUsd)

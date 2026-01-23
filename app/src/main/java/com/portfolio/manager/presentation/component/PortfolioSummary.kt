@@ -45,6 +45,7 @@ import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRedPastel
+import com.portfolio.manager.presentation.util.CurrencyConverter
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
 
@@ -78,29 +79,16 @@ fun PortfolioSummary(
     val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
 
     // Calculate day change (sum of each stock's day change * quantity, converted to display currency)
-    val dayChangeUsd = stocks.sumOf { stock ->
-        val change = stock.dayChange ?: 0.0
-        val valueChange = change * stock.quantity
-        if (stock.currency == "KRW") valueChange / exchangeRate else valueChange
+    val dayChange = stocks.sumOf { stock ->
+        val valueChange = (stock.dayChange ?: 0.0) * stock.quantity
+        CurrencyConverter.convert(valueChange, stock.currency, showInKrw, exchangeRate)
     }
-    val dayChangeKrw = stocks.sumOf { stock ->
-        val change = stock.dayChange ?: 0.0
-        val valueChange = change * stock.quantity
-        if (stock.currency == "KRW") valueChange else valueChange * exchangeRate
-    }
-    val dayChange = if (showInKrw) dayChangeKrw else dayChangeUsd
     val dayChangePercent = if (totalValue > 0) (dayChange / (totalValue - dayChange)) * 100 else 0.0
 
     // Calculate annual dividend income
-    val annualDividendUsd = stocks.sumOf { stock ->
-        val income = stock.annualDividendIncome
-        if (stock.currency == "KRW") income / exchangeRate else income
+    val annualDividend = stocks.sumOf { stock ->
+        CurrencyConverter.convert(stock.annualDividendIncome, stock.currency, showInKrw, exchangeRate)
     }
-    val annualDividendKrw = stocks.sumOf { stock ->
-        val income = stock.annualDividendIncome
-        if (stock.currency == "KRW") income else income * exchangeRate
-    }
-    val annualDividend = if (showInKrw) annualDividendKrw else annualDividendUsd
     val portfolioDividendYield = if (totalValue > 0) (annualDividend / totalValue) * 100 else 0.0
 
     val trend = createTrendIndicator(totalGainLoss, usePastel = true)
