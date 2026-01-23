@@ -147,42 +147,38 @@ class AddHoldingViewModel @Inject constructor(
             return false
         }
 
-        if (state.isEditMode) {
-            // Check for duplicate symbol in edit mode (if symbol changed)
-            val existingHolding = repository.getHoldingByAccountAndSymbol(targetAccountId, symbolValue)
-            if (existingHolding != null && existingHolding.id != holdingId) {
-                _uiState.update { it.copy(errorMessage = "This stock already exists in the account") }
-                return false
-            }
+        // Check for duplicate symbol (exclude current holding in edit mode)
+        if (!validateSymbolUniqueness(targetAccountId, symbolValue, if (state.isEditMode) holdingId else null)) {
+            return false
+        }
 
-            // Update existing holding
-            val holding = HoldingEntity(
-                id = holdingId!!,
-                accountId = targetAccountId,
-                symbol = symbolValue,
-                name = symbolValue,
-                quantity = quantityValue,
-                averagePrice = priceValue,
-                currency = state.currency
-            )
+        val holding = HoldingEntity(
+            id = if (state.isEditMode) holdingId!! else 0,
+            accountId = targetAccountId,
+            symbol = symbolValue,
+            name = symbolValue,
+            quantity = quantityValue,
+            averagePrice = priceValue,
+            currency = state.currency
+        )
+
+        if (state.isEditMode) {
             repository.updateHolding(holding)
         } else {
-            // Check for duplicate symbol in the same account
-            val existingHolding = repository.getHoldingByAccountAndSymbol(targetAccountId, symbolValue)
-            if (existingHolding != null) {
-                _uiState.update { it.copy(errorMessage = "This stock already exists in the account") }
-                return false
-            }
-
-            val holding = HoldingEntity(
-                accountId = targetAccountId,
-                symbol = symbolValue,
-                name = symbolValue,
-                quantity = quantityValue,
-                averagePrice = priceValue,
-                currency = state.currency
-            )
             repository.addHolding(holding)
+        }
+        return true
+    }
+
+    private suspend fun validateSymbolUniqueness(
+        accountId: Long,
+        symbol: String,
+        excludeHoldingId: Long?
+    ): Boolean {
+        val existingHolding = repository.getHoldingByAccountAndSymbol(accountId, symbol)
+        if (existingHolding != null && existingHolding.id != excludeHoldingId) {
+            _uiState.update { it.copy(errorMessage = "This stock already exists in the account") }
+            return false
         }
         return true
     }

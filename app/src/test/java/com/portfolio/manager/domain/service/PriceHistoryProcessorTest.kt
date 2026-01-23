@@ -327,4 +327,82 @@ class PriceHistoryProcessorTest {
         assertThat(holding.quantity).isEqualTo(100)
         assertThat(holding.currency).isEqualTo("USD")
     }
+
+    @Test
+    fun `calculateBenchmarkReturn - insufficient data - returns null`() {
+        val result = PriceHistoryProcessor.calculateBenchmarkReturn(
+            prices = listOf(100.0),
+            currency = "USD",
+            showInKrw = false,
+            startExchangeRate = 1400.0,
+            endExchangeRate = 1400.0
+        )
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `calculateBenchmarkReturn - empty list - returns null`() {
+        val result = PriceHistoryProcessor.calculateBenchmarkReturn(
+            prices = emptyList(),
+            currency = "USD",
+            showInKrw = false,
+            startExchangeRate = 1400.0,
+            endExchangeRate = 1400.0
+        )
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `calculateBenchmarkReturn - USD benchmark in USD - no adjustment`() {
+        val result = PriceHistoryProcessor.calculateBenchmarkReturn(
+            prices = listOf(100.0, 110.0),
+            currency = "USD",
+            showInKrw = false,
+            startExchangeRate = 1300.0,
+            endExchangeRate = 1400.0
+        )
+        // 10% return with no adjustment
+        assertThat(result).isWithin(0.001).of(10.0)
+    }
+
+    @Test
+    fun `calculateBenchmarkReturn - KRW benchmark in KRW - no adjustment`() {
+        val result = PriceHistoryProcessor.calculateBenchmarkReturn(
+            prices = listOf(2000.0, 2200.0),
+            currency = "KRW",
+            showInKrw = true,
+            startExchangeRate = 1300.0,
+            endExchangeRate = 1400.0
+        )
+        // 10% return with no adjustment
+        assertThat(result).isWithin(0.001).of(10.0)
+    }
+
+    @Test
+    fun `calculateBenchmarkReturn - USD benchmark in KRW - adjusts for exchange rate`() {
+        val result = PriceHistoryProcessor.calculateBenchmarkReturn(
+            prices = listOf(100.0, 110.0),
+            currency = "USD",
+            showInKrw = true,
+            startExchangeRate = 1300.0,
+            endExchangeRate = 1400.0
+        )
+        // Stock return 10%, exchange rate change ~7.69%, combined > 17%
+        assertThat(result).isNotNull()
+        assertThat(result!!).isGreaterThan(17.0)
+    }
+
+    @Test
+    fun `calculateBenchmarkReturn - KRW benchmark in USD - adjusts for inverse exchange rate`() {
+        val result = PriceHistoryProcessor.calculateBenchmarkReturn(
+            prices = listOf(2000.0, 2200.0),
+            currency = "KRW",
+            showInKrw = false,
+            startExchangeRate = 1300.0,
+            endExchangeRate = 1400.0
+        )
+        // Stock return 10%, but KRW weakened so USD return is less
+        assertThat(result).isNotNull()
+        assertThat(result!!).isLessThan(10.0)
+    }
 }

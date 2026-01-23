@@ -21,6 +21,8 @@ import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import com.portfolio.manager.util.boolean
+import com.portfolio.manager.util.enum
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -76,9 +78,7 @@ class DashboardViewModel @Inject constructor(
     private var holdingsJob: Job? = null
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
-    private var allAccountsCurrencyKrw: Boolean
-        get() = sharedPreferences.getBoolean(PREF_DASHBOARD_SHOW_IN_KRW, false)
-        set(value) = sharedPreferences.edit().putBoolean(PREF_DASHBOARD_SHOW_IN_KRW, value).apply()
+    private var allAccountsCurrencyKrw by sharedPreferences.boolean(PREF_DASHBOARD_SHOW_IN_KRW, false)
 
     companion object {
         private const val PREF_DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
@@ -93,26 +93,11 @@ class DashboardViewModel @Inject constructor(
         private const val BENCHMARK_KOSPI = "^KS11"
     }
 
-    private var sparklinePeriod: TimePeriod
-        get() {
-            val ordinal = sharedPreferences.getInt(PREF_STOCK_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR.ordinal)
-            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
-        }
-        set(value) = sharedPreferences.edit().putInt(PREF_STOCK_SPARKLINE_PERIOD, value.ordinal).apply()
+    private var sparklinePeriod by sharedPreferences.enum(PREF_STOCK_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR)
 
-    private var summaryPeriod: TimePeriod
-        get() {
-            val ordinal = sharedPreferences.getInt(PREF_PORTFOLIO_SUMMARY_PERIOD, TimePeriod.ONE_YEAR.ordinal)
-            return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
-        }
-        set(value) = sharedPreferences.edit().putInt(PREF_PORTFOLIO_SUMMARY_PERIOD, value.ordinal).apply()
+    private var summaryPeriod by sharedPreferences.enum(PREF_PORTFOLIO_SUMMARY_PERIOD, TimePeriod.ONE_YEAR)
 
-    private var currentSortOption: SortOption
-        get() {
-            val ordinal = sharedPreferences.getInt(PREF_SORT_OPTION, SortOption.WEIGHT.ordinal)
-            return SortOption.entries.getOrElse(ordinal) { SortOption.WEIGHT }
-        }
-        set(value) = sharedPreferences.edit().putInt(PREF_SORT_OPTION, value.ordinal).apply()
+    private var currentSortOption by sharedPreferences.enum(PREF_SORT_OPTION, SortOption.WEIGHT)
 
     private val json = JsonSerializer.instance
 
@@ -309,21 +294,15 @@ class DashboardViewModel @Inject constructor(
             val kospiHistory = kospiDeferred.await()[BENCHMARK_KOSPI]
 
             // Calculate benchmark returns from price history (same as sparkline)
-            val sp500Return = sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                val rawReturn = ((prices.last() - prices.first()) / prices.first()) * 100
-                if (showInKrw) {
-                    PriceHistoryProcessor.adjustReturnForExchangeRate(
-                        rawReturn, "USD", showInKrw, startExchangeRate, endExchangeRate
-                    )
-                } else rawReturn
+            val sp500Return = sp500History?.prices?.let { prices ->
+                PriceHistoryProcessor.calculateBenchmarkReturn(
+                    prices, "USD", showInKrw, startExchangeRate, endExchangeRate
+                )
             }
-            val kospiReturn = kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                val rawReturn = ((prices.last() - prices.first()) / prices.first()) * 100
-                if (!showInKrw) {
-                    PriceHistoryProcessor.adjustReturnForExchangeRate(
-                        rawReturn, "KRW", showInKrw, startExchangeRate, endExchangeRate
-                    )
-                } else rawReturn
+            val kospiReturn = kospiHistory?.prices?.let { prices ->
+                PriceHistoryProcessor.calculateBenchmarkReturn(
+                    prices, "KRW", showInKrw, startExchangeRate, endExchangeRate
+                )
             }
 
             val benchmarks = BenchmarkReturns(sp500 = sp500Return, kospi = kospiReturn)
@@ -412,17 +391,7 @@ class DashboardViewModel @Inject constructor(
                 val stats = PortfolioStatsCalculator.calculate(portfolioValues)
                 val normalizedPortfolio = PriceHistoryProcessor.normalizeValues(portfolioValues)
 
-                // Fetch benchmark sparklines and normalize to same starting point as portfolio (100)
-                val sp500History = stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range)[BENCHMARK_SP500]
-                val kospiHistory = stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range)[BENCHMARK_KOSPI]
-
-                val benchmarkSparklines = mutableMapOf<String, List<Double>>()
-                sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                    benchmarkSparklines[BENCHMARK_SP500] = PriceHistoryProcessor.normalizeValues(prices)
-                }
-                kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                    benchmarkSparklines[BENCHMARK_KOSPI] = PriceHistoryProcessor.normalizeValues(prices)
-                }
+                val benchmarkSparklines = fetchBenchmarkSparklines(period)
 
                 updatePortfolioSparkline(
                     sparkline = normalizedPortfolio,
@@ -431,15 +400,33 @@ class DashboardViewModel @Inject constructor(
                     benchmarkSparklines = benchmarkSparklines
                 )
 
-                // Calculate period return from same portfolio values data
-                val startValue = portfolioValues.first()
-                val endValue = portfolioValues.last()
-                val periodReturn = if (startValue > 0) ((endValue - startValue) / startValue) * 100 else 0.0
+                val periodReturn = calculatePeriodReturnPercent(portfolioValues)
                 updatePeriodReturn(period, periodReturn)
             } catch (e: Exception) {
                 updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
             }
         }
+    }
+
+    private suspend fun fetchBenchmarkSparklines(period: TimePeriod): Map<String, List<Double>> {
+        val sp500History = stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range)[BENCHMARK_SP500]
+        val kospiHistory = stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range)[BENCHMARK_KOSPI]
+
+        return buildMap {
+            sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                put(BENCHMARK_SP500, PriceHistoryProcessor.normalizeValues(prices))
+            }
+            kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                put(BENCHMARK_KOSPI, PriceHistoryProcessor.normalizeValues(prices))
+            }
+        }
+    }
+
+    private fun calculatePeriodReturnPercent(portfolioValues: List<Double>): Double {
+        if (portfolioValues.size < 2) return 0.0
+        val startValue = portfolioValues.first()
+        val endValue = portfolioValues.last()
+        return if (startValue > 0) ((endValue - startValue) / startValue) * 100 else 0.0
     }
 
     private fun updatePortfolioSparkline(

@@ -282,101 +282,14 @@ fun StockCard(
                 enter = expandVertically(),
                 exit = shrinkVertically()
             ) {
-                Column {
-                    Divider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-
-                    if (hasAccountDetails) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Per Account",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            stock.accountDetails.forEach { detail ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = detail.accountName,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = "${detail.quantity} @ ${CurrencyFormatter.format(detail.averagePrice, stock.currency)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    if (onEditAccountHolding != null) {
-                                        IconButton(
-                                            onClick = { onEditAccountHolding(detail.holdingId) },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Edit,
-                                                contentDescription = "Edit in ${detail.accountName}",
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                            )
-                                        }
-                                    }
-                                    if (onDeleteAccountHolding != null) {
-                                        IconButton(
-                                            onClick = { onDeleteAccountHolding(detail.holdingId) },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Delete,
-                                                contentDescription = "Delete from ${detail.accountName}",
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (onEdit != null || onDelete != null) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            if (onEdit != null) {
-                                IconButton(onClick = onEdit) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Edit,
-                                        contentDescription = "Edit",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            if (onDelete != null) {
-                                IconButton(onClick = onDelete) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Delete,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                StockCardExpandableContent(
+                    stock = stock,
+                    hasAccountDetails = hasAccountDetails,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    onEditAccountHolding = onEditAccountHolding,
+                    onDeleteAccountHolding = onDeleteAccountHolding
+                )
             }
             }
         }
@@ -397,5 +310,152 @@ fun StockCard(
             ),
             onDismiss = { showFullScreenChart = false }
         )
+    }
+}
+
+@Composable
+private fun StockCardExpandableContent(
+    stock: Stock,
+    hasAccountDetails: Boolean,
+    onEdit: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
+    onEditAccountHolding: ((Long) -> Unit)?,
+    onDeleteAccountHolding: ((Long) -> Unit)?
+) {
+    Column {
+        Divider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+
+        if (hasAccountDetails) {
+            AccountDetailsSection(
+                accountDetails = stock.accountDetails,
+                currency = stock.currency,
+                onEditAccountHolding = onEditAccountHolding,
+                onDeleteAccountHolding = onDeleteAccountHolding
+            )
+        }
+
+        if (onEdit != null || onDelete != null) {
+            ActionButtonsRow(
+                onEdit = onEdit,
+                onDelete = onDelete
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountDetailsSection(
+    accountDetails: List<com.portfolio.manager.domain.model.StockAccountDetail>,
+    currency: String,
+    onEditAccountHolding: ((Long) -> Unit)?,
+    onDeleteAccountHolding: ((Long) -> Unit)?
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Per Account",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        accountDetails.forEach { detail ->
+            AccountDetailRow(
+                detail = detail,
+                currency = currency,
+                onEdit = onEditAccountHolding?.let { { it(detail.holdingId) } },
+                onDelete = onDeleteAccountHolding?.let { { it(detail.holdingId) } }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountDetailRow(
+    detail: com.portfolio.manager.domain.model.StockAccountDetail,
+    currency: String,
+    onEdit: (() -> Unit)?,
+    onDelete: (() -> Unit)?
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = detail.accountName,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "${detail.quantity} @ ${CurrencyFormatter.format(detail.averagePrice, currency)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (onEdit != null) {
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit in ${detail.accountName}",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                )
+            }
+        }
+        if (onDelete != null) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete from ${detail.accountName}",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionButtonsRow(
+    onEdit: (() -> Unit)?,
+    onDelete: (() -> Unit)?
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.End
+    ) {
+        if (onEdit != null) {
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        if (onDelete != null) {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
     }
 }

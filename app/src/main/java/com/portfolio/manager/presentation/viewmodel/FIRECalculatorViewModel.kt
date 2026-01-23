@@ -8,6 +8,8 @@ import com.portfolio.manager.domain.model.FIRETargetCalculation
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import com.portfolio.manager.util.boolean
+import com.portfolio.manager.util.double
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,21 +45,13 @@ class FIRECalculatorViewModel @Inject constructor(
 
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
-    private var annualReturn: Double
-        get() = sharedPreferences.getFloat(PREF_ANNUAL_RETURN, DEFAULT_ANNUAL_RETURN.toFloat()).toDouble()
-        set(value) = sharedPreferences.edit().putFloat(PREF_ANNUAL_RETURN, value.toFloat()).apply()
+    private var annualReturn by sharedPreferences.double(PREF_ANNUAL_RETURN, DEFAULT_ANNUAL_RETURN)
 
-    private var annualInflation: Double
-        get() = sharedPreferences.getFloat(PREF_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION.toFloat()).toDouble()
-        set(value) = sharedPreferences.edit().putFloat(PREF_ANNUAL_INFLATION, value.toFloat()).apply()
+    private var annualInflation by sharedPreferences.double(PREF_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION)
 
-    private var targetMonthlySpending: Double
-        get() = sharedPreferences.getFloat(PREF_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING.toFloat()).toDouble()
-        set(value) = sharedPreferences.edit().putFloat(PREF_TARGET_MONTHLY_SPENDING, value.toFloat()).apply()
+    private var targetMonthlySpending by sharedPreferences.double(PREF_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
 
-    private var showInKrw: Boolean
-        get() = sharedPreferences.getBoolean(PREF_FIRE_SHOW_IN_KRW, false)
-        set(value) = sharedPreferences.edit().putBoolean(PREF_FIRE_SHOW_IN_KRW, value).apply()
+    private var showInKrw by sharedPreferences.boolean(PREF_FIRE_SHOW_IN_KRW, false)
 
     companion object {
         private const val PREF_ANNUAL_RETURN = "fire_annual_return"
@@ -118,12 +112,14 @@ class FIRECalculatorViewModel @Inject constructor(
         }
     }
 
+    private fun convertToDisplayCurrency(usdValue: Double): Double =
+        if (showInKrw) usdValue * currentExchangeRate else usdValue
+
+    private fun convertToUsd(displayValue: Double, wasInKrw: Boolean): Double =
+        if (wasInKrw) displayValue / currentExchangeRate else displayValue
+
     private fun updateState(totalPortfolioValueUsd: Double) {
-        val displayValue = if (showInKrw) {
-            totalPortfolioValueUsd * currentExchangeRate
-        } else {
-            totalPortfolioValueUsd
-        }
+        val displayValue = convertToDisplayCurrency(totalPortfolioValueUsd)
 
         val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
         val fireTargetCalculation = calculateFIRETarget(
@@ -180,17 +176,8 @@ class FIRECalculatorViewModel @Inject constructor(
     private fun recalculate() {
         val currentState = _uiState.value
         if (currentState is FIRECalculatorUiState.Success) {
-            val baseValueUsd = if (currentState.showInKrw) {
-                currentState.totalPortfolioValue / currentExchangeRate
-            } else {
-                currentState.totalPortfolioValue
-            }
-
-            val displayValue = if (showInKrw) {
-                baseValueUsd * currentExchangeRate
-            } else {
-                baseValueUsd
-            }
+            val baseValueUsd = convertToUsd(currentState.totalPortfolioValue, currentState.showInKrw)
+            val displayValue = convertToDisplayCurrency(baseValueUsd)
 
             val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
             val fireTargetCalculation = calculateFIRETarget(

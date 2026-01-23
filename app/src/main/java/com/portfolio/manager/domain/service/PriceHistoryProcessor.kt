@@ -168,4 +168,31 @@ object PriceHistoryProcessor {
             values
         }
     }
+
+    /**
+     * Calculates benchmark return from price history with optional exchange rate adjustment.
+     *
+     * @param prices List of historical prices
+     * @param currency Currency of the benchmark (e.g., "USD" for S&P 500, "KRW" for KOSPI)
+     * @param showInKrw Whether to display in KRW
+     * @param startExchangeRate Exchange rate at start of period
+     * @param endExchangeRate Exchange rate at end of period
+     * @return Return percentage, or null if insufficient data
+     */
+    fun calculateBenchmarkReturn(
+        prices: List<Double>,
+        currency: String,
+        showInKrw: Boolean,
+        startExchangeRate: Double,
+        endExchangeRate: Double
+    ): Double? {
+        if (prices.size < 2) return null
+        val rawReturn = ((prices.last() - prices.first()) / prices.first()) * 100
+        val needsAdjustment = (currency == "USD" && showInKrw) || (currency == "KRW" && !showInKrw)
+        return if (needsAdjustment) {
+            adjustReturnForExchangeRate(rawReturn, currency, showInKrw, startExchangeRate, endExchangeRate)
+        } else {
+            rawReturn
+        }
+    }
 }
