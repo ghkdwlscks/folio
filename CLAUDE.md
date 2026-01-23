@@ -14,18 +14,20 @@ A personal Android app for manually tracking your stock portfolio with real-time
 ### Dashboard
 - **Portfolio Summary**: Total value, gain/loss with percentage, invested amount, day change
 - **Portfolio Sparkline**: Weighted portfolio performance chart with logarithmic scaling and proper aspect ratio
+- **Full-Screen Chart**: Interactive chart dialog with benchmark overlays, period selector, and statistics
+- **Benchmark Comparison**: S&P 500 and KOSPI returns displayed alongside portfolio returns
 - **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (period-specific)
-- **Period Returns**: Selectable time periods (1W, 1M, 6M, 1Y) showing weighted portfolio returns (default: 1Y)
+- **Period Returns**: Selectable time periods (1W, 1M, 3M, 6M, 1Y) showing weighted portfolio returns (default: 1Y)
 - **Allocation Pie Chart**: Donut chart showing stock distribution with top 5 + "Others" legend, color bars, auto-sizing text
 - **Currency Toggle**: View totals in USD or KRW with animated sliding indicator (compact custom layout)
-- **Holdings List**: Stock cards sorted by weight (largest positions first)
+- **Holdings List**: Stock cards with customizable sorting (weight, name, symbol, gain/loss %, day change %)
 - **Stock Sparklines**: Each card shows price history chart with configurable period
 - **Weight Display**: Each stock shows its percentage of total portfolio
 - **Account Filter**: Dropdown menu to view all accounts aggregated or filter by specific account
 - **Multi-Account Details**: Expandable stock cards showing per-account holdings breakdown
 - **Delete Confirmation**: Dialog confirms before deleting any holding
 - **Refresh Indicator**: Loading spinner in refresh button during price updates
-- **Persisted Settings**: Period selections and currency preferences saved across app restarts
+- **Persisted Settings**: Period, currency, and sort preferences saved across app restarts
 - **Portfolio Caching**: Fast cold start with cached All Accounts view
 
 ### FIRE Calculator
@@ -96,12 +98,12 @@ app/src/main/java/com/portfolio/manager/
 │       ├── HoldingsRepositoryImpl.kt
 │       └── StockRepositoryImpl.kt
 ├── domain/
-│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, TimePeriod, PortfolioStats, FIRECalculation, FIRETargetCalculation
+│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, BenchmarkReturns, TimePeriod, SortOption, PortfolioStats, FIRECalculation, FIRETargetCalculation
 │   ├── service/            # PortfolioStatsCalculator, PriceHistoryProcessor
 │   └── repository/         # Repository interfaces
 ├── presentation/
 │   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen, FIRECalculatorScreen
-│   ├── component/          # PortfolioSummary, StockCard, Sparkline, AllocationPieChart, CurrencyToggle, Skeleton, ErrorContent
+│   ├── component/          # PortfolioSummary, StockCard, Sparkline, InteractiveChart, FullScreenChart, AllocationPieChart, CurrencyToggle, Skeleton, ErrorContent
 │   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AccountsViewModel, FIRECalculatorViewModel
 │   ├── navigation/         # NavGraph
 │   ├── theme/              # Color, Theme
@@ -112,7 +114,7 @@ app/src/main/java/com/portfolio/manager/
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary with sparkline and statistics, period selector (1W-1Y), allocation pie chart, holdings list with individual sparklines, account dropdown filter, expandable multi-account details
+1. **Dashboard**: Portfolio summary with sparkline and statistics, benchmark comparison (S&P 500, KOSPI), period selector (1W-1Y), full-screen interactive chart, allocation pie chart, sortable holdings list with individual sparklines, account dropdown filter, expandable multi-account details
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation, account chips (add mode), symbol lock (edit mode)
 3. **Accounts**: Manage accounts with add, edit, delete, reorder (up/down buttons), and error snackbar
 4. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking
