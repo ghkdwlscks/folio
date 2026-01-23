@@ -38,7 +38,7 @@ fun CurrencyToggle(
                 modifier = Modifier
                     .background(
                         color = Color.White.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(6.dp)
+                        shape = RoundedCornerShape(4.dp)
                     )
             )
             // USD option
@@ -47,7 +47,7 @@ fun CurrencyToggle(
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (!showInKrw) FontWeight.Bold else FontWeight.Normal,
                 color = if (!showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
             )
             // KRW option
             Text(
@@ -55,11 +55,11 @@ fun CurrencyToggle(
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (showInKrw) FontWeight.Bold else FontWeight.Normal,
                 color = if (showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
             )
         },
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(Color.White.copy(alpha = 0.15f))
             .clickable(onClick = onToggle)
     ) { measurables, constraints ->
