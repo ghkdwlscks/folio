@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +48,8 @@ data class FullScreenChartData(
     val dayChangePercent: Double?,
     val currency: String,
     val priceHistory: List<Double>,
-    val priceHistoryTimestamps: List<Long>
+    val priceHistoryTimestamps: List<Long>,
+    val benchmarkSparklines: Map<String, List<Double>> = emptyMap()
 )
 
 @Composable
@@ -148,11 +151,21 @@ fun FullScreenChartDialog(
                         .height(200.dp)
                 ) {
                     if (data.priceHistory.size >= 2 && data.priceHistoryTimestamps.size >= 2) {
+                        // Create colored overlay lines for benchmarks
+                        val overlays = data.benchmarkSparklines.mapNotNull { (symbol, prices) ->
+                            val color = when (symbol) {
+                                "^GSPC" -> Color(0xFF2196F3) // Blue for S&P 500
+                                "^KS11" -> Color(0xFFFF9800) // Orange for KOSPI
+                                else -> Color.Gray
+                            }
+                            if (prices.size >= 2) OverlayLine(prices, color.copy(alpha = 0.6f), symbol) else null
+                        }
                         InteractiveChart(
                             prices = data.priceHistory,
                             timestamps = data.priceHistoryTimestamps,
                             currency = data.currency,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            overlayLines = overlays
                         )
                     } else {
                         Box(
@@ -167,7 +180,41 @@ fun FullScreenChartDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                // Legend for benchmark lines
+                if (data.benchmarkSparklines.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Portfolio legend
+                        LegendItem(
+                            color = getTrendColor(
+                                (data.priceHistory.lastOrNull() ?: 0.0) - (data.priceHistory.firstOrNull() ?: 0.0)
+                            ),
+                            label = "Portfolio"
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        // S&P 500 legend
+                        if (data.benchmarkSparklines.containsKey("^GSPC")) {
+                            LegendItem(
+                                color = Color(0xFF2196F3),
+                                label = "S&P 500"
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                        }
+                        // KOSPI legend
+                        if (data.benchmarkSparklines.containsKey("^KS11")) {
+                            LegendItem(
+                                color = Color(0xFFFF9800),
+                                label = "KOSPI"
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Statistics
                 if (data.priceHistory.size >= 2) {
@@ -303,6 +350,28 @@ private fun StatItem(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = valueColor
+        )
+    }
+}
+
+@Composable
+private fun LegendItem(
+    color: Color,
+    label: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, RoundedCornerShape(2.dp))
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

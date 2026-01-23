@@ -252,6 +252,7 @@ private fun DashboardStateContent(
                     onCurrencyToggle = { viewModel.toggleCurrency() },
                     portfolioSparkline = state.portfolioSparkline,
                     portfolioSparklineTimestamps = state.portfolioSparklineTimestamps,
+                    benchmarkSparklines = state.benchmarkSparklines,
                     portfolioStats = state.portfolioStats,
                     sortOption = state.sortOption,
                     onSortOptionSelected = { viewModel.selectSortOption(it) },
@@ -290,6 +291,7 @@ private fun DashboardContent(
     onCurrencyToggle: () -> Unit,
     portfolioSparkline: List<Double>,
     portfolioSparklineTimestamps: List<Long>,
+    benchmarkSparklines: Map<String, List<Double>>,
     portfolioStats: PortfolioStats,
     sortOption: SortOption,
     onSortOptionSelected: (SortOption) -> Unit,
@@ -329,6 +331,7 @@ private fun DashboardContent(
                 onCurrencyToggle = onCurrencyToggle,
                 portfolioSparkline = portfolioSparkline,
                 portfolioSparklineTimestamps = portfolioSparklineTimestamps,
+                benchmarkSparklines = benchmarkSparklines,
                 portfolioStats = portfolioStats,
                 modifier = Modifier.padding(vertical = 8.dp)
             )

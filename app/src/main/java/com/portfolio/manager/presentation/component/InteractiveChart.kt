@@ -52,13 +52,20 @@ private data class ChartData(
 
 private data class ChartPoint(val x: Float, val y: Float, val index: Int)
 
+data class OverlayLine(
+    val prices: List<Double>,
+    val color: Color,
+    val label: String = ""
+)
+
 @Composable
 fun InteractiveChart(
     prices: List<Double>,
     timestamps: List<Long>,
     currency: String,
     modifier: Modifier = Modifier,
-    lineColor: Color? = null
+    lineColor: Color? = null,
+    overlayLines: List<OverlayLine> = emptyList()
 ) {
     if (prices.size < 2) return
 
@@ -171,6 +178,44 @@ fun InteractiveChart(
                     join = StrokeJoin.Round
                 )
             )
+
+            // Draw overlay lines (benchmarks) using the same scale as main chart
+            overlayLines.forEach { overlay ->
+                if (overlay.prices.size >= 2) {
+                    val overlayLogPrices = overlay.prices.filter { it > 0 }.map { ln(it) }
+                    if (overlayLogPrices.size >= 2) {
+                        val overlayPath = Path()
+                        val overlayStepX = width / (overlayLogPrices.size - 1)
+
+                        overlayLogPrices.forEachIndexed { index, logPrice ->
+                            // Use main chart's scale (minLog, logRange) for alignment
+                            val normalizedY = if (chartData.logRange > 0) {
+                                (logPrice - chartData.minLog) / chartData.logRange
+                            } else {
+                                0.5
+                            }
+                            val x = index * overlayStepX
+                            val y = verticalPadding + drawHeight - (normalizedY * drawHeight).toFloat()
+
+                            if (index == 0) {
+                                overlayPath.moveTo(x, y)
+                            } else {
+                                overlayPath.lineTo(x, y)
+                            }
+                        }
+
+                        drawPath(
+                            path = overlayPath,
+                            color = overlay.color,
+                            style = Stroke(
+                                width = 1.5f,
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+                }
+            }
 
             // Draw crosshair and highlight point if selected
             selectedIndex?.let { index ->

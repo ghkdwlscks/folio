@@ -56,6 +56,7 @@ sealed interface DashboardUiState {
         val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR,
         val portfolioSparkline: List<Double> = emptyList(),
         val portfolioSparklineTimestamps: List<Long> = emptyList(),
+        val benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
         val portfolioStats: PortfolioStats = PortfolioStats(),
         val sortOption: SortOption = SortOption.WEIGHT
     ) : DashboardUiState
@@ -387,10 +388,25 @@ class DashboardViewModel @Inject constructor(
                 val timestamps = validDates.mapNotNull { PriceHistoryProcessor.dateToTimestamp(it) }
 
                 val stats = PortfolioStatsCalculator.calculate(portfolioValues)
+                val normalizedPortfolio = PriceHistoryProcessor.normalizeValues(portfolioValues)
+
+                // Fetch benchmark sparklines and normalize to same starting point as portfolio (100)
+                val sp500History = stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range)[BENCHMARK_SP500]
+                val kospiHistory = stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range)[BENCHMARK_KOSPI]
+
+                val benchmarkSparklines = mutableMapOf<String, List<Double>>()
+                sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                    benchmarkSparklines[BENCHMARK_SP500] = PriceHistoryProcessor.normalizeValues(prices)
+                }
+                kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                    benchmarkSparklines[BENCHMARK_KOSPI] = PriceHistoryProcessor.normalizeValues(prices)
+                }
+
                 updatePortfolioSparkline(
-                    sparkline = PriceHistoryProcessor.normalizeValues(portfolioValues),
+                    sparkline = normalizedPortfolio,
                     timestamps = timestamps,
-                    stats = stats
+                    stats = stats,
+                    benchmarkSparklines = benchmarkSparklines
                 )
 
                 // Calculate period return from same portfolio values data
@@ -407,13 +423,15 @@ class DashboardViewModel @Inject constructor(
     private fun updatePortfolioSparkline(
         sparkline: List<Double>,
         timestamps: List<Long> = emptyList(),
-        stats: PortfolioStats = PortfolioStats()
+        stats: PortfolioStats = PortfolioStats(),
+        benchmarkSparklines: Map<String, List<Double>> = emptyMap()
     ) {
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(
                 portfolioSparkline = sparkline,
                 portfolioSparklineTimestamps = timestamps,
+                benchmarkSparklines = benchmarkSparklines,
                 portfolioStats = stats
             )
             // Cache portfolio sparkline for fast cold start (only for All Accounts with valid data)

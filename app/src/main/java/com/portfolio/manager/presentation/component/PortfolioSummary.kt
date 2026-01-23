@@ -61,6 +61,7 @@ fun PortfolioSummary(
     onCurrencyToggle: () -> Unit = {},
     portfolioSparkline: List<Double> = emptyList(),
     portfolioSparklineTimestamps: List<Long> = emptyList(),
+    benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
     portfolioStats: PortfolioStats = PortfolioStats(),
     modifier: Modifier = Modifier
 ) {
@@ -271,6 +272,13 @@ fun PortfolioSummary(
             portfolioSparkline
         }
 
+        // Scale benchmark sparklines to match portfolio's starting value
+        // Both start at 100 normalized, so scale by portfolioStart / 100
+        val portfolioStart = actualPriceHistory.firstOrNull() ?: 100.0
+        val scaledBenchmarks = benchmarkSparklines.mapValues { (_, prices) ->
+            prices.map { it * portfolioStart / 100.0 }
+        }
+
         FullScreenChartDialog(
             data = FullScreenChartData(
                 symbol = selectedPeriod.label,
@@ -280,7 +288,8 @@ fun PortfolioSummary(
                 dayChangePercent = dayChangePercent.takeIf { dayChange != 0.0 },
                 currency = if (showInKrw) "KRW" else "USD",
                 priceHistory = actualPriceHistory,
-                priceHistoryTimestamps = portfolioSparklineTimestamps
+                priceHistoryTimestamps = portfolioSparklineTimestamps,
+                benchmarkSparklines = scaledBenchmarks
             ),
             onDismiss = { showFullScreenChart = false },
             currentPeriod = selectedPeriod
