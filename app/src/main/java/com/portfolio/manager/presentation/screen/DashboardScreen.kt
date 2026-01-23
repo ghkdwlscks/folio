@@ -335,7 +335,8 @@ private fun DashboardContent(
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
-        modifier = modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize(),
+        indicator = {}  // Hide center indicator - refresh state shown in top bar only
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
