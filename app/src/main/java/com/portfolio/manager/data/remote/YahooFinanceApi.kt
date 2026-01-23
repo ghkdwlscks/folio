@@ -11,7 +11,8 @@ interface YahooFinanceApi {
     suspend fun getChart(
         @Path("symbol") symbol: String,
         @Query("interval") interval: String = "1d",
-        @Query("range") range: String = "1d"
+        @Query("range") range: String = "1d",
+        @Query("events") events: String? = null
     ): YahooChartResponse
 
     companion object {

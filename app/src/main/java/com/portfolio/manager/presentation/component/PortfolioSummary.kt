@@ -91,6 +91,18 @@ fun PortfolioSummary(
     val dayChange = if (showInKrw) dayChangeKrw else dayChangeUsd
     val dayChangePercent = if (totalValue > 0) (dayChange / (totalValue - dayChange)) * 100 else 0.0
 
+    // Calculate annual dividend income
+    val annualDividendUsd = stocks.sumOf { stock ->
+        val income = stock.annualDividendIncome
+        if (stock.currency == "KRW") income / exchangeRate else income
+    }
+    val annualDividendKrw = stocks.sumOf { stock ->
+        val income = stock.annualDividendIncome
+        if (stock.currency == "KRW") income else income * exchangeRate
+    }
+    val annualDividend = if (showInKrw) annualDividendKrw else annualDividendUsd
+    val portfolioDividendYield = if (totalValue > 0) (annualDividend / totalValue) * 100 else 0.0
+
     val trend = createTrendIndicator(totalGainLoss, usePastel = true)
     val dayTrend = createTrendIndicator(dayChange, usePastel = true)
 
@@ -251,6 +263,16 @@ fun PortfolioSummary(
                 )
             }
 
+            // Dividend info row (only show if there's dividend income)
+            if (annualDividend > 0) {
+                Spacer(modifier = Modifier.height(10.dp))
+                DividendInfoRow(
+                    annualDividend = annualDividend,
+                    dividendYield = portfolioDividendYield,
+                    showInKrw = showInKrw
+                )
+            }
+
             // Portfolio Statistics Row
             if (portfolioStats != PortfolioStats()) {
                 Spacer(modifier = Modifier.height(14.dp))
@@ -294,6 +316,43 @@ fun PortfolioSummary(
             onDismiss = { showFullScreenChart = false },
             currentPeriod = selectedPeriod
         )
+    }
+}
+
+@Composable
+private fun DividendInfoRow(
+    annualDividend: Double,
+    dividendYield: Double,
+    showInKrw: Boolean
+) {
+    val formatValue = CurrencyFormatter.createFormatter(showInKrw)
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color.White.copy(alpha = 0.15f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Annual Dividends",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+            Text(
+                text = formatValue(annualDividend),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = GainGreenPastel
+            )
+            Text(
+                text = "(${CurrencyFormatter.formatPercent(dividendYield)}%)",
+                style = MaterialTheme.typography.labelSmall,
+                color = GainGreenPastel.copy(alpha = 0.8f)
+            )
+        }
     }
 }
 

@@ -560,7 +560,9 @@ class DashboardViewModel @Inject constructor(
                             dayChangePercent = quote?.regularMarketChangePercent,
                             currency = holding.currency,
                             priceHistory = priceHistoryMap[holding.symbol]?.prices ?: emptyList(),
-                            priceHistoryTimestamps = priceHistoryMap[holding.symbol]?.timestamps ?: emptyList()
+                            priceHistoryTimestamps = priceHistoryMap[holding.symbol]?.timestamps ?: emptyList(),
+                            annualDividend = quote?.trailingAnnualDividendRate,
+                            dividendYield = quote?.trailingAnnualDividendYield?.let { it * 100 }
                         )
                     }
                 }
@@ -637,7 +639,9 @@ class DashboardViewModel @Inject constructor(
                     currency = holdingGroup.first().currency,
                     accountDetails = accountDetails,
                     priceHistory = existingStock?.priceHistory ?: emptyList(),
-                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList()
+                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),
+                    annualDividend = existingStock?.annualDividend,
+                    dividendYield = existingStock?.dividendYield
                 )
             }
         } else {
@@ -655,7 +659,9 @@ class DashboardViewModel @Inject constructor(
                     dayChangePercent = existingStock?.dayChangePercent,
                     currency = holding.currency,
                     priceHistory = existingStock?.priceHistory ?: emptyList(),
-                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList()
+                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),
+                    annualDividend = existingStock?.annualDividend,
+                    dividendYield = existingStock?.dividendYield
                 )
             }
         }.let { sortStocks(it, currentSortOption) }
@@ -702,7 +708,9 @@ class DashboardViewModel @Inject constructor(
                 currency = firstHolding.currency,
                 accountDetails = accountDetails,
                 priceHistory = priceHistoryMap[symbol]?.prices ?: emptyList(),
-                priceHistoryTimestamps = priceHistoryMap[symbol]?.timestamps ?: emptyList()
+                priceHistoryTimestamps = priceHistoryMap[symbol]?.timestamps ?: emptyList(),
+                annualDividend = quote?.trailingAnnualDividendRate,
+                dividendYield = quote?.trailingAnnualDividendYield?.let { it * 100 }
             )
         }
     }

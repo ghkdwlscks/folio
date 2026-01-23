@@ -17,7 +17,19 @@ data class ChartData(
 data class ChartResult(
     val meta: ChartMeta,
     val timestamp: List<Long>? = null,
-    val indicators: ChartIndicators? = null
+    val indicators: ChartIndicators? = null,
+    val events: ChartEvents? = null
+)
+
+@Serializable
+data class ChartEvents(
+    val dividends: Map<String, DividendEvent>? = null
+)
+
+@Serializable
+data class DividendEvent(
+    val amount: Double,
+    val date: Long
 )
 
 @Serializable
@@ -27,7 +39,9 @@ data class ChartMeta(
     val longName: String? = null,
     val regularMarketPrice: Double = 0.0,
     val chartPreviousClose: Double = 0.0,
-    val currency: String = "USD"
+    val currency: String = "USD",
+    val trailingAnnualDividendRate: Double? = null,
+    val trailingAnnualDividendYield: Double? = null
 )
 
 @Serializable

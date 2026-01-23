@@ -42,7 +42,7 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getQuotes - success - returns quotes`() = runTest {
-        coEvery { api.getChart("AAPL", any(), any()) } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(
@@ -70,14 +70,14 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getQuotes - multiple symbols - fetches each`() = runTest {
-        coEvery { api.getChart("AAPL", any(), any()) } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 178.50, chartPreviousClose = 175.00))
                 )
             )
         )
-        coEvery { api.getChart("GOOGL", any(), any()) } returns YahooChartResponse(
+        coEvery { api.getChart("GOOGL", any(), any(), any()) } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(meta = ChartMeta(symbol = "GOOGL", regularMarketPrice = 141.80, chartPreviousClose = 140.00))
@@ -93,14 +93,14 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getQuotes - one fails - returns successful ones`() = runTest {
-        coEvery { api.getChart("AAPL", any(), any()) } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
             chart = ChartData(
                 result = listOf(
                     ChartResult(meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 178.50, chartPreviousClose = 175.00))
                 )
             )
         )
-        coEvery { api.getChart("INVALID", any(), any()) } throws IOException("Not found")
+        coEvery { api.getChart("INVALID", any(), any(), any()) } throws IOException("Not found")
 
         val result = repository.getQuotes(listOf("AAPL", "INVALID"))
 
@@ -119,7 +119,7 @@ class StockRepositoryImplTest {
 
     @Test
     fun `getQuotes - null result - skips symbol`() = runTest {
-        coEvery { api.getChart("AAPL", any(), any()) } returns YahooChartResponse(
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
             chart = ChartData(result = null)
         )
 

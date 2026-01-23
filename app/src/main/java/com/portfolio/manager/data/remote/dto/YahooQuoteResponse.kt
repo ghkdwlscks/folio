@@ -22,5 +22,7 @@ data class QuoteResult(
     val regularMarketPreviousClose: Double = 0.0,
     val regularMarketChange: Double = 0.0,
     val regularMarketChangePercent: Double = 0.0,
-    val currency: String = "USD"
+    val currency: String = "USD",
+    val trailingAnnualDividendRate: Double? = null,
+    val trailingAnnualDividendYield: Double? = null
 )

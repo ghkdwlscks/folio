@@ -63,31 +63,48 @@ class StockRepositoryImpl(
 
         return try {
             coroutineScope {
-                val results = symbols.map { symbol ->
+                // Fetch chart data with dividend events (1y range to get annual dividends)
+                val chartResults = symbols.map { symbol ->
                     async {
                         try {
-                            val response = api.getChart(symbol)
-                            val meta = response.chart.result?.firstOrNull()?.meta
-                            if (meta != null) {
-                                QuoteResult(
-                                    symbol = meta.symbol,
-                                    shortName = meta.shortName,
-                                    longName = meta.longName,
-                                    regularMarketPrice = meta.regularMarketPrice,
-                                    regularMarketPreviousClose = meta.chartPreviousClose,
-                                    regularMarketChange = meta.regularMarketPrice - meta.chartPreviousClose,
-                                    regularMarketChangePercent = if (meta.chartPreviousClose > 0) {
-                                        ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
-                                    } else 0.0,
-                                    currency = meta.currency
-                                )
-                            } else null
+                            val response = api.getChart(symbol, range = "1y", events = "div")
+                            val result = response.chart.result?.firstOrNull()
+                            if (result != null) symbol to result else null
                         } catch (e: Exception) {
                             null
                         }
                     }
                 }
-                val quotes = results.awaitAll().filterNotNull()
+
+                val chartData = chartResults.awaitAll().filterNotNull().toMap()
+
+                val quotes = symbols.mapNotNull { symbol ->
+                    val result = chartData[symbol]
+                    val meta = result?.meta
+                    if (meta != null) {
+                        // Calculate trailing annual dividend from dividend events
+                        val dividendEvents = result.events?.dividends?.values ?: emptyList()
+                        val trailingAnnualDividend = dividendEvents.sumOf { it.amount }
+                        val dividendYield = if (meta.regularMarketPrice > 0 && trailingAnnualDividend > 0) {
+                            trailingAnnualDividend / meta.regularMarketPrice
+                        } else null
+
+                        QuoteResult(
+                            symbol = meta.symbol,
+                            shortName = meta.shortName,
+                            longName = meta.longName,
+                            regularMarketPrice = meta.regularMarketPrice,
+                            regularMarketPreviousClose = meta.chartPreviousClose,
+                            regularMarketChange = meta.regularMarketPrice - meta.chartPreviousClose,
+                            regularMarketChangePercent = if (meta.chartPreviousClose > 0) {
+                                ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
+                            } else 0.0,
+                            currency = meta.currency,
+                            trailingAnnualDividendRate = trailingAnnualDividend.takeIf { it > 0 },
+                            trailingAnnualDividendYield = dividendYield
+                        )
+                    } else null
+                }
                 Result.success(quotes)
             }
         } catch (e: Exception) {

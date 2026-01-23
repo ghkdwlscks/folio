@@ -25,7 +25,9 @@ data class Stock(
     val currency: String = "USD",
     val accountDetails: List<StockAccountDetail> = emptyList(),
     val priceHistory: List<Double> = emptyList(),
-    val priceHistoryTimestamps: List<Long> = emptyList()
+    val priceHistoryTimestamps: List<Long> = emptyList(),
+    val annualDividend: Double? = null,
+    val dividendYield: Double? = null
 ) {
 
     val totalValue: Double
@@ -39,6 +41,9 @@ data class Stock(
 
     val gainLossPercent: Double
         get() = if (averagePrice == 0.0) 0.0 else ((currentPrice - averagePrice) / averagePrice) * 100
+
+    val annualDividendIncome: Double
+        get() = (annualDividend ?: 0.0) * quantity
 
     fun totalValueInUsd(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
         if (currency == "KRW") totalValue / krwToUsdRate else totalValue

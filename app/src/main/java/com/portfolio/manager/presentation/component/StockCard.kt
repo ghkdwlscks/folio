@@ -140,70 +140,76 @@ fun StockCard(
                     )
                 }
 
-                // Stock info
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                // Stock info with sparkline background
+                Box(
+                    modifier = Modifier.weight(1f)
                 ) {
-                    // Row 1: Stock name (can wrap to 2 lines if needed)
-                    Text(
-                        text = stock.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2
-                    )
-                    // Row 2 & 3: shares info + weight on left, sparkline on right
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Sparkline as background (if available)
+                    if (stock.priceHistory.size >= 2) {
+                        Sparkline(
+                            prices = stock.priceHistory,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .matchParentSize()
+                                .graphicsLayer { alpha = 0.5f },
+                            onClick = { showFullScreenChart = true }
+                        )
+                    }
+                    // Text content on top
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        // Row 1: Stock name (can wrap to 2 lines if needed)
+                        Text(
+                            text = stock.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2
+                        )
+                        // Row 2: shares info + dividend
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "${stock.quantity} shares @ ${CurrencyFormatter.format(stock.averagePrice, stock.currency)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            // Row 3: weight badge + expand icon
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                if (weightPercent != null) {
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = MaterialTheme.colorScheme.secondaryContainer
-                                    ) {
-                                        Text(
-                                            text = "${CurrencyFormatter.formatPercent(weightPercent)}%",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                if (canExpand) {
-                                    Icon(
-                                        imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                                        contentDescription = if (expanded) "Collapse" else "Expand",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                            if (stock.dividendYield != null && stock.dividendYield > 0) {
+                                Text(
+                                    text = "•",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Div ${CurrencyFormatter.formatPercent(stock.dividendYield)}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
                             }
                         }
-                        // Sparkline chart (if available)
-                        if (stock.priceHistory.size >= 2) {
-                            Sparkline(
-                                prices = stock.priceHistory,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(32.dp),
-                                onClick = { showFullScreenChart = true }
-                            )
+                        // Row 3: weight + expand icon
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (weightPercent != null) {
+                                Text(
+                                    text = "Weight ${CurrencyFormatter.formatPercent(weightPercent)}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            if (canExpand) {
+                                Icon(
+                                    imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = if (expanded) "Collapse" else "Expand",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -222,7 +228,7 @@ fun StockCard(
                     Text(
                         text = "Total ${CurrencyFormatter.format(stock.totalValue, stock.currency)}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     // Day change row (compact: icon + percentage only)
                     if (stock.dayChange != null && stock.dayChange != 0.0 && stock.dayChangePercent != null) {
@@ -234,7 +240,7 @@ fun StockCard(
                             Text(
                                 text = "Today",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Icon(
                                 imageVector = dayTrend.icon,
