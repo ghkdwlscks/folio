@@ -233,8 +233,8 @@ fun PortfolioSummary(
                 Sparkline(
                     prices = portfolioSparkline,
                     modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .height(70.dp),
+                        .fillMaxWidth(0.9f)
+                        .height(100.dp),
                     lineColor = Color.White.copy(alpha = 0.9f),
                     onClick = { showFullScreenChart = true }
                 )
@@ -249,19 +249,6 @@ fun PortfolioSummary(
                 isLoading = isLoadingPeriodReturns,
                 onPeriodSelected = onPeriodSelected
             )
-
-            // Benchmark comparison row
-            val currentBenchmarks = benchmarkReturns[selectedPeriod]
-            val portfolioReturn = periodReturns[selectedPeriod]
-            if (portfolioReturn != null && currentBenchmarks != null &&
-                (currentBenchmarks.sp500 != null || currentBenchmarks.kospi != null)) {
-                Spacer(modifier = Modifier.height(10.dp))
-                BenchmarkComparisonRow(
-                    portfolioReturn = portfolioReturn,
-                    sp500Return = currentBenchmarks.sp500,
-                    kospiReturn = currentBenchmarks.kospi
-                )
-            }
 
             // Dividend info row (only show if there's dividend income)
             if (annualDividend > 0) {
@@ -411,77 +398,6 @@ private fun CompactStatItem(
             fontSize = 9.sp,
             color = Color.White.copy(alpha = 0.5f)
         )
-    }
-}
-
-@Composable
-private fun BenchmarkComparisonRow(
-    portfolioReturn: Double,
-    sp500Return: Double?,
-    kospiReturn: Double?
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        BenchmarkItem(
-            label = "Portfolio",
-            returnPercent = portfolioReturn,
-            isPortfolio = true
-        )
-        sp500Return?.let {
-            BenchmarkItem(
-                label = "S&P 500",
-                returnPercent = it,
-                difference = portfolioReturn - it
-            )
-        }
-        kospiReturn?.let {
-            BenchmarkItem(
-                label = "KOSPI",
-                returnPercent = it,
-                difference = portfolioReturn - it
-            )
-        }
-    }
-}
-
-@Composable
-private fun BenchmarkItem(
-    label: String,
-    returnPercent: Double,
-    isPortfolio: Boolean = false,
-    difference: Double? = null
-) {
-    val returnColor = when {
-        returnPercent >= 0 -> GainGreenPastel
-        else -> LossRedPastel
-    }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 9.sp,
-            color = Color.White.copy(alpha = 0.6f)
-        )
-        Text(
-            text = "${if (returnPercent >= 0) "+" else ""}${CurrencyFormatter.formatPercent(returnPercent)}%",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (isPortfolio) FontWeight.Bold else FontWeight.SemiBold,
-            color = returnColor
-        )
-        if (difference != null) {
-            val diffColor = if (difference >= 0) GainGreenPastel else LossRedPastel
-            Text(
-                text = "(${if (difference >= 0) "+" else ""}${CurrencyFormatter.formatPercent(difference)}%)",
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 8.sp,
-                color = diffColor.copy(alpha = 0.7f)
-            )
-        }
     }
 }
 

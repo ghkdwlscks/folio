@@ -267,6 +267,13 @@ fun InteractiveChart(
 
                 val formattedPrice = CurrencyFormatter.format(price, currency)
 
+                // Get benchmark values at this index
+                val benchmarkValues = overlayLines.mapNotNull { overlay ->
+                    if (index < overlay.prices.size) {
+                        Triple(overlay.label, overlay.prices[index], overlay.color)
+                    } else null
+                }
+
                 // Position tooltip - avoid edges
                 val tooltipX = when {
                     tapX < chartWidth * 0.3f -> tapX + tooltipOffsetPx
@@ -290,6 +297,20 @@ fun InteractiveChart(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    // Show benchmark values
+                    benchmarkValues.forEach { (label, value, benchColor) ->
+                        val displayLabel = when (label) {
+                            "^GSPC" -> "S&P"
+                            "^KS11" -> "KOSPI"
+                            else -> label
+                        }
+                        Text(
+                            text = "$displayLabel: ${CurrencyFormatter.format(value, currency)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            color = benchColor
+                        )
+                    }
                     Text(
                         text = date,
                         style = MaterialTheme.typography.labelSmall,
