@@ -507,6 +507,11 @@ class DashboardViewModel @Inject constructor(
         val currentSuccess = currentState as? DashboardUiState.Success
         val isRefreshing = currentSuccess?.isRefreshing == true
 
+        // Update accounts immediately if we have cached state (for cold start)
+        if (currentSuccess != null && currentSuccess.accounts.isEmpty() && accounts.isNotEmpty()) {
+            _uiState.value = currentSuccess.copy(accounts = accounts)
+        }
+
         val symbols = holdings.map { it.symbol }.distinct()
         val existingStocks = currentSuccess?.stocks ?: emptyList()
         val existingSymbols = existingStocks.map { it.symbol }.toSet()
@@ -714,4 +719,71 @@ class DashboardViewModel @Inject constructor(
             )
         }
     }
+
+    fun canShowRebalance(): Boolean {
+        val state = _uiState.value as? DashboardUiState.Success ?: return false
+        return selectedAccountId != ALL_ACCOUNTS_ID && state.stocks.isNotEmpty()
+    }
+
+    suspend fun getRebalanceItems(): List<RebalanceItemData> {
+        val state = _uiState.value as? DashboardUiState.Success ?: return emptyList()
+        if (selectedAccountId == ALL_ACCOUNTS_ID) return emptyList()
+
+        val holdings = holdingsRepository.getHoldingsByAccountSync(selectedAccountId)
+        val stocks = state.stocks
+
+        return stocks.mapNotNull { stock ->
+            val holding = holdings.find { it.symbol == stock.symbol } ?: return@mapNotNull null
+            val value = if (state.showInKrw) {
+                stock.totalValueInKrw(currentExchangeRate)
+            } else {
+                stock.totalValueInUsd(currentExchangeRate)
+            }
+            val price = if (state.showInKrw) {
+                if (stock.currency == "KRW") stock.currentPrice else stock.currentPrice * currentExchangeRate
+            } else {
+                if (stock.currency == "USD") stock.currentPrice else stock.currentPrice / currentExchangeRate
+            }
+            RebalanceItemData(
+                holdingId = holding.id,
+                symbol = stock.symbol,
+                name = stock.name,
+                currentValue = value,
+                currentPrice = price,
+                currentPercentage = holding.targetPercentage ?: 0,
+                currency = stock.currency
+            )
+        }
+    }
+
+    fun saveTargetPercentages(percentages: Map<Long, Int>) {
+        viewModelScope.launch {
+            percentages.forEach { (holdingId, percentage) ->
+                holdingsRepository.updateTargetPercentage(holdingId, percentage)
+            }
+        }
+    }
+
+    fun getTotalPortfolioValue(): Double {
+        val state = _uiState.value as? DashboardUiState.Success ?: return 0.0
+        return if (state.showInKrw) {
+            state.stocks.sumOf { it.totalValueInKrw(currentExchangeRate) }
+        } else {
+            state.stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
+        }
+    }
+
+    fun isShowingInKrw(): Boolean {
+        return (_uiState.value as? DashboardUiState.Success)?.showInKrw ?: false
+    }
 }
+
+data class RebalanceItemData(
+    val holdingId: Long,
+    val symbol: String,
+    val name: String,
+    val currentValue: Double,
+    val currentPrice: Double,
+    val currentPercentage: Int,
+    val currency: String
+)

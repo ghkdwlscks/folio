@@ -158,4 +158,37 @@ class HoldingsRepositoryImplTest {
 
         assertThat(result).isEmpty()
     }
+
+    @Test
+    fun `updateTargetPercentage - calls dao updateTargetPercentage`() = runTest {
+        coEvery { dao.updateTargetPercentage(1L, 30) } returns Unit
+
+        repository.updateTargetPercentage(1L, 30)
+
+        coVerify { dao.updateTargetPercentage(1L, 30) }
+    }
+
+    @Test
+    fun `updateTargetPercentage - handles null value`() = runTest {
+        coEvery { dao.updateTargetPercentage(1L, null) } returns Unit
+
+        repository.updateTargetPercentage(1L, null)
+
+        coVerify { dao.updateTargetPercentage(1L, null) }
+    }
+
+    @Test
+    fun `getHoldingsByAccountSync - returns list from dao`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 200.0, "USD")
+        )
+        coEvery { dao.getHoldingsByAccountSync(1L) } returns holdings
+
+        val result = repository.getHoldingsByAccountSync(1L)
+
+        assertThat(result).hasSize(2)
+        assertThat(result[0].symbol).isEqualTo("AAPL")
+        assertThat(result[1].symbol).isEqualTo("GOOGL")
+    }
 }

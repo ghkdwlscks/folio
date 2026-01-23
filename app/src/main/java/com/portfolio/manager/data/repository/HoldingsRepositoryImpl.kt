@@ -47,4 +47,12 @@ class HoldingsRepositoryImpl(
             counts.associate { it.accountId to it.count }
         }
     }
+
+    override suspend fun updateTargetPercentage(holdingId: Long, targetPercentage: Int?) {
+        dao.updateTargetPercentage(holdingId, targetPercentage)
+    }
+
+    override suspend fun getHoldingsByAccountSync(accountId: Long): List<HoldingEntity> {
+        return dao.getHoldingsByAccountSync(accountId)
+    }
 }

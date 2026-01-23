@@ -1085,4 +1085,142 @@ class DashboardViewModelTest {
         val state = viewModel.uiState.value as DashboardUiState.Success
         assertThat(state.sortOption).isEqualTo(SortOption.WEIGHT)
     }
+
+    @Test
+    fun `canShowRebalance - all accounts view - returns false`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 180.0))
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        assertThat(viewModel.canShowRebalance()).isFalse()
+    }
+
+    @Test
+    fun `canShowRebalance - single account with stocks - returns true`() = runTest {
+        val account = AccountEntity(1, "Default", 1000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account))
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(
+            listOf(HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"))
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 180.0))
+        )
+        coEvery { accountRepository.getAccountById(1L) } returns account
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectAccount(1L)
+
+        assertThat(viewModel.canShowRebalance()).isTrue()
+    }
+
+    @Test
+    fun `canShowRebalance - single account with empty stocks - returns false`() = runTest {
+        val account = AccountEntity(1, "Default", 1000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account))
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(emptyList())
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        coEvery { accountRepository.getAccountById(1L) } returns account
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectAccount(1L)
+
+        assertThat(viewModel.canShowRebalance()).isFalse()
+    }
+
+    @Test
+    fun `getRebalanceItems - all accounts view - returns empty`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 180.0))
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        val items = viewModel.getRebalanceItems()
+        assertThat(items).isEmpty()
+    }
+
+    @Test
+    fun `getRebalanceItems - single account - returns items with values`() = runTest {
+        val account = AccountEntity(1, "Default", 1000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account))
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(
+            listOf(
+                HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD", targetPercentage = 60),
+                HoldingEntity(2, 1L, "GOOGL", "Google", 5, 200.0, "USD", targetPercentage = 40)
+            )
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", shortName = "Apple Inc.", regularMarketPrice = 100.0),
+                QuoteResult(symbol = "GOOGL", shortName = "Google", regularMarketPrice = 200.0)
+            )
+        )
+        coEvery { accountRepository.getAccountById(1L) } returns account
+        coEvery { holdingsRepository.getHoldingsByAccountSync(1L) } returns listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD", targetPercentage = 60),
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 200.0, "USD", targetPercentage = 40)
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectAccount(1L)
+
+        val items = viewModel.getRebalanceItems()
+        assertThat(items).hasSize(2)
+        assertThat(items.find { it.symbol == "AAPL" }?.currentPercentage).isEqualTo(60)
+        assertThat(items.find { it.symbol == "GOOGL" }?.currentPercentage).isEqualTo(40)
+    }
+
+    @Test
+    fun `saveTargetPercentages - calls repository for each percentage`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        coEvery { holdingsRepository.updateTargetPercentage(any(), any()) } returns Unit
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        val percentages = mapOf(1L to 60, 2L to 40)
+        viewModel.saveTargetPercentages(percentages)
+
+        coVerify { holdingsRepository.updateTargetPercentage(1L, 60) }
+        coVerify { holdingsRepository.updateTargetPercentage(2L, 40) }
+    }
+
+    @Test
+    fun `getTotalPortfolioValue - returns sum of stock values`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 150.0))
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        // Total value: 10 * 150 = 1500
+        assertThat(viewModel.getTotalPortfolioValue()).isEqualTo(1500.0)
+    }
+
+    @Test
+    fun `isShowingInKrw - returns currency preference`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        assertThat(viewModel.isShowingInKrw()).isFalse()
+
+        viewModel.toggleCurrency()
+        assertThat(viewModel.isShowingInKrw()).isTrue()
+    }
 }

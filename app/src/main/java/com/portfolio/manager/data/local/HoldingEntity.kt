@@ -28,5 +28,6 @@ data class HoldingEntity(
     val name: String,
     val quantity: Int,
     val averagePrice: Double,
-    val currency: String = "USD"
+    val currency: String = "USD",
+    val targetPercentage: Int? = null
 )

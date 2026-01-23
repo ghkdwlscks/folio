@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [AccountEntity::class, HoldingEntity::class, PriceHistoryEntity::class, StockNameEntity::class],
-    version = 7,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -130,6 +130,87 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Recreate holdings table with targetPercentage column for rebalancing
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS holdings_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        accountId INTEGER NOT NULL,
+                        symbol TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        averagePrice REAL NOT NULL,
+                        currency TEXT NOT NULL DEFAULT 'USD',
+                        targetPercentage INTEGER DEFAULT NULL,
+                        FOREIGN KEY (accountId) REFERENCES accounts(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO holdings_new (id, accountId, symbol, name, quantity, averagePrice, currency)
+                    SELECT id, accountId, symbol, name, quantity, averagePrice, currency FROM holdings
+                """)
+                db.execSQL("DROP TABLE holdings")
+                db.execSQL("ALTER TABLE holdings_new RENAME TO holdings")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_holdings_accountId ON holdings(accountId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_holdings_accountId_symbol ON holdings(accountId, symbol)")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Recreate holdings table with targetPercentage column
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS holdings_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        accountId INTEGER NOT NULL,
+                        symbol TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        averagePrice REAL NOT NULL,
+                        currency TEXT NOT NULL DEFAULT 'USD',
+                        targetPercentage INTEGER DEFAULT NULL,
+                        FOREIGN KEY (accountId) REFERENCES accounts(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO holdings_new (id, accountId, symbol, name, quantity, averagePrice, currency)
+                    SELECT id, accountId, symbol, name, quantity, averagePrice, currency FROM holdings
+                """)
+                db.execSQL("DROP TABLE holdings")
+                db.execSQL("ALTER TABLE holdings_new RENAME TO holdings")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_holdings_accountId ON holdings(accountId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_holdings_accountId_symbol ON holdings(accountId, symbol)")
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Rename targetRatio to targetPercentage
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS holdings_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        accountId INTEGER NOT NULL,
+                        symbol TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        averagePrice REAL NOT NULL,
+                        currency TEXT NOT NULL DEFAULT 'USD',
+                        targetPercentage INTEGER DEFAULT NULL,
+                        FOREIGN KEY (accountId) REFERENCES accounts(id) ON DELETE CASCADE
+                    )
+                """)
+                db.execSQL("""
+                    INSERT INTO holdings_new (id, accountId, symbol, name, quantity, averagePrice, currency)
+                    SELECT id, accountId, symbol, name, quantity, averagePrice, currency FROM holdings
+                """)
+                db.execSQL("DROP TABLE holdings")
+                db.execSQL("ALTER TABLE holdings_new RENAME TO holdings")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_holdings_accountId ON holdings(accountId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_holdings_accountId_symbol ON holdings(accountId, symbol)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -137,7 +218,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "portfolio_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .build()
                 INSTANCE = instance
                 instance

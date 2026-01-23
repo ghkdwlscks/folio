@@ -39,6 +39,12 @@ interface HoldingDao {
 
     @Query("SELECT accountId, COUNT(*) as count FROM holdings GROUP BY accountId")
     fun getHoldingsCountByAccountFlow(): Flow<List<AccountHoldingCount>>
+
+    @Query("UPDATE holdings SET targetPercentage = :targetPercentage WHERE id = :holdingId")
+    suspend fun updateTargetPercentage(holdingId: Long, targetPercentage: Int?)
+
+    @Query("SELECT * FROM holdings WHERE accountId = :accountId")
+    suspend fun getHoldingsByAccountSync(accountId: Long): List<HoldingEntity>
 }
 
 data class AccountHoldingCount(

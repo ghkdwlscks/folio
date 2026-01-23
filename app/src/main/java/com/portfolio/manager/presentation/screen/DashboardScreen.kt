@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.AlertDialog
@@ -72,9 +73,13 @@ import com.portfolio.manager.presentation.component.AllocationItem
 import com.portfolio.manager.presentation.component.AllocationPieChart
 import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.component.PortfolioSummary
+import com.portfolio.manager.presentation.component.RebalanceDialog
+import com.portfolio.manager.presentation.component.RebalanceItem
 import com.portfolio.manager.presentation.component.SkeletonDashboard
 import com.portfolio.manager.presentation.component.StockCard
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
@@ -122,7 +127,17 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
+    var showRebalanceDialog by remember { mutableStateOf(false) }
+    var rebalanceItems by remember { mutableStateOf<List<RebalanceItem>>(emptyList()) }
+    val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    // Reactively compute whether rebalance button should show
+    val uiState by viewModel.uiState.collectAsState()
+    val canShowRebalance = remember(uiState, viewModel.getSelectedAccountId()) {
+        viewModel.getSelectedAccountId() != ALL_ACCOUNTS_ID &&
+            (uiState as? DashboardUiState.Success)?.stocks?.isNotEmpty() == true
+    }
 
     // Track scroll direction for FAB visibility
     var previousScrollOffset by remember { mutableIntStateOf(0) }
@@ -160,11 +175,43 @@ fun DashboardScreen(
                 enter = slideInVertically(initialOffsetY = { it * 2 }),
                 exit = slideOutVertically(targetOffsetY = { it * 2 })
             ) {
-                FloatingActionButton(onClick = onAddHolding) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Add Holding"
-                    )
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (canShowRebalance) {
+                        FloatingActionButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val items = viewModel.getRebalanceItems()
+                                    rebalanceItems = items.map { item ->
+                                        RebalanceItem(
+                                            holdingId = item.holdingId,
+                                            symbol = item.symbol,
+                                            name = item.name,
+                                            currentValue = item.currentValue,
+                                            currentPrice = item.currentPrice,
+                                            currentPercentage = item.currentPercentage,
+                                            currency = item.currency
+                                        )
+                                    }
+                                    showRebalanceDialog = true
+                                }
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Balance,
+                                contentDescription = "Rebalance"
+                            )
+                        }
+                    }
+                    FloatingActionButton(onClick = onAddHolding) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Add Holding"
+                        )
+                    }
                 }
             }
         },
@@ -207,6 +254,19 @@ fun DashboardScreen(
                 TextButton(onClick = { deleteConfirmation = null }) {
                     Text("Cancel")
                 }
+            }
+        )
+    }
+
+    if (showRebalanceDialog && rebalanceItems.isNotEmpty()) {
+        RebalanceDialog(
+            items = rebalanceItems,
+            totalPortfolioValue = viewModel.getTotalPortfolioValue(),
+            showInKrw = viewModel.isShowingInKrw(),
+            onDismiss = { showRebalanceDialog = false },
+            onSave = { percentages ->
+                viewModel.saveTargetPercentages(percentages)
+                showRebalanceDialog = false
             }
         )
     }

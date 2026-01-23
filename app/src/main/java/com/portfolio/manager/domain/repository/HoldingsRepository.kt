@@ -13,4 +13,6 @@ interface HoldingsRepository {
     suspend fun deleteHolding(id: Long)
     suspend fun getHoldingsCountByAccount(accountId: Long): Int
     fun getHoldingsCountByAccountFlow(): Flow<Map<Long, Int>>
+    suspend fun updateTargetPercentage(holdingId: Long, targetPercentage: Int?)
+    suspend fun getHoldingsByAccountSync(accountId: Long): List<HoldingEntity>
 }
