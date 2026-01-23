@@ -16,6 +16,41 @@ class PriceHistoryProcessorTest {
     }
 
     @Test
+    fun `dateToTimestamp - converts valid date string to timestamp`() {
+        val dateString = "2024-01-15"
+        val result = PriceHistoryProcessor.dateToTimestamp(dateString)
+
+        assertThat(result).isNotNull()
+        // Verify it's a reasonable timestamp (year 2024)
+        assertThat(result!!).isGreaterThan(1704067200L) // 2024-01-01
+        assertThat(result).isLessThan(1735689600L) // 2025-01-01
+    }
+
+    @Test
+    fun `dateToTimestamp - returns null for idx keys`() {
+        val result = PriceHistoryProcessor.dateToTimestamp("idx_5")
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `dateToTimestamp - returns null for invalid date string`() {
+        val result = PriceHistoryProcessor.dateToTimestamp("invalid-date")
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `dateToTimestamp - roundtrip with timestampToDate`() {
+        // Test that converting timestamp to date and back gives a timestamp for same day
+        val originalTimestamp = 1705276800L // 2024-01-15 00:00:00 UTC
+        val dateString = PriceHistoryProcessor.timestampToDate(originalTimestamp)
+        val resultTimestamp = PriceHistoryProcessor.dateToTimestamp(dateString)
+
+        assertThat(resultTimestamp).isNotNull()
+        // Should be within same day (allow for timezone differences, max 24 hours difference)
+        assertThat(kotlin.math.abs(resultTimestamp!! - originalTimestamp)).isLessThan(86400L)
+    }
+
+    @Test
     fun `buildSymbolDatePrices - with timestamps - builds date-price map`() {
         val priceHistoryMap = mapOf(
             "AAPL" to PriceHistoryData(

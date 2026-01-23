@@ -248,6 +248,7 @@ private fun DashboardStateContent(
                     showInKrw = state.showInKrw,
                     onCurrencyToggle = { viewModel.toggleCurrency() },
                     portfolioSparkline = state.portfolioSparkline,
+                    portfolioSparklineTimestamps = state.portfolioSparklineTimestamps,
                     portfolioStats = state.portfolioStats,
                     sparklinePeriod = state.sparklinePeriod,
                     onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
@@ -283,6 +284,7 @@ private fun DashboardContent(
     showInKrw: Boolean,
     onCurrencyToggle: () -> Unit,
     portfolioSparkline: List<Double>,
+    portfolioSparklineTimestamps: List<Long>,
     portfolioStats: PortfolioStats,
     sparklinePeriod: TimePeriod,
     onSparklinePeriodSelected: (TimePeriod) -> Unit,
@@ -319,6 +321,7 @@ private fun DashboardContent(
                 showInKrw = showInKrw,
                 onCurrencyToggle = onCurrencyToggle,
                 portfolioSparkline = portfolioSparkline,
+                portfolioSparklineTimestamps = portfolioSparklineTimestamps,
                 portfolioStats = portfolioStats,
                 modifier = Modifier.padding(vertical = 8.dp)
             )

@@ -66,6 +66,7 @@ fun StockCard(
 ) {
     val trend = createTrendIndicator(stock.gainLoss)
     var expanded by remember { mutableStateOf(false) }
+    var showFullScreenChart by remember { mutableStateOf(false) }
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
     val canExpand = hasAccountDetails || onDelete != null || onEdit != null
 
@@ -200,7 +201,8 @@ fun StockCard(
                                 prices = stock.priceHistory,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(32.dp)
+                                    .height(32.dp),
+                                onClick = { showFullScreenChart = true }
                             )
                         }
                     }
@@ -378,5 +380,22 @@ fun StockCard(
             }
             }
         }
+    }
+
+    // Full screen chart dialog
+    if (showFullScreenChart) {
+        FullScreenChartDialog(
+            data = FullScreenChartData(
+                symbol = stock.symbol,
+                name = stock.name,
+                currentPrice = stock.currentPrice,
+                dayChange = stock.dayChange,
+                dayChangePercent = stock.dayChangePercent,
+                currency = stock.currency,
+                priceHistory = stock.priceHistory,
+                priceHistoryTimestamps = stock.priceHistoryTimestamps
+            ),
+            onDismiss = { showFullScreenChart = false }
+        )
     }
 }

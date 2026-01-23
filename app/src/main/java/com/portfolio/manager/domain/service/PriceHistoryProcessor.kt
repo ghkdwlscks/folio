@@ -29,6 +29,20 @@ object PriceHistoryProcessor {
     }
 
     /**
+     * Converts date string YYYY-MM-DD to Unix timestamp (seconds).
+     * Returns null for invalid date strings or index-based keys.
+     */
+    fun dateToTimestamp(dateString: String): Long? {
+        if (dateString.startsWith("idx_")) return null
+        return try {
+            val localDate = LocalDate.parse(dateString)
+            localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().epochSecond
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
      * Builds a map of symbol to date-price mapping from price history data.
      */
     fun buildSymbolDatePrices(

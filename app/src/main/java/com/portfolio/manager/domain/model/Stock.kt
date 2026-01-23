@@ -24,7 +24,8 @@ data class Stock(
     val dayChangePercent: Double? = null,
     val currency: String = "USD",
     val accountDetails: List<StockAccountDetail> = emptyList(),
-    val priceHistory: List<Double> = emptyList()
+    val priceHistory: List<Double> = emptyList(),
+    val priceHistoryTimestamps: List<Long> = emptyList()
 ) {
 
     val totalValue: Double

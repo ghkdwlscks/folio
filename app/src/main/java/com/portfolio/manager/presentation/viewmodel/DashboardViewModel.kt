@@ -54,6 +54,7 @@ sealed interface DashboardUiState {
         val showInKrw: Boolean = false,
         val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR,
         val portfolioSparkline: List<Double> = emptyList(),
+        val portfolioSparklineTimestamps: List<Long> = emptyList(),
         val portfolioStats: PortfolioStats = PortfolioStats()
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
@@ -367,23 +368,35 @@ class DashboardViewModel @Inject constructor(
                 )
 
                 if (portfolioValues.size < 2) {
-                    updatePortfolioSparkline(emptyList(), PortfolioStats())
+                    updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
                     return@launch
                 }
 
+                // Convert date strings to timestamps for chart interaction
+                val timestamps = validDates.mapNotNull { PriceHistoryProcessor.dateToTimestamp(it) }
+
                 val stats = PortfolioStatsCalculator.calculate(portfolioValues)
-                updatePortfolioSparkline(PriceHistoryProcessor.normalizeValues(portfolioValues), stats)
+                updatePortfolioSparkline(
+                    sparkline = PriceHistoryProcessor.normalizeValues(portfolioValues),
+                    timestamps = timestamps,
+                    stats = stats
+                )
             } catch (e: Exception) {
-                updatePortfolioSparkline(emptyList(), PortfolioStats())
+                updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
             }
         }
     }
 
-    private fun updatePortfolioSparkline(sparkline: List<Double>, stats: PortfolioStats = PortfolioStats()) {
+    private fun updatePortfolioSparkline(
+        sparkline: List<Double>,
+        timestamps: List<Long> = emptyList(),
+        stats: PortfolioStats = PortfolioStats()
+    ) {
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(
                 portfolioSparkline = sparkline,
+                portfolioSparklineTimestamps = timestamps,
                 portfolioStats = stats
             )
             // Cache portfolio sparkline for fast cold start (only for All Accounts with valid data)
@@ -501,7 +514,8 @@ class DashboardViewModel @Inject constructor(
                             dayChange = quote?.regularMarketChange,
                             dayChangePercent = quote?.regularMarketChangePercent,
                             currency = holding.currency,
-                            priceHistory = priceHistoryMap[holding.symbol]?.prices ?: emptyList()
+                            priceHistory = priceHistoryMap[holding.symbol]?.prices ?: emptyList(),
+                            priceHistoryTimestamps = priceHistoryMap[holding.symbol]?.timestamps ?: emptyList()
                         )
                     }
                 }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
@@ -575,7 +589,8 @@ class DashboardViewModel @Inject constructor(
                     dayChangePercent = existingStock?.dayChangePercent,
                     currency = holdingGroup.first().currency,
                     accountDetails = accountDetails,
-                    priceHistory = existingStock?.priceHistory ?: emptyList()
+                    priceHistory = existingStock?.priceHistory ?: emptyList(),
+                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList()
                 )
             }
         } else {
@@ -592,7 +607,8 @@ class DashboardViewModel @Inject constructor(
                     dayChange = existingStock?.dayChange,
                     dayChangePercent = existingStock?.dayChangePercent,
                     currency = holding.currency,
-                    priceHistory = existingStock?.priceHistory ?: emptyList()
+                    priceHistory = existingStock?.priceHistory ?: emptyList(),
+                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList()
                 )
             }
         }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
@@ -638,7 +654,8 @@ class DashboardViewModel @Inject constructor(
                 dayChangePercent = quote?.regularMarketChangePercent,
                 currency = firstHolding.currency,
                 accountDetails = accountDetails,
-                priceHistory = priceHistoryMap[symbol]?.prices ?: emptyList()
+                priceHistory = priceHistoryMap[symbol]?.prices ?: emptyList(),
+                priceHistoryTimestamps = priceHistoryMap[symbol]?.timestamps ?: emptyList()
             )
         }
     }

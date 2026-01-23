@@ -28,6 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,9 +60,11 @@ fun PortfolioSummary(
     showInKrw: Boolean = false,
     onCurrencyToggle: () -> Unit = {},
     portfolioSparkline: List<Double> = emptyList(),
+    portfolioSparklineTimestamps: List<Long> = emptyList(),
     portfolioStats: PortfolioStats = PortfolioStats(),
     modifier: Modifier = Modifier
 ) {
+    var showFullScreenChart by remember { mutableStateOf(false) }
 
     val totalValueUsd = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
     val totalCostUsd = stocks.sumOf { it.totalCostInUsd(exchangeRate) }
@@ -217,7 +222,8 @@ fun PortfolioSummary(
                     modifier = Modifier
                         .fillMaxWidth(0.85f)
                         .height(70.dp),
-                    lineColor = Color.White.copy(alpha = 0.9f)
+                    lineColor = Color.White.copy(alpha = 0.9f),
+                    onClick = { showFullScreenChart = true }
                 )
             }
 
@@ -250,6 +256,35 @@ fun PortfolioSummary(
                 StatsRow(stats = portfolioStats)
             }
         }
+    }
+
+    // Full-screen chart dialog
+    if (showFullScreenChart && portfolioSparkline.size >= 2) {
+        // Convert normalized sparkline (starting at 100) back to actual portfolio values
+        // normalized[i] = 100 * actual[i] / actual[0]
+        // actual[i] = normalized[i] * (totalValue / normalized[last])
+        val lastNormalized = portfolioSparkline.last()
+        val actualPriceHistory = if (lastNormalized > 0) {
+            val scaleFactor = totalValue / lastNormalized
+            portfolioSparkline.map { it * scaleFactor }
+        } else {
+            portfolioSparkline
+        }
+
+        FullScreenChartDialog(
+            data = FullScreenChartData(
+                symbol = selectedPeriod.label,
+                name = "Portfolio",
+                currentPrice = totalValue,
+                dayChange = dayChange.takeIf { it != 0.0 },
+                dayChangePercent = dayChangePercent.takeIf { dayChange != 0.0 },
+                currency = if (showInKrw) "KRW" else "USD",
+                priceHistory = actualPriceHistory,
+                priceHistoryTimestamps = portfolioSparklineTimestamps
+            ),
+            onDismiss = { showFullScreenChart = false },
+            currentPeriod = selectedPeriod
+        )
     }
 }
 

@@ -415,4 +415,85 @@ class StockTest {
         // 1500 USD * 1300 = 1,950,000 KRW
         assertThat(stock.totalCostInKrw(1300.0)).isEqualTo(1950000.0)
     }
+
+    @Test
+    fun `priceHistory - defaults to empty list`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0
+        )
+
+        assertThat(stock.priceHistory).isEmpty()
+    }
+
+    @Test
+    fun `priceHistory - stores provided values`() {
+        val priceHistory = listOf(170.0, 172.0, 175.0)
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            priceHistory = priceHistory
+        )
+
+        assertThat(stock.priceHistory).hasSize(3)
+        assertThat(stock.priceHistory).containsExactly(170.0, 172.0, 175.0).inOrder()
+    }
+
+    @Test
+    fun `priceHistoryTimestamps - defaults to empty list`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0
+        )
+
+        assertThat(stock.priceHistoryTimestamps).isEmpty()
+    }
+
+    @Test
+    fun `priceHistoryTimestamps - stores provided values`() {
+        val timestamps = listOf(1704067200L, 1704153600L, 1704240000L)
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            priceHistoryTimestamps = timestamps
+        )
+
+        assertThat(stock.priceHistoryTimestamps).hasSize(3)
+        assertThat(stock.priceHistoryTimestamps).containsExactly(1704067200L, 1704153600L, 1704240000L).inOrder()
+    }
+
+    @Test
+    fun `priceHistory and timestamps - can be set together`() {
+        val priceHistory = listOf(170.0, 172.0, 175.0)
+        val timestamps = listOf(1704067200L, 1704153600L, 1704240000L)
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            priceHistory = priceHistory,
+            priceHistoryTimestamps = timestamps
+        )
+
+        assertThat(stock.priceHistory).hasSize(3)
+        assertThat(stock.priceHistoryTimestamps).hasSize(3)
+    }
 }
