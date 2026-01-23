@@ -8,6 +8,7 @@ import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.PeriodReturn
 import com.portfolio.manager.domain.model.PortfolioStats
+import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
@@ -811,5 +812,196 @@ class DashboardViewModelTest {
 
         val state = viewModel.uiState.value as DashboardUiState.Success
         assertThat(state.benchmarkReturns).isEmpty()
+    }
+
+    @Test
+    fun `selectSortOption - updates sort option in state`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD"),
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 200.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", shortName = "Apple Inc.", regularMarketPrice = 180.0),
+                QuoteResult(symbol = "GOOGL", shortName = "Google", regularMarketPrice = 250.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        // Default should be WEIGHT
+        var state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.sortOption).isEqualTo(SortOption.WEIGHT)
+
+        // Change to NAME
+        viewModel.selectSortOption(SortOption.NAME)
+
+        state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.sortOption).isEqualTo(SortOption.NAME)
+    }
+
+    @Test
+    fun `selectSortOption - persists preference`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSortOption(SortOption.SYMBOL)
+
+        io.mockk.verify { sharedPreferencesEditor.putInt("sort_option", SortOption.SYMBOL.ordinal) }
+    }
+
+    @Test
+    fun `selectSortOption - WEIGHT - sorts by total value descending`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD"),  // Value: 1000
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 100.0, "USD") // Value: 1500
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", shortName = "Apple", regularMarketPrice = 100.0),
+                QuoteResult(symbol = "GOOGL", shortName = "Google", regularMarketPrice = 300.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSortOption(SortOption.WEIGHT)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // GOOGL (1500) should come before AAPL (1000)
+        assertThat(state.stocks.map { it.symbol }).containsExactly("GOOGL", "AAPL").inOrder()
+    }
+
+    @Test
+    fun `selectSortOption - NAME - sorts alphabetically ascending`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "GOOGL", "Google", 5, 100.0, "USD"),
+            HoldingEntity(2, 1L, "AAPL", "Apple", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "GOOGL", shortName = "Google", regularMarketPrice = 100.0),
+                QuoteResult(symbol = "AAPL", shortName = "Apple", regularMarketPrice = 100.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSortOption(SortOption.NAME)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // Apple should come before Google
+        assertThat(state.stocks.map { it.name }).containsExactly("Apple", "Google").inOrder()
+    }
+
+    @Test
+    fun `selectSortOption - SYMBOL - sorts alphabetically ascending`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "TSLA", "Tesla", 5, 100.0, "USD"),
+            HoldingEntity(2, 1L, "AAPL", "Apple", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "TSLA", shortName = "Tesla", regularMarketPrice = 100.0),
+                QuoteResult(symbol = "AAPL", shortName = "Apple", regularMarketPrice = 100.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSortOption(SortOption.SYMBOL)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // AAPL should come before TSLA
+        assertThat(state.stocks.map { it.symbol }).containsExactly("AAPL", "TSLA").inOrder()
+    }
+
+    @Test
+    fun `selectSortOption - GAIN_LOSS_PERCENT - sorts by gain loss percent descending`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD"),  // 50% gain
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 100.0, "USD") // 100% gain
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", shortName = "Apple", regularMarketPrice = 150.0),
+                QuoteResult(symbol = "GOOGL", shortName = "Google", regularMarketPrice = 200.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSortOption(SortOption.GAIN_LOSS_PERCENT)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // GOOGL (100% gain) should come before AAPL (50% gain)
+        assertThat(state.stocks.map { it.symbol }).containsExactly("GOOGL", "AAPL").inOrder()
+    }
+
+    @Test
+    fun `selectSortOption - DAY_CHANGE_PERCENT - sorts by day change percent descending`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD"),
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", shortName = "Apple", regularMarketPrice = 100.0, regularMarketChangePercent = 2.0),
+                QuoteResult(symbol = "GOOGL", shortName = "Google", regularMarketPrice = 100.0, regularMarketChangePercent = 5.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSortOption(SortOption.DAY_CHANGE_PERCENT)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // GOOGL (5% day change) should come before AAPL (2% day change)
+        assertThat(state.stocks.map { it.symbol }).containsExactly("GOOGL", "AAPL").inOrder()
+    }
+
+    @Test
+    fun `selectSortOption - DAY_CHANGE_PERCENT - zero values sorted last`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD"),
+            HoldingEntity(2, 1L, "GOOGL", "Google", 5, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", shortName = "Apple", regularMarketPrice = 100.0, regularMarketChangePercent = 0.0),
+                QuoteResult(symbol = "GOOGL", shortName = "Google", regularMarketPrice = 100.0, regularMarketChangePercent = 1.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectSortOption(SortOption.DAY_CHANGE_PERCENT)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        // GOOGL (1%) should come before AAPL (0%)
+        assertThat(state.stocks.map { it.symbol }).containsExactly("GOOGL", "AAPL").inOrder()
+    }
+
+    @Test
+    fun `init - loads persisted sort option`() = runTest {
+        every { sharedPreferences.getInt("sort_option", any()) } returns SortOption.SYMBOL.ordinal
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.sortOption).isEqualTo(SortOption.SYMBOL)
+    }
+
+    @Test
+    fun `init - invalid persisted sort option - uses default WEIGHT`() = runTest {
+        every { sharedPreferences.getInt("sort_option", any()) } returns 999 // Invalid ordinal
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        val state = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(state.sortOption).isEqualTo(SortOption.WEIGHT)
     }
 }

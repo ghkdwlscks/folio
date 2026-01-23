@@ -10,6 +10,7 @@ import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.model.BenchmarkReturns
+import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.service.PortfolioStatsCalculator
 import com.portfolio.manager.domain.service.PriceHistoryProcessor
 import com.portfolio.manager.domain.service.StockHolding
@@ -55,7 +56,8 @@ sealed interface DashboardUiState {
         val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR,
         val portfolioSparkline: List<Double> = emptyList(),
         val portfolioSparklineTimestamps: List<Long> = emptyList(),
-        val portfolioStats: PortfolioStats = PortfolioStats()
+        val portfolioStats: PortfolioStats = PortfolioStats(),
+        val sortOption: SortOption = SortOption.WEIGHT
     ) : DashboardUiState
     data class Error(val message: String) : DashboardUiState
 }
@@ -85,6 +87,7 @@ class DashboardViewModel @Inject constructor(
         private const val PREF_DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
         private const val PREF_STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
         private const val PREF_PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
+        private const val PREF_SORT_OPTION = "sort_option"
         private const val BENCHMARK_SP500 = "^GSPC"
         private const val BENCHMARK_KOSPI = "^KS11"
     }
@@ -102,6 +105,13 @@ class DashboardViewModel @Inject constructor(
             return TimePeriod.entries.getOrElse(ordinal) { TimePeriod.ONE_YEAR }
         }
         set(value) = sharedPreferences.edit().putInt(PREF_PORTFOLIO_SUMMARY_PERIOD, value.ordinal).apply()
+
+    private var currentSortOption: SortOption
+        get() {
+            val ordinal = sharedPreferences.getInt(PREF_SORT_OPTION, SortOption.WEIGHT.ordinal)
+            return SortOption.entries.getOrElse(ordinal) { SortOption.WEIGHT }
+        }
+        set(value) = sharedPreferences.edit().putInt(PREF_SORT_OPTION, value.ordinal).apply()
 
     private val json = JsonSerializer.instance
 
@@ -133,7 +143,8 @@ class DashboardViewModel @Inject constructor(
                 isRefreshing = true,
                 sparklinePeriod = sparklinePeriod,
                 portfolioSparkline = portfolioSparkline,
-                portfolioStats = portfolioStats
+                portfolioStats = portfolioStats,
+                sortOption = currentSortOption
             )
         } catch (_: Exception) {
             DashboardUiState.Loading
@@ -232,6 +243,25 @@ class DashboardViewModel @Inject constructor(
             _uiState.value = currentState.copy(sparklinePeriod = period, isRefreshing = true)
         }
         loadAndObserveHoldings()
+    }
+
+    fun selectSortOption(option: SortOption) {
+        currentSortOption = option
+        val currentState = _uiState.value
+        if (currentState is DashboardUiState.Success) {
+            val sortedStocks = sortStocks(currentState.stocks, option)
+            _uiState.value = currentState.copy(stocks = sortedStocks, sortOption = option)
+        }
+    }
+
+    private fun sortStocks(stocks: List<Stock>, option: SortOption): List<Stock> {
+        return when (option) {
+            SortOption.WEIGHT -> stocks.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
+            SortOption.NAME -> stocks.sortedBy { it.name.lowercase() }
+            SortOption.SYMBOL -> stocks.sortedBy { it.symbol.lowercase() }
+            SortOption.GAIN_LOSS_PERCENT -> stocks.sortedByDescending { it.gainLossPercent }
+            SortOption.DAY_CHANGE_PERCENT -> stocks.sortedByDescending { it.dayChangePercent ?: 0.0 }
+        }
     }
 
     private fun loadPeriodReturns(stocks: List<Stock>, period: TimePeriod) {
@@ -453,7 +483,8 @@ class DashboardViewModel @Inject constructor(
                 selectedAccountId = selectedAccountId,
                 exchangeRate = currentExchangeRate,
                 showInKrw = showInKrw,
-                sparklinePeriod = sparklinePeriod
+                sparklinePeriod = sparklinePeriod,
+                sortOption = currentSortOption
             )
             return
         }
@@ -518,12 +549,13 @@ class DashboardViewModel @Inject constructor(
                             priceHistoryTimestamps = priceHistoryMap[holding.symbol]?.timestamps ?: emptyList()
                         )
                     }
-                }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
+                }
+                val sortedStocks = sortStocks(stocks, currentSortOption)
                 val previousReturns = currentSuccess?.periodReturns ?: emptyMap()
                 val selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod
                 val showInKrw = getShowInKrwForCurrentAccount()
                 _uiState.value = DashboardUiState.Success(
-                    stocks = stocks,
+                    stocks = sortedStocks,
                     accounts = accounts,
                     selectedAccountId = selectedAccountId,
                     periodReturns = previousReturns,
@@ -533,7 +565,8 @@ class DashboardViewModel @Inject constructor(
                     showInKrw = showInKrw,
                     sparklinePeriod = sparklinePeriod,
                     portfolioSparkline = currentSuccess?.portfolioSparkline ?: emptyList(),
-                    portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats()
+                    portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
+                    sortOption = currentSortOption
                 )
                 // Cache state for fast cold start (only for All Accounts view)
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
@@ -611,7 +644,7 @@ class DashboardViewModel @Inject constructor(
                     priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList()
                 )
             }
-        }.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
+        }.let { sortStocks(it, currentSortOption) }
     }
 
     private fun aggregateHoldings(

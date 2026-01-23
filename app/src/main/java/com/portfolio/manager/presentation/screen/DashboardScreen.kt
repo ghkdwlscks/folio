@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material3.AlertDialog
@@ -64,6 +65,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.PortfolioStats
+import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.component.AllocationItem
@@ -92,7 +94,8 @@ private fun calculateWeightPercent(stock: Stock, totalPortfolioValue: Double, ex
  * Creates allocation items from stocks for the pie chart.
  */
 private fun createAllocationItems(stocks: List<Stock>, totalPortfolioValue: Double, exchangeRate: Double): List<AllocationItem> {
-    return stocks.map { stock ->
+    // Always sort by weight for allocation chart, regardless of list sort option
+    return stocks.sortedByDescending { it.totalValueInUsd(exchangeRate) }.map { stock ->
         AllocationItem(
             symbol = stock.symbol,
             name = stock.name,
@@ -250,6 +253,8 @@ private fun DashboardStateContent(
                     portfolioSparkline = state.portfolioSparkline,
                     portfolioSparklineTimestamps = state.portfolioSparklineTimestamps,
                     portfolioStats = state.portfolioStats,
+                    sortOption = state.sortOption,
+                    onSortOptionSelected = { viewModel.selectSortOption(it) },
                     sparklinePeriod = state.sparklinePeriod,
                     onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
                     onDeleteHolding = onDeleteHolding,
@@ -286,6 +291,8 @@ private fun DashboardContent(
     portfolioSparkline: List<Double>,
     portfolioSparklineTimestamps: List<Long>,
     portfolioStats: PortfolioStats,
+    sortOption: SortOption,
+    onSortOptionSelected: (SortOption) -> Unit,
     sparklinePeriod: TimePeriod,
     onSparklinePeriodSelected: (TimePeriod) -> Unit,
     onDeleteHolding: (Long, String, Int) -> Unit,
@@ -346,6 +353,8 @@ private fun DashboardContent(
             SectionHeader(
                 title = "My Holdings",
                 count = stocks.size,
+                sortOption = sortOption,
+                onSortOptionSelected = onSortOptionSelected,
                 sparklinePeriod = sparklinePeriod,
                 onSparklinePeriodSelected = onSparklinePeriodSelected
             )
@@ -559,9 +568,12 @@ private fun AccountDropdown(
 private fun SectionHeader(
     title: String,
     count: Int,
+    sortOption: SortOption,
+    onSortOptionSelected: (SortOption) -> Unit,
     sparklinePeriod: TimePeriod,
     onSparklinePeriodSelected: (TimePeriod) -> Unit
 ) {
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     var sparklineMenuExpanded by remember { mutableStateOf(false) }
 
     Row(
@@ -587,48 +599,100 @@ private fun SectionHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Box {
-            Row(
-                modifier = Modifier.clickable { sparklineMenuExpanded = true },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.ShowChart,
-                    contentDescription = "Sparkline Period",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = sparklinePeriod.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-            DropdownMenu(
-                expanded = sparklineMenuExpanded,
-                onDismissRequest = { sparklineMenuExpanded = false }
-            ) {
-                TimePeriod.entries.forEach { period ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = period.label,
-                                fontWeight = if (period == sparklinePeriod) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        onClick = {
-                            onSparklinePeriodSelected(period)
-                            sparklineMenuExpanded = false
-                        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Sort dropdown
+            Box {
+                Row(
+                    modifier = Modifier.clickable { sortMenuExpanded = true },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Sort,
+                        contentDescription = "Sort",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
+                    Text(
+                        text = sortOption.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                DropdownMenu(
+                    expanded = sortMenuExpanded,
+                    onDismissRequest = { sortMenuExpanded = false }
+                ) {
+                    SortOption.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = option.label,
+                                    fontWeight = if (option == sortOption) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                onSortOptionSelected(option)
+                                sortMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            // Sparkline period dropdown
+            Box {
+                Row(
+                    modifier = Modifier.clickable { sparklineMenuExpanded = true },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ShowChart,
+                        contentDescription = "Sparkline Period",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = sparklinePeriod.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                DropdownMenu(
+                    expanded = sparklineMenuExpanded,
+                    onDismissRequest = { sparklineMenuExpanded = false }
+                ) {
+                    TimePeriod.entries.forEach { period ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = period.label,
+                                    fontWeight = if (period == sparklinePeriod) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                onSparklinePeriodSelected(period)
+                                sparklineMenuExpanded = false
+                            }
+                        )
+                    }
                 }
             }
         }
