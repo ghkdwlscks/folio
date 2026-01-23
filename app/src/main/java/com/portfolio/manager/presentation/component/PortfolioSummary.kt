@@ -118,99 +118,96 @@ fun PortfolioSummary(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 40.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Total Value
-            Text(
-                text = formatValue(totalValue),
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    letterSpacing = (-1).sp
-                ),
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Return percentage badge + gain/loss amount
+            // Total Value with return badge inline
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Text(
+                    text = formatValue(totalValue),
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        letterSpacing = (-1.5).sp
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = trend.backgroundColor
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = trend.icon,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(14.dp),
                             tint = Color.White
                         )
                         Text(
                             text = "${if (trend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent)}%",
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                     }
                 }
-                Text(
-                    text = "${if (trend.isGain) "+" else ""}${formatValue(totalGainLoss)}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.9f)
-                )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // Invested amount
-            Text(
-                text = "${formatValue(totalCost)} invested",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.6f)
-            )
-
-            // Day change row
-            if (dayChange != 0.0) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White.copy(alpha = 0.1f)
-                ) {
+            // Gain/loss amount, invested, and day change in one compact row
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${if (trend.isGain) "+" else ""}${formatValue(totalGainLoss)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+                Text(
+                    text = "•",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.4f)
+                )
+                Text(
+                    text = "${formatValue(totalCost)} invested",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.6f)
+                )
+                if (dayChange != 0.0) {
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.4f)
+                    )
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "Today",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = Color.White.copy(alpha = 0.6f)
                         )
                         Icon(
                             imageVector = dayTrend.icon,
                             contentDescription = null,
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(12.dp),
                             tint = dayTrend.color
                         )
                         Text(
-                            text = "${if (dayTrend.isGain) "+" else ""}${formatValue(dayChange)}",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = "${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%",
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = dayTrend.color
-                        )
-                        Text(
-                            text = "(${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = dayTrend.color.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -218,17 +215,17 @@ fun PortfolioSummary(
 
             // Portfolio sparkline
             if (portfolioSparkline.size >= 2) {
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Sparkline(
                     prices = portfolioSparkline,
                     modifier = Modifier
-                        .fillMaxWidth(0.75f)
-                        .height(60.dp),
+                        .fillMaxWidth(0.85f)
+                        .height(70.dp),
                     lineColor = Color.White.copy(alpha = 0.9f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             PeriodSelector(
                 periods = TimePeriod.entries,
