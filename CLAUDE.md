@@ -225,3 +225,4 @@ Use backticks: `` `subject - scenario - expected result` ``
 - Always use `git commit -s` (sign-off) for all commits
 - Commit message format: `scope: description` (e.g., `app: add period returns display`)
 - Before every commit: run `./gradlew test koverVerify` to ensure all tests pass and coverage is 100%
+- When user requests additional changes to a previous task, use `git commit --amend` instead of creating a new commit
