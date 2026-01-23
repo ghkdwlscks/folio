@@ -30,7 +30,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -48,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.portfolio.manager.presentation.component.CurrencyToggle
+import com.portfolio.manager.presentation.component.ErrorContent
 import androidx.compose.ui.unit.sp
 import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
@@ -108,18 +109,10 @@ fun FIRECalculatorScreen(
                 )
             }
             is FIRECalculatorUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                ErrorContent(
+                    message = state.message,
+                    modifier = Modifier.padding(paddingValues)
+                )
             }
         }
     }
@@ -134,11 +127,7 @@ private fun FIRECalculatorContent(
     onCurrencyToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val formatValue: (Double) -> String = if (state.showInKrw) {
-        { CurrencyFormatter.formatKrw(it) }
-    } else {
-        { CurrencyFormatter.formatUsd(it) }
-    }
+    val formatValue = CurrencyFormatter.createFormatter(state.showInKrw)
 
     Column(
         modifier = modifier
@@ -228,38 +217,6 @@ private fun PortfolioSummaryCard(
                 ),
                 fontWeight = FontWeight.Bold,
                 color = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-private fun CurrencyToggle(
-    showInKrw: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = Color.White.copy(alpha = 0.2f),
-        modifier = modifier.clickable(onClick = onToggle)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-        ) {
-            Text(
-                text = "USD",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (!showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (!showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-            )
-            Text(
-                text = "KRW",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
             )
         }
     }

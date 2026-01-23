@@ -36,4 +36,7 @@ object CurrencyFormatter {
             maximumFractionDigits = 2
         }.format(value)
     }
+
+    fun createFormatter(showInKrw: Boolean): (Double) -> String =
+        if (showInKrw) ::formatKrw else ::formatUsd
 }

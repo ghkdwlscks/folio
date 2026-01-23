@@ -11,8 +11,8 @@ import com.portfolio.manager.domain.repository.StockRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import com.portfolio.manager.util.JsonSerializer
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
 class StockRepositoryImpl(
@@ -20,7 +20,7 @@ class StockRepositoryImpl(
     private val priceHistoryDao: PriceHistoryDao
 ) : StockRepository {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = JsonSerializer.instance
 
     // Exchange rate cache
     private var cachedExchangeRate: Double? = null
@@ -43,6 +43,17 @@ class StockRepositoryImpl(
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Parses raw API response data into aligned price/timestamp pairs.
+     * Filters out any null prices while keeping timestamps aligned.
+     */
+    private fun parsePriceData(rawCloses: List<Double?>, rawTimestamps: List<Long>): PriceHistoryData {
+        val paired = rawTimestamps.zip(rawCloses).filter { it.second != null }
+        val timestamps = paired.map { it.first }
+        val prices = paired.map { it.second!! }
+        return PriceHistoryData(prices, timestamps)
     }
 
     override suspend fun getQuotes(symbols: List<String>): Result<List<QuoteResult>> {
@@ -151,25 +162,22 @@ class StockRepositoryImpl(
             val rawCloses = result?.indicators?.quote?.firstOrNull()?.close ?: emptyList()
             val rawTimestamps = result?.timestamp ?: emptyList()
 
-            // Filter out null prices while keeping timestamps aligned
-            val paired = rawTimestamps.zip(rawCloses).filter { it.second != null }
-            val timestamps = paired.map { it.first }
-            val closes = paired.map { it.second!! }
+            val priceData = parsePriceData(rawCloses, rawTimestamps)
 
             // Save to cache
-            if (closes.isNotEmpty()) {
+            if (priceData.prices.isNotEmpty()) {
                 priceHistoryDao.insertPriceHistory(
                     PriceHistoryEntity(
                         symbol = symbol,
                         range = range,
-                        prices = json.encodeToString(closes),
-                        timestamps = json.encodeToString(timestamps),
+                        prices = json.encodeToString(priceData.prices),
+                        timestamps = json.encodeToString(priceData.timestamps),
                         lastUpdatedDate = today
                     )
                 )
             }
 
-            PriceHistoryData(closes, timestamps)
+            priceData
         } catch (e: Exception) {
             // Return cached data if available, even if stale
             cached?.let { decodePriceHistory(it) } ?: PriceHistoryData(emptyList(), emptyList())
@@ -214,27 +222,22 @@ class StockRepositoryImpl(
                             val rawCloses = chartResult?.indicators?.quote?.firstOrNull()?.close ?: emptyList()
                             val rawTimestamps = chartResult?.timestamp ?: emptyList()
 
-                            // Filter out null prices while keeping timestamps aligned
-                            val paired = rawTimestamps.zip(rawCloses).filter { it.second != null }
-                            val timestamps = paired.map { it.first }
-                            val closes = paired.map { it.second!! }
-
-                            Triple(symbol, closes, timestamps)
+                            symbol to parsePriceData(rawCloses, rawTimestamps)
                         } catch (e: Exception) {
-                            Triple(symbol, emptyList<Double>(), emptyList<Long>())
+                            symbol to PriceHistoryData(emptyList(), emptyList())
                         }
                     }
                 }
                 val fetched = fetchResults.awaitAll()
 
                 // Save to cache and add to result
-                val entitiesToSave = fetched.map { (symbol, prices, timestamps) ->
-                    result[symbol] = PriceHistoryData(prices, timestamps)
+                val entitiesToSave = fetched.map { (symbol, priceData) ->
+                    result[symbol] = priceData
                     PriceHistoryEntity(
                         symbol = symbol,
                         range = range,
-                        prices = json.encodeToString(prices),
-                        timestamps = json.encodeToString(timestamps),
+                        prices = json.encodeToString(priceData.prices),
+                        timestamps = json.encodeToString(priceData.timestamps),
                         lastUpdatedDate = today
                     )
                 }

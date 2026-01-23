@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.data.local.AccountEntity
+import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.viewmodel.AccountsUiState
 import com.portfolio.manager.presentation.viewmodel.AccountsViewModel
 
@@ -160,25 +161,12 @@ fun AccountsScreen(
                 }
             }
             is AccountsUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = state.message,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Button(onClick = onNavigateBack) {
-                            Text("Go Back")
-                        }
-                    }
-                }
+                ErrorContent(
+                    message = state.message,
+                    onRetry = onNavigateBack,
+                    retryLabel = "Go Back",
+                    modifier = Modifier.padding(paddingValues)
+                )
             }
         }
     }

@@ -67,6 +67,7 @@ import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.component.AllocationItem
 import com.portfolio.manager.presentation.component.AllocationPieChart
+import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.component.PortfolioSummary
 import com.portfolio.manager.presentation.component.SkeletonDashboard
 import com.portfolio.manager.presentation.component.StockCard
@@ -207,41 +208,6 @@ fun DashboardScreen(
     }
 }
 
-@Composable
-private fun ErrorContent(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Text(
-                text = "Failed to load prices",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.error
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = onRetry) {
-                Text("Retry")
-            }
-        }
-    }
-}
-
 private enum class DashboardStateType { Loading, Success, Error }
 
 @Composable
@@ -294,6 +260,7 @@ private fun DashboardStateContent(
                 val state = uiState as? DashboardUiState.Error ?: return@Crossfade
                 ErrorContent(
                     message = state.message,
+                    title = "Failed to load prices",
                     onRetry = { viewModel.refresh() }
                 )
             }

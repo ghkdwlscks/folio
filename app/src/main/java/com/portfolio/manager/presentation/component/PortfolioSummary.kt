@@ -29,8 +29,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -88,11 +86,7 @@ fun PortfolioSummary(
     val trend = createTrendIndicator(totalGainLoss, usePastel = true)
     val dayTrend = createTrendIndicator(dayChange, usePastel = true)
 
-    val formatValue: (Double) -> String = if (showInKrw) {
-        { CurrencyFormatter.formatKrw(it) }
-    } else {
-        { CurrencyFormatter.formatUsd(it) }
-    }
+    val formatValue = CurrencyFormatter.createFormatter(showInKrw)
 
     Box(
         modifier = modifier
@@ -369,67 +363,4 @@ private fun PeriodSelector(
     }
 }
 
-@Composable
-private fun CurrencyToggle(
-    showInKrw: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val indicatorOffset by animateFloatAsState(
-        targetValue = if (showInKrw) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
-        label = "currencyToggleIndicator"
-    )
-
-    Layout(
-        content = {
-            // Indicator (measured but positioned manually)
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = Color.White.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(6.dp)
-                    )
-            )
-            // USD option
-            Text(
-                text = "USD",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (!showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (!showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-            )
-            // KRW option
-            Text(
-                text = "KRW",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-            )
-        },
-        modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.White.copy(alpha = 0.15f))
-            .clickable(onClick = onToggle)
-    ) { measurables, constraints ->
-        val usdPlaceable = measurables[1].measure(constraints)
-        val krwPlaceable = measurables[2].measure(constraints)
-
-        val width = usdPlaceable.width + krwPlaceable.width
-        val height = maxOf(usdPlaceable.height, krwPlaceable.height)
-
-        val indicatorWidth = if (showInKrw) krwPlaceable.width else usdPlaceable.width
-        val indicatorX = (usdPlaceable.width * indicatorOffset).toInt()
-        val indicatorPlaceable = measurables[0].measure(
-            Constraints.fixed(indicatorWidth, height)
-        )
-
-        layout(width, height) {
-            indicatorPlaceable.placeRelative(indicatorX, 0)
-            usdPlaceable.placeRelative(0, 0)
-            krwPlaceable.placeRelative(usdPlaceable.width, 0)
-        }
-    }
-}
 

@@ -29,8 +29,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import com.portfolio.manager.util.JsonSerializer
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 data class AccountWithCount(
@@ -98,7 +98,7 @@ class DashboardViewModel @Inject constructor(
         }
         set(value) = sharedPreferences.edit().putInt(PREF_PORTFOLIO_SUMMARY_PERIOD, value.ordinal).apply()
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = JsonSerializer.instance
 
     // Now initialize _uiState - all dependencies are ready
     private val _uiState = MutableStateFlow(loadCachedStateOrDefault())
