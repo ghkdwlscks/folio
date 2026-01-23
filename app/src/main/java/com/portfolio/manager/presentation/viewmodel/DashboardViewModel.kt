@@ -246,8 +246,30 @@ class DashboardViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(sparklinePeriod = period, isRefreshing = true)
+            reloadStockSparklines(currentState.stocks, period)
         }
-        loadAndObserveHoldings()
+    }
+
+    private fun reloadStockSparklines(stocks: List<Stock>, period: TimePeriod) {
+        viewModelScope.launch {
+            val symbols = stocks.map { it.symbol }.distinct()
+            val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
+
+            val updatedStocks = stocks.map { stock ->
+                stock.copy(
+                    priceHistory = priceHistoryMap[stock.symbol]?.prices ?: emptyList(),
+                    priceHistoryTimestamps = priceHistoryMap[stock.symbol]?.timestamps ?: emptyList()
+                )
+            }
+
+            val currentState = _uiState.value
+            if (currentState is DashboardUiState.Success) {
+                _uiState.value = currentState.copy(
+                    stocks = updatedStocks,
+                    isRefreshing = false
+                )
+            }
+        }
     }
 
     fun selectSortOption(option: SortOption) {
