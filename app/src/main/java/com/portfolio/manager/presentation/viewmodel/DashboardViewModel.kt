@@ -37,6 +37,7 @@ import com.portfolio.manager.util.JsonSerializer
 import kotlinx.serialization.encodeToString
 import javax.inject.Inject
 
+@kotlinx.serialization.Serializable
 data class AccountWithCount(
     val account: AccountEntity,
     val holdingsCount: Int
@@ -83,6 +84,7 @@ class DashboardViewModel @Inject constructor(
     companion object {
         private const val PREF_DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
         private const val PREF_DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
+        private const val PREF_DASHBOARD_CACHED_ACCOUNTS_JSON = "dashboard_cached_accounts_json"
         private const val PREF_DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
         private const val PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
         private const val PREF_DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
@@ -113,6 +115,9 @@ class DashboardViewModel @Inject constructor(
             val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
             currentExchangeRate = cachedRate
 
+            val accounts = sharedPreferences.getString(PREF_DASHBOARD_CACHED_ACCOUNTS_JSON, null)?.let {
+                try { json.decodeFromString<List<AccountWithCount>>(it) } catch (_: Exception) { emptyList() }
+            } ?: emptyList()
             val portfolioSparkline = sharedPreferences.getString(PREF_DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, null)?.let {
                 try { json.decodeFromString<List<Double>>(it) } catch (_: Exception) { emptyList() }
             } ?: emptyList()
@@ -122,6 +127,7 @@ class DashboardViewModel @Inject constructor(
 
             DashboardUiState.Success(
                 stocks = stocks,
+                accounts = accounts,
                 selectedAccountId = selectedAccountId,
                 selectedPeriod = summaryPeriod,
                 exchangeRate = cachedRate,
@@ -149,11 +155,13 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun saveStateToCache(stocks: List<Stock>, exchangeRate: Double) {
+    private fun saveStateToCache(stocks: List<Stock>, accounts: List<AccountWithCount>, exchangeRate: Double) {
         try {
             val stocksJson = json.encodeToString(stocks)
+            val accountsJson = json.encodeToString(accounts)
             sharedPreferences.edit()
                 .putString(PREF_DASHBOARD_CACHED_STOCKS_JSON, stocksJson)
+                .putString(PREF_DASHBOARD_CACHED_ACCOUNTS_JSON, accountsJson)
                 .putFloat(PREF_DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
                 .apply()
         } catch (_: Exception) {
@@ -527,7 +535,7 @@ class DashboardViewModel @Inject constructor(
             )
             // Cache and update portfolio calculations
             if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                saveStateToCache(updatedStocks, currentExchangeRate)
+                saveStateToCache(updatedStocks, accounts, currentExchangeRate)
             }
             loadBenchmarkReturns(currentSuccess.selectedPeriod)
             loadPortfolioSparkline(updatedStocks, currentSuccess.selectedPeriod)
@@ -591,7 +599,7 @@ class DashboardViewModel @Inject constructor(
                 )
                 // Cache state for fast cold start (only for All Accounts view)
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                    saveStateToCache(stocks, currentExchangeRate)
+                    saveStateToCache(sortedStocks, accounts, currentExchangeRate)
                 }
                 // Load period returns and portfolio sparkline for the selected period
                 loadBenchmarkReturns(selectedPeriod)
