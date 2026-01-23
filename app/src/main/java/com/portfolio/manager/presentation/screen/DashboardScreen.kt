@@ -249,6 +249,8 @@ private fun ErrorContent(
     }
 }
 
+private enum class DashboardStateType { Loading, Success, Error }
+
 @Composable
 private fun DashboardStateContent(
     viewModel: DashboardViewModel,
@@ -258,15 +260,23 @@ private fun DashboardStateContent(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    // Only animate transitions between different state types, not data updates within Success
+    val stateType = when (uiState) {
+        is DashboardUiState.Loading -> DashboardStateType.Loading
+        is DashboardUiState.Success -> DashboardStateType.Success
+        is DashboardUiState.Error -> DashboardStateType.Error
+    }
+
     Crossfade(
-        targetState = uiState,
+        targetState = stateType,
         label = "dashboardStateTransition"
-    ) { state ->
-        when (state) {
-            is DashboardUiState.Loading -> {
+    ) { type ->
+        when (type) {
+            DashboardStateType.Loading -> {
                 SkeletonDashboard()
             }
-            is DashboardUiState.Success -> {
+            DashboardStateType.Success -> {
+                val state = uiState as? DashboardUiState.Success ?: return@Crossfade
                 DashboardContent(
                     stocks = state.stocks,
                     exchangeRate = state.exchangeRate,
@@ -287,7 +297,8 @@ private fun DashboardStateContent(
                     onRefresh = { viewModel.refresh() }
                 )
             }
-            is DashboardUiState.Error -> {
+            DashboardStateType.Error -> {
+                val state = uiState as? DashboardUiState.Error ?: return@Crossfade
                 ErrorContent(
                     message = state.message,
                     onRetry = { viewModel.refresh() }
