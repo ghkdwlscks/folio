@@ -190,26 +190,13 @@ fun StockCard(
                                 )
                             }
                         }
-                        // Row 3: weight + expand icon
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            if (weightPercent != null) {
-                                Text(
-                                    text = "Weight ${CurrencyFormatter.formatPercent(weightPercent)}%",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                            if (canExpand) {
-                                Icon(
-                                    imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                                    contentDescription = if (expanded) "Collapse" else "Expand",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        // Row 3: weight
+                        if (weightPercent != null) {
+                            Text(
+                                text = "Weight ${CurrencyFormatter.formatPercent(weightPercent)}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
@@ -256,26 +243,39 @@ fun StockCard(
                             )
                         }
                     }
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = trend.backgroundColor
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = trend.backgroundColor
                         ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = trend.icon,
+                                    contentDescription = if (trend.isGain) "Trending up" else "Trending down",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = trend.color
+                                )
+                                Text(
+                                    text = "${if (trend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(stock.gainLossPercent)}%",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = trend.color
+                                )
+                            }
+                        }
+                        if (canExpand) {
                             Icon(
-                                imageVector = trend.icon,
-                                contentDescription = if (trend.isGain) "Trending up" else "Trending down",
-                                modifier = Modifier.size(14.dp),
-                                tint = trend.color
-                            )
-                            Text(
-                                text = "${if (trend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(stock.gainLossPercent)}%",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = trend.color
+                                imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                contentDescription = if (expanded) "Collapse" else "Expand",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
