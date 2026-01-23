@@ -7,6 +7,7 @@ import com.portfolio.manager.data.local.AccountDao
 import com.portfolio.manager.data.local.AppDatabase
 import com.portfolio.manager.data.local.HoldingDao
 import com.portfolio.manager.data.local.PriceHistoryDao
+import com.portfolio.manager.data.local.StockNameDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,7 +32,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_2_3,
                 AppDatabase.MIGRATION_3_4,
                 AppDatabase.MIGRATION_4_5,
-                AppDatabase.MIGRATION_5_6
+                AppDatabase.MIGRATION_5_6,
+                AppDatabase.MIGRATION_6_7
             )
             .build()
     }
@@ -55,5 +57,10 @@ object DatabaseModule {
     @Provides
     fun providePriceHistoryDao(database: AppDatabase): PriceHistoryDao {
         return database.priceHistoryDao()
+    }
+
+    @Provides
+    fun provideStockNameDao(database: AppDatabase): StockNameDao {
+        return database.stockNameDao()
     }
 }

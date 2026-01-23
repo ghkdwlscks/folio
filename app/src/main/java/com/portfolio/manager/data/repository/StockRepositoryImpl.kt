@@ -2,6 +2,8 @@ package com.portfolio.manager.data.repository
 
 import com.portfolio.manager.data.local.PriceHistoryDao
 import com.portfolio.manager.data.local.PriceHistoryEntity
+import com.portfolio.manager.data.local.StockNameDao
+import com.portfolio.manager.data.local.StockNameEntity
 import com.portfolio.manager.data.remote.YahooFinanceApi
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.PeriodReturn
@@ -17,7 +19,8 @@ import java.time.LocalDate
 
 class StockRepositoryImpl(
     private val api: YahooFinanceApi,
-    private val priceHistoryDao: PriceHistoryDao
+    private val priceHistoryDao: PriceHistoryDao,
+    private val stockNameDao: StockNameDao
 ) : StockRepository {
 
     private val json = JsonSerializer.instance
@@ -63,6 +66,9 @@ class StockRepositoryImpl(
 
         return try {
             coroutineScope {
+                // Pre-fetch cached stock names
+                val cachedNames = stockNameDao.getStockNames(symbols).associateBy { it.symbol }
+
                 // Fetch chart data with dividend events (1y range to get annual dividends)
                 val chartResults = symbols.map { symbol ->
                     async {
@@ -78,6 +84,9 @@ class StockRepositoryImpl(
 
                 val chartData = chartResults.awaitAll().filterNotNull().toMap()
 
+                // Collect names to cache
+                val namesToCache = mutableListOf<StockNameEntity>()
+
                 val quotes = symbols.mapNotNull { symbol ->
                     val result = chartData[symbol]
                     val meta = result?.meta
@@ -89,10 +98,20 @@ class StockRepositoryImpl(
                             trailingAnnualDividend / meta.regularMarketPrice
                         } else null
 
+                        // Determine stock name: API longName > API shortName > cached name > symbol
+                        val apiName = meta.longName ?: meta.shortName
+                        val cachedName = cachedNames[symbol]?.name
+                        val finalName = apiName ?: cachedName
+
+                        // Cache new name if API provided one
+                        if (apiName != null) {
+                            namesToCache.add(StockNameEntity(symbol = symbol, name = apiName))
+                        }
+
                         QuoteResult(
                             symbol = meta.symbol,
-                            shortName = meta.shortName,
-                            longName = meta.longName,
+                            shortName = finalName ?: meta.shortName,
+                            longName = if (apiName != null) meta.longName else finalName,
                             regularMarketPrice = meta.regularMarketPrice,
                             regularMarketPreviousClose = meta.chartPreviousClose,
                             regularMarketChange = meta.regularMarketPrice - meta.chartPreviousClose,
@@ -105,6 +124,12 @@ class StockRepositoryImpl(
                         )
                     } else null
                 }
+
+                // Cache stock names
+                if (namesToCache.isNotEmpty()) {
+                    stockNameDao.insertStockNames(namesToCache)
+                }
+
                 Result.success(quotes)
             }
         } catch (e: Exception) {
@@ -263,5 +288,13 @@ class StockRepositoryImpl(
         }
 
         return result
+    }
+
+    override suspend fun getCachedStockName(symbol: String): String? {
+        return stockNameDao.getStockName(symbol)?.name
+    }
+
+    override suspend fun getCachedStockNames(symbols: List<String>): Map<String, String> {
+        return stockNameDao.getStockNames(symbols).associate { it.symbol to it.name }
     }
 }

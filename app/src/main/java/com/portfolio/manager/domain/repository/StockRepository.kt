@@ -18,4 +18,6 @@ interface StockRepository {
     suspend fun getExchangeRate(from: String, to: String): Result<Double>
     suspend fun getExchangeRateHistory(from: String, to: String, range: String): PriceHistoryData
     suspend fun getPriceHistory(symbols: List<String>, range: String = "1mo"): Map<String, PriceHistoryData>
+    suspend fun getCachedStockName(symbol: String): String?
+    suspend fun getCachedStockNames(symbols: List<String>): Map<String, String>
 }

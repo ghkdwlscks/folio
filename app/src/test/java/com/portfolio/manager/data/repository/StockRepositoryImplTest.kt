@@ -3,6 +3,8 @@ package com.portfolio.manager.data.repository
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.PriceHistoryDao
 import com.portfolio.manager.data.local.PriceHistoryEntity
+import com.portfolio.manager.data.local.StockNameDao
+import com.portfolio.manager.data.local.StockNameEntity
 import com.portfolio.manager.data.remote.YahooFinanceApi
 import com.portfolio.manager.data.remote.dto.ChartData
 import com.portfolio.manager.data.remote.dto.ChartIndicators
@@ -25,19 +27,27 @@ class StockRepositoryImplTest {
 
     private lateinit var api: YahooFinanceApi
     private lateinit var priceHistoryDao: PriceHistoryDao
+    private lateinit var stockNameDao: StockNameDao
     private lateinit var repository: StockRepositoryImpl
 
     @Before
     fun setup() {
         api = mockk()
         priceHistoryDao = mockk()
-        repository = StockRepositoryImpl(api, priceHistoryDao)
+        stockNameDao = mockk()
+        repository = StockRepositoryImpl(api, priceHistoryDao, stockNameDao)
 
         // Default: no cached data
         coEvery { priceHistoryDao.getPriceHistoryForSymbols(any(), any()) } returns emptyList()
         coEvery { priceHistoryDao.getPriceHistory(any(), any()) } returns null
         coEvery { priceHistoryDao.insertPriceHistories(any()) } returns Unit
         coEvery { priceHistoryDao.insertPriceHistory(any()) } returns Unit
+
+        // Default: no cached stock names
+        coEvery { stockNameDao.getStockNames(any()) } returns emptyList()
+        coEvery { stockNameDao.getStockName(any()) } returns null
+        coEvery { stockNameDao.insertStockNames(any()) } returns Unit
+        coEvery { stockNameDao.insertStockName(any()) } returns Unit
     }
 
     @Test
@@ -350,7 +360,7 @@ class StockRepositoryImplTest {
     @Test
     fun `getExchangeRate - api failure no cache - returns failure`() = runTest {
         // Fresh repository with no cache
-        val freshRepository = StockRepositoryImpl(api, priceHistoryDao)
+        val freshRepository = StockRepositoryImpl(api, priceHistoryDao, stockNameDao)
         coEvery { api.getChart("USDKRW=X", any(), any()) } throws IOException("Network error")
 
         val result = freshRepository.getExchangeRate("USD", "KRW")
@@ -805,5 +815,136 @@ class StockRepositoryImplTest {
 
         // Parse error triggers API fetch
         assertThat(result.prices).containsExactly(1300.0, 1400.0).inOrder()
+    }
+
+    @Test
+    fun `getQuotes - caches stock name from API`() = runTest {
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "AAPL",
+                            shortName = "Apple Inc.",
+                            longName = "Apple Inc. - Full Name",
+                            regularMarketPrice = 178.50,
+                            chartPreviousClose = 175.00,
+                            currency = "USD"
+                        )
+                    )
+                )
+            )
+        )
+
+        repository.getQuotes(listOf("AAPL"))
+
+        coVerify { stockNameDao.insertStockNames(match {
+            it.size == 1 && it[0].symbol == "AAPL" && it[0].name == "Apple Inc. - Full Name"
+        }) }
+    }
+
+    @Test
+    fun `getQuotes - uses cached name when API has no name`() = runTest {
+        coEvery { stockNameDao.getStockNames(listOf("AAPL")) } returns listOf(
+            StockNameEntity(symbol = "AAPL", name = "Cached Apple Name")
+        )
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "AAPL",
+                            shortName = null,
+                            longName = null,
+                            regularMarketPrice = 178.50,
+                            chartPreviousClose = 175.00,
+                            currency = "USD"
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getQuotes(listOf("AAPL"))
+
+        assertThat(result.isSuccess).isTrue()
+        val quote = result.getOrNull()?.first()
+        assertThat(quote?.shortName).isEqualTo("Cached Apple Name")
+        assertThat(quote?.longName).isEqualTo("Cached Apple Name")
+    }
+
+    @Test
+    fun `getQuotes - prefers API name over cached name`() = runTest {
+        coEvery { stockNameDao.getStockNames(listOf("AAPL")) } returns listOf(
+            StockNameEntity(symbol = "AAPL", name = "Old Cached Name")
+        )
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "AAPL",
+                            shortName = "Apple Inc.",
+                            longName = "Apple Inc. - New Name",
+                            regularMarketPrice = 178.50,
+                            chartPreviousClose = 175.00,
+                            currency = "USD"
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getQuotes(listOf("AAPL"))
+
+        assertThat(result.isSuccess).isTrue()
+        val quote = result.getOrNull()?.first()
+        assertThat(quote?.longName).isEqualTo("Apple Inc. - New Name")
+    }
+
+    @Test
+    fun `getCachedStockName - returns cached name`() = runTest {
+        coEvery { stockNameDao.getStockName("AAPL") } returns StockNameEntity(
+            symbol = "AAPL",
+            name = "Apple Inc."
+        )
+
+        val result = repository.getCachedStockName("AAPL")
+
+        assertThat(result).isEqualTo("Apple Inc.")
+    }
+
+    @Test
+    fun `getCachedStockName - returns null when not cached`() = runTest {
+        coEvery { stockNameDao.getStockName("AAPL") } returns null
+
+        val result = repository.getCachedStockName("AAPL")
+
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `getCachedStockNames - returns map of cached names`() = runTest {
+        coEvery { stockNameDao.getStockNames(listOf("AAPL", "GOOGL")) } returns listOf(
+            StockNameEntity(symbol = "AAPL", name = "Apple Inc."),
+            StockNameEntity(symbol = "GOOGL", name = "Alphabet Inc.")
+        )
+
+        val result = repository.getCachedStockNames(listOf("AAPL", "GOOGL"))
+
+        assertThat(result).containsEntry("AAPL", "Apple Inc.")
+        assertThat(result).containsEntry("GOOGL", "Alphabet Inc.")
+    }
+
+    @Test
+    fun `getCachedStockNames - returns partial map when some not cached`() = runTest {
+        coEvery { stockNameDao.getStockNames(listOf("AAPL", "GOOGL")) } returns listOf(
+            StockNameEntity(symbol = "AAPL", name = "Apple Inc.")
+        )
+
+        val result = repository.getCachedStockNames(listOf("AAPL", "GOOGL"))
+
+        assertThat(result).containsEntry("AAPL", "Apple Inc.")
+        assertThat(result).doesNotContainKey("GOOGL")
     }
 }
