@@ -14,9 +14,12 @@ A personal Android app for tracking your stock portfolio with real-time price up
 - **Sortable Holdings** - Sort by weight, name, symbol, gain/loss %, or day change %
 - **Allocation Chart** - Donut chart showing portfolio distribution
 - **Currency Toggle** - Switch between USD and KRW display
+- **Dividend Tracking** - View dividend yield and annual income per holding
+- **Rebalancing** - Set target percentages and calculate adjustments needed
 - **FIRE Calculator** - Plan financial independence with sustainable spending calculations
 - **Weight Analysis** - See each holding's percentage of total portfolio
 - **Aggregated View** - View all accounts combined or filter by account
+- **Heatmap Cards** - Visual intensity based on gain/loss percentage
 
 ## Tech Stack
 

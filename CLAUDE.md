@@ -74,7 +74,7 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **UI**: Jetpack Compose (Compiler 1.5.15, BOM 2024.12.01) + Material 3
 - **Architecture**: MVVM + Clean Architecture
 - **DI**: Hilt 2.51.1 (with KSP)
-- **Database**: Room 2.6.1 (version 6, with 5 migrations)
+- **Database**: Room 2.6.1 (version 10, fallbackToDestructiveMigration)
 - **Networking**: Retrofit 2.9.0 + OkHttp 4.12.0 + Kotlin Serialization 1.6.0
 - **Navigation**: Navigation Compose 2.8.5
 - **Async**: Coroutines + Flow
@@ -109,7 +109,7 @@ app/src/main/java/com/portfolio/manager/
 │   ├── theme/              # Color, Theme
 │   └── util/               # CurrencyFormatter, CurrencyConverter, TrendIndicator, PresentationConstants
 ├── di/                     # Hilt modules (Database, Network, Repository)
-└── util/                   # AppConstants, StockExtensions, JsonSerializer
+└── util/                   # AppConstants, PreferenceKeys, StockExtensions, JsonSerializer
 ```
 
 ## Key Screens
@@ -140,7 +140,7 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Room `@Transaction` for atomic operations
 - Domain services for complex calculations (PortfolioStatsCalculator, PriceHistoryProcessor)
 
-## AppConstants
+## AppConstants & PreferenceKeys
 
 ```kotlin
 object AppConstants {
@@ -151,6 +151,27 @@ object AppConstants {
     const val MIN_PRICE = 0.0001
     const val MAX_PRICE = 1_000_000_000.0
     const val DEFAULT_ACCOUNT_NAME = "Default"
+    const val BENCHMARK_SP500 = "^GSPC"
+    const val BENCHMARK_KOSPI = "^KS11"
+}
+
+object PreferenceKeys {
+    // Dashboard preferences
+    const val DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
+    const val DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
+    const val DASHBOARD_CACHED_ACCOUNTS_JSON = "dashboard_cached_accounts_json"
+    const val DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
+    const val DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
+    const val DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
+    const val STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
+    const val PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
+    const val SORT_OPTION = "sort_option"
+
+    // FIRE calculator preferences
+    const val FIRE_ANNUAL_RETURN = "fire_annual_return"
+    const val FIRE_ANNUAL_INFLATION = "fire_annual_inflation"
+    const val FIRE_TARGET_MONTHLY_SPENDING = "fire_target_monthly_spending"
+    const val FIRE_SHOW_IN_KRW = "fire_show_in_krw"
 }
 ```
 
@@ -200,7 +221,7 @@ app/src/test/java/com/portfolio/manager/
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests (all 4 viewmodels)
 │   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, TrendIndicator)
-└── util/                     # Extension tests (StockExtensions, AppConstants)
+└── util/                     # Extension tests (StockExtensions, AppConstants, PreferenceKeys)
 ```
 
 ### Test Tools
