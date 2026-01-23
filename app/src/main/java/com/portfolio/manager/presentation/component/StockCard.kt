@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
@@ -110,6 +111,7 @@ fun StockCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(IntrinsicSize.Min)
                     .then(
                         if (canExpand) {
                             Modifier.clickable(
@@ -126,20 +128,22 @@ fun StockCard(
             ) {
                 // Stock info with sparkline background
                 Box(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable { showFullScreenChart = true },
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     // Sparkline as background (if available)
                     if (stock.priceHistory.size >= 2) {
                         Sparkline(
                             prices = stock.priceHistory,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .matchParentSize()
+                                .fillMaxSize()
                                 .graphicsLayer { alpha = 0.5f },
-                            onClick = { showFullScreenChart = true }
+                            onClick = null
                         )
                     }
-                    // Text content on top
                     Column(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
@@ -182,8 +186,8 @@ fun StockCard(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
-                }
+                    } // Column (stock text)
+                } // Box (sparkline wrapper)
 
                 // Value and change
                 Column(
@@ -281,9 +285,9 @@ fun StockCard(
                     onDeleteAccountHolding = onDeleteAccountHolding
                 )
             }
-            }
-        }
-    }
+            } // Column (card content)
+        } // Row (heatmap + content)
+    } // Card
 
     // Full screen chart dialog
     if (showFullScreenChart) {
