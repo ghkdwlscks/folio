@@ -432,10 +432,14 @@ private fun PeriodSelector(
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = if (isSelected) Color.White.copy(alpha = 0.2f) else Color.Transparent,
-                modifier = Modifier.clickable { onPeriodSelected(period) }
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onPeriodSelected(period) }
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(

@@ -406,6 +406,65 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    private fun loadAllPeriodReturns(stocks: List<Stock>) {
+        if (stocks.isEmpty()) return
+
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
+
+            val symbols = stocks.map { it.symbol }.distinct()
+            val stocksForCalc = stocks.filter { it.totalValueInUsd(currentExchangeRate) > 0 }
+            if (stocksForCalc.isEmpty()) return@launch
+
+            // Load returns for all periods in parallel
+            TimePeriod.entries.map { period ->
+                async {
+                    try {
+                        val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
+                        val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
+
+                        val stocksWithHistory = stocksForCalc.filter { stock ->
+                            val data = priceHistoryMap[stock.symbol]
+                            data != null && data.prices.size >= 2
+                        }
+                        if (stocksWithHistory.isEmpty()) {
+                            period to 0.0
+                        } else {
+                            val symbolsWithHistory = stocksWithHistory.map { it.symbol }
+                            val stockDatePrices = PriceHistoryProcessor.buildSymbolDatePrices(symbolsWithHistory, priceHistoryMap)
+                            val exchangeRateByDate = PriceHistoryProcessor.buildExchangeRateByDate(exchangeRateData)
+                            val allDates = stockDatePrices.values.flatMap { it.keys }.toSet().sorted()
+
+                            if (allDates.size < 2) {
+                                period to 0.0
+                            } else {
+                                val filledStockPrices = PriceHistoryProcessor.forwardFillPrices(symbolsWithHistory, stockDatePrices, allDates)
+                                val validDates = allDates.filter { date ->
+                                    stocksWithHistory.all { stock ->
+                                        filledStockPrices[stock.symbol]?.containsKey(date) == true
+                                    }
+                                }
+
+                                val holdings = stocksWithHistory.map { StockHolding(it.symbol, it.quantity, it.currency) }
+                                val portfolioValues = PriceHistoryProcessor.calculatePortfolioValues(
+                                    validDates, holdings, filledStockPrices, exchangeRateByDate, currentExchangeRate, showInKrw
+                                )
+
+                                val returnPercent = calculatePeriodReturnPercent(portfolioValues)
+                                period to returnPercent
+                            }
+                        }
+                    } catch (e: Exception) {
+                        period to 0.0
+                    }
+                }
+            }.awaitAll().forEach { (period, returnPercent) ->
+                updatePeriodReturn(period, returnPercent)
+            }
+        }
+    }
+
     private suspend fun fetchBenchmarkSparklines(period: TimePeriod): Map<String, List<Double>> {
         val sp500History = stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range)[BENCHMARK_SP500]
         val kospiHistory = stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range)[BENCHMARK_KOSPI]
@@ -591,7 +650,8 @@ class DashboardViewModel @Inject constructor(
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
                     saveStateToCache(sortedStocks, accounts, currentExchangeRate)
                 }
-                // Load period returns and portfolio sparkline for the selected period
+                // Load period returns for all periods and portfolio sparkline for selected period
+                loadAllPeriodReturns(stocks)
                 loadBenchmarkReturns(selectedPeriod)
                 loadPortfolioSparkline(stocks, selectedPeriod)
             },
