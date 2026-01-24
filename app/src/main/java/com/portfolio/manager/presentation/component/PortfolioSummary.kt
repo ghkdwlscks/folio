@@ -183,7 +183,7 @@ fun PortfolioSummary(
                     text = "${if (trend.isGain) "+" else ""}${formatValue(totalGainLoss)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.85f)
+                    color = trend.color
                 )
                 Text(
                     text = "•",
