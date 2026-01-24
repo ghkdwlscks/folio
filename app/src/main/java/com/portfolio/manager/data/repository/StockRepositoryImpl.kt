@@ -112,15 +112,24 @@ class StockRepositoryImpl(
                             namesToCache.add(StockNameEntity(symbol = symbol, name = apiName))
                         }
 
+                        // Get previous close from price history (second-to-last close)
+                        // chartPreviousClose is relative to chart range (1 year ago for 1y range)
+                        val closes = result.indicators?.quote?.firstOrNull()?.close?.filterNotNull()
+                        val prevClose = if (!closes.isNullOrEmpty() && closes.size >= 2) {
+                            closes[closes.size - 2]
+                        } else {
+                            meta.chartPreviousClose
+                        }
+
                         QuoteResult(
                             symbol = meta.symbol,
                             shortName = finalName ?: meta.shortName,
                             longName = if (apiName != null) meta.longName else finalName,
                             regularMarketPrice = meta.regularMarketPrice,
-                            regularMarketPreviousClose = meta.chartPreviousClose,
-                            regularMarketChange = meta.regularMarketPrice - meta.chartPreviousClose,
-                            regularMarketChangePercent = if (meta.chartPreviousClose > 0) {
-                                ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
+                            regularMarketPreviousClose = prevClose,
+                            regularMarketChange = meta.regularMarketPrice - prevClose,
+                            regularMarketChangePercent = if (prevClose > 0) {
+                                ((meta.regularMarketPrice - prevClose) / prevClose) * 100
                             } else 0.0,
                             currency = meta.currency,
                             trailingAnnualDividendRate = trailingAnnualDividend.takeIf { it > 0 },
