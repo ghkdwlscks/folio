@@ -8,12 +8,12 @@ A personal Android app for tracking your stock portfolio with real-time price up
 - **Multi-Market Support** - Track US stocks (AAPL) and Korean stocks (005930.KS)
 - **Real-Time Prices** - Live quotes from Yahoo Finance API
 - **Portfolio Analytics** - Sparkline charts, MDD, Volatility, Sharpe Ratio, Best/Worst Day
-- **Period Returns** - View portfolio performance over 1W, 1M, 3M, 6M, 1Y
+- **Period Returns** - All periods (1W, 1M, 3M, 6M, 1Y) visible at once, loaded in parallel
 - **Benchmark Comparison** - Compare returns against S&P 500 and KOSPI
 - **Interactive Charts** - Full-screen charts with benchmark overlays and touch interactions
 - **Sortable Holdings** - Sort by weight, name, symbol, gain/loss %, or day change %
 - **Allocation Chart** - Donut chart showing portfolio distribution
-- **Currency Toggle** - Switch between USD and KRW display
+- **Currency Toggle** - Switch between USD and KRW with live exchange rate display
 - **Dividend Tracking** - View dividend yield and annual income per holding
 - **Rebalancing** - Set target percentages and calculate adjustments needed
 - **FIRE Calculator** - Plan financial independence with sustainable spending calculations

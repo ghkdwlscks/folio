@@ -10,14 +10,16 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Edit/Delete Holdings**: Modify or remove existing holdings with confirmation dialog
 - **Duplicate Prevention**: Same stock symbol cannot be added twice in the same account (checked in both add and edit modes)
 - **Input Validation**: Quantity (1-1,000,000) and price (0.0001-1,000,000,000) bounds enforced
+- **Target Weight**: Set target percentage for each holding, displayed as "Weight X% / Y%" in account view
 
 ### Dashboard
-- **Portfolio Summary**: Total value, gain/loss with percentage, invested amount, day change
+- **Portfolio Summary**: Total value (large font), gain/loss with colored percentage badge, invested amount, day change
+- **Exchange Rate Display**: Live USD/KRW rate shown next to currency toggle
 - **Portfolio Sparkline**: Weighted portfolio performance chart with logarithmic scaling and proper aspect ratio
 - **Full-Screen Chart**: Interactive chart dialog with benchmark overlays, period selector, and statistics
 - **Benchmark Comparison**: S&P 500 and KOSPI returns displayed alongside portfolio returns
-- **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (period-specific)
-- **Period Returns**: Selectable time periods (1W, 1M, 3M, 6M, 1Y) showing weighted portfolio returns (default: 1Y)
+- **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (daily returns within period)
+- **Period Returns**: All time periods (1W, 1M, 3M, 6M, 1Y) show returns simultaneously, loaded in parallel on startup
 - **Allocation Pie Chart**: Donut chart showing stock distribution with top 5 + "Others" legend, color bars, auto-sizing text
 - **Currency Toggle**: View totals in USD or KRW with animated sliding indicator (compact custom layout)
 - **Holdings List**: Stock cards with customizable sorting (weight, name, symbol, gain/loss %, day change %)
@@ -43,12 +45,13 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Real-time Prices**: Fetched from Yahoo Finance API (parallel async requests)
 - **Multi-market Support**: US stocks (AAPL) and Korean stocks (005930.KS)
 - **Korean Stock Auto-Detection**: 6-digit codes auto-append .KS suffix
-- **Day Change**: Shows daily price change and percentage
+- **Day Change**: Shows daily price change using previous day's close from price history
 - **Name Resolution**: Uses longName → shortName → symbol fallback
 - **Dynamic Exchange Rate**: Live USD/KRW rate from Yahoo Finance API (1-hour cache, fallback to AppConstants)
 - **Price History Cache**: Historical prices cached locally with daily refresh
 - **Date-based Alignment**: Handles different market trading hours (US vs Korea) using date keys
 - **Forward-fill Logic**: Missing dates use last known price; excludes dates before first data point
+- **Dividend Data**: Trailing annual dividend rate and yield from Yahoo Finance
 
 ### UI/UX
 - **Material 3 Design**: Modern Android design language with dynamic colors (Android 12+)
@@ -62,7 +65,7 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **List Animations**: Smooth item placement animations
 - **FAB Scroll Behavior**: Floating action button hides on scroll down, shows on scroll up
 - **Crossfade Transitions**: Smooth transitions between loading and content states
-- **Animated Period Returns**: Slide and fade transitions when switching periods
+- **Colored Gain/Loss**: Green for gains, red for losses throughout the UI
 - **Heatmap Intensity**: Stock card colors based on gain/loss percentage
 - **Error Handling**: Snackbar notifications for operation failures
 
