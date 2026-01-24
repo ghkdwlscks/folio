@@ -141,7 +141,7 @@ fun PortfolioSummary(
             ) {
                 Text(
                     text = formatValue(totalValue),
-                    style = MaterialTheme.typography.displaySmall.copy(
+                    style = MaterialTheme.typography.displayMedium.copy(
                         letterSpacing = (-1.5).sp
                     ),
                     fontWeight = FontWeight.Bold,
