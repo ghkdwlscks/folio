@@ -431,6 +431,7 @@ private fun DashboardContent(
             StockCard(
                 stock = stock,
                 weightPercent = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate),
+                targetWeight = stock.targetPercentage.takeIf { !isAggregated },
                 onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated },
                 onDeleteAccountHolding = { holdingId: Long ->
                     val detail = stock.accountDetails.find { it.holdingId == holdingId }

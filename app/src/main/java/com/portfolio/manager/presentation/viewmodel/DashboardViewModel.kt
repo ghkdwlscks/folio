@@ -624,7 +624,8 @@ class DashboardViewModel @Inject constructor(
                             priceHistory = priceHistoryMap[holding.symbol]?.prices ?: emptyList(),
                             priceHistoryTimestamps = priceHistoryMap[holding.symbol]?.timestamps ?: emptyList(),
                             annualDividend = quote?.trailingAnnualDividendRate,
-                            dividendYield = quote?.trailingAnnualDividendYield?.let { it * 100 }
+                            dividendYield = quote?.trailingAnnualDividendYield?.let { it * 100 },
+                            targetPercentage = holding.targetPercentage
                         )
                     }
                 }

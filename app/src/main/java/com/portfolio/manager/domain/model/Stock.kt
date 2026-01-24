@@ -27,7 +27,8 @@ data class Stock(
     val priceHistory: List<Double> = emptyList(),
     val priceHistoryTimestamps: List<Long> = emptyList(),
     val annualDividend: Double? = null,
-    val dividendYield: Double? = null
+    val dividendYield: Double? = null,
+    val targetPercentage: Int? = null
 ) {
 
     val totalValue: Double
