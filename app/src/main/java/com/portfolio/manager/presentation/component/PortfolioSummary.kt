@@ -96,7 +96,7 @@ fun PortfolioSummary(
 
     val formatValue = CurrencyFormatter.createFormatter(showInKrw)
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
@@ -108,19 +108,30 @@ fun PortfolioSummary(
                     )
                 )
             )
+            .padding(start = 20.dp, end = 10.dp, top = 10.dp, bottom = 20.dp)
     ) {
-        CurrencyToggle(
-            showInKrw = showInKrw,
-            onToggle = onCurrencyToggle,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(10.dp)
-        )
+        // Currency toggle and exchange rate
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "USD/KRW = ${String.format("%,.2f", exchangeRate)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            CurrencyToggle(
+                showInKrw = showInKrw,
+                onToggle = onCurrencyToggle
+            )
+        }
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 40.dp, bottom = 20.dp),
+                .padding(end = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Total Value with return badge inline
