@@ -435,7 +435,7 @@ private fun PeriodSelector(
                 modifier = Modifier.clickable { onPeriodSelected(period) }
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -444,22 +444,13 @@ private fun PeriodSelector(
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
                     )
-                    if (isSelected && returnValue != null) {
-                        AnimatedContent(
-                            targetState = displayValue,
-                            transitionSpec = {
-                                (fadeIn() + slideInVertically { it / 2 }) togetherWith
-                                    (fadeOut() + slideOutVertically { -it / 2 })
-                            },
-                            label = "periodReturnAnimation"
-                        ) { value ->
-                            Text(
-                                text = value,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = returnColor
-                            )
-                        }
+                    if (returnValue != null) {
+                        Text(
+                            text = displayValue,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) returnColor else returnColor.copy(alpha = 0.7f)
+                        )
                     }
                 }
             }
