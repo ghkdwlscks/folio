@@ -12,6 +12,7 @@ import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.SortOption
+import com.portfolio.manager.domain.service.PortfolioSorter
 import com.portfolio.manager.domain.service.PortfolioStatsCalculator
 import com.portfolio.manager.domain.service.PriceHistoryProcessor
 import com.portfolio.manager.domain.service.StockHolding
@@ -292,25 +293,11 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun sortStocks(stocks: List<Stock>, option: SortOption): List<Stock> {
-        return when (option) {
-            SortOption.WEIGHT -> stocks.sortedByDescending { it.totalValueInUsd(currentExchangeRate) }
-            SortOption.NAME -> stocks.sortedBy { it.name.lowercase() }
-            SortOption.SYMBOL -> stocks.sortedBy { it.symbol.lowercase() }
-            SortOption.GAIN_LOSS_PERCENT -> stocks.sortedByDescending { it.gainLossPercent }
-            SortOption.DAY_CHANGE_PERCENT -> stocks.sortedByDescending { it.dayChangePercent ?: 0.0 }
-        }
-    }
+    private fun sortStocks(stocks: List<Stock>, option: SortOption): List<Stock> =
+        PortfolioSorter.sortStocks(stocks, option, currentExchangeRate)
 
-    private fun sortCashItems(cashItems: List<CashItem>, option: SortOption): List<CashItem> {
-        return when (option) {
-            SortOption.WEIGHT -> cashItems.sortedByDescending { it.valueInUsd(currentExchangeRate) }
-            SortOption.NAME -> cashItems.sortedBy { it.name.lowercase() }
-            SortOption.SYMBOL -> cashItems.sortedBy { it.name.lowercase() } // Same as name for cash
-            SortOption.GAIN_LOSS_PERCENT -> cashItems.sortedByDescending { it.annualYieldRate }
-            SortOption.DAY_CHANGE_PERCENT -> cashItems.sortedByDescending { it.annualYieldRate } // Use yield for cash
-        }
-    }
+    private fun sortCashItems(cashItems: List<CashItem>, option: SortOption): List<CashItem> =
+        PortfolioSorter.sortCashItems(cashItems, option, currentExchangeRate)
 
     private fun loadBenchmarkReturns(period: TimePeriod) {
         viewModelScope.launch {
