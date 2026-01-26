@@ -85,8 +85,11 @@ fun PortfolioSummary(
     // Gain/loss only from stocks (cash has no gain/loss tracking)
     val stocksCost = if (showInKrw) stocksCostKrw else stocksCostUsd
     val stocksValue = if (showInKrw) stocksValueKrw else stocksValueUsd
+    val cashValue = if (showInKrw) cashValueKrw else cashValueUsd
     val totalGainLoss = stocksValue - stocksCost
     val totalGainLossPercent = if (stocksCost > 0) ((stocksValue - stocksCost) / stocksCost) * 100 else 0.0
+    // Total invested = stocks cost + cash value (cash is treated as invested amount)
+    val totalInvested = stocksCost + cashValue
 
     // Calculate day change (sum of each stock's day change * quantity, converted to display currency)
     val dayChange = stocks.sumOf { stock ->
@@ -206,7 +209,7 @@ fun PortfolioSummary(
                     color = Color.White.copy(alpha = 0.4f)
                 )
                 Text(
-                    text = "${formatValue(stocksCost)} invested",
+                    text = "${formatValue(totalInvested)} invested",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.6f)
                 )
