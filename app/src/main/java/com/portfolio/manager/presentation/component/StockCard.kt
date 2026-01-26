@@ -212,7 +212,7 @@ fun StockCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     // Day change row (compact: icon + percentage only)
-                    if (stock.dayChange != null && stock.dayChange != 0.0 && stock.dayChangePercent != null) {
+                    if (stock.dayChange != null && stock.dayChangePercent != null) {
                         val dayTrend = createTrendIndicator(stock.dayChange)
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(2.dp),
