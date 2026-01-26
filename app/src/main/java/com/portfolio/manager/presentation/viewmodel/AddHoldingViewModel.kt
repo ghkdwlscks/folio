@@ -42,6 +42,7 @@ class AddHoldingViewModel @Inject constructor(
 
     private val holdingId: Long? = savedStateHandle.get<Long>("holdingId")
     private val initialAccountId: Long = savedStateHandle.get<Long>("accountId") ?: ALL_ACCOUNTS_ID
+    private var existingTargetPercentage: Int? = null
 
     private val _uiState = MutableStateFlow(AddHoldingUiState(
         selectedAccountId = initialAccountId,
@@ -66,6 +67,7 @@ class AddHoldingViewModel @Inject constructor(
             // Load existing holding for edit mode
             if (holdingId != null) {
                 repository.getHoldingById(holdingId)?.let { holding ->
+                    existingTargetPercentage = holding.targetPercentage
                     _uiState.update { it.copy(
                         symbol = holding.symbol,
                         quantity = holding.quantity.toString(),
@@ -159,7 +161,8 @@ class AddHoldingViewModel @Inject constructor(
             name = symbolValue,
             quantity = quantityValue,
             averagePrice = priceValue,
-            currency = state.currency
+            currency = state.currency,
+            targetPercentage = if (state.isEditMode) existingTargetPercentage else null
         )
 
         if (state.isEditMode) {
