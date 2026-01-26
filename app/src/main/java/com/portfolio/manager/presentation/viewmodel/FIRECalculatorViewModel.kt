@@ -119,14 +119,8 @@ class FIRECalculatorViewModel @Inject constructor(
         }
     }
 
-    private fun convertToDisplayCurrency(usdValue: Double): Double =
-        if (showInKrw) usdValue * currentExchangeRate else usdValue
-
-    private fun convertToUsd(displayValue: Double, wasInKrw: Boolean): Double =
-        if (wasInKrw && currentExchangeRate > 0) displayValue / currentExchangeRate else displayValue
-
     private fun updateState(totalPortfolioValueUsd: Double) {
-        val displayValue = convertToDisplayCurrency(totalPortfolioValueUsd)
+        val displayValue = CurrencyConverter.toDisplayCurrency(totalPortfolioValueUsd, showInKrw, currentExchangeRate)
 
         val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
         val fireTargetCalculation = calculateFIRETarget(
@@ -185,8 +179,8 @@ class FIRECalculatorViewModel @Inject constructor(
     private fun recalculate() {
         val currentState = _uiState.value
         if (currentState is FIRECalculatorUiState.Success) {
-            val baseValueUsd = convertToUsd(currentState.totalPortfolioValue, currentState.showInKrw)
-            val displayValue = convertToDisplayCurrency(baseValueUsd)
+            val baseValueUsd = CurrencyConverter.fromDisplayCurrency(currentState.totalPortfolioValue, currentState.showInKrw, currentExchangeRate)
+            val displayValue = CurrencyConverter.toDisplayCurrency(baseValueUsd, showInKrw, currentExchangeRate)
 
             val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
             val fireTargetCalculation = calculateFIRETarget(

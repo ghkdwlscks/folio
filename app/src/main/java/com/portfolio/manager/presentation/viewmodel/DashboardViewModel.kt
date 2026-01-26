@@ -8,14 +8,15 @@ import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
-import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.SortOption
+import com.portfolio.manager.domain.service.CacheManager
 import com.portfolio.manager.domain.service.PortfolioSorter
 import com.portfolio.manager.domain.service.PortfolioStatsCalculator
 import com.portfolio.manager.domain.service.PriceHistoryProcessor
 import com.portfolio.manager.domain.service.StockHolding
+import com.portfolio.manager.domain.service.StockMapper
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
@@ -41,7 +42,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import com.portfolio.manager.util.JsonSerializer
-import kotlinx.serialization.encodeToString
 import javax.inject.Inject
 
 @kotlinx.serialization.Serializable
@@ -97,37 +97,37 @@ class DashboardViewModel @Inject constructor(
     private var currentSortOption by sharedPreferences.enum(PreferenceKeys.SORT_OPTION, SortOption.WEIGHT)
 
     private val json = JsonSerializer.instance
+    private val cacheManager = CacheManager(sharedPreferences)
 
     // Now initialize _uiState - all dependencies are ready
     private val _uiState = MutableStateFlow(loadCachedStateOrDefault())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
+    /**
+     * Helper function to update the UI state if it's currently in Success state.
+     * Reduces boilerplate for state updates.
+     */
+    private inline fun updateSuccessState(
+        block: (DashboardUiState.Success) -> DashboardUiState.Success
+    ) {
+        val current = _uiState.value as? DashboardUiState.Success ?: return
+        _uiState.value = block(current)
+    }
+
     private fun loadCachedStateOrDefault(): DashboardUiState {
         return try {
-            val cachedStocksJson = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, null)
+            val stocks = cacheManager.load<List<Stock>>(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON)
                 ?: return DashboardUiState.Loading
-            val cachedRate = sharedPreferences.getFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
-            val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
+            val cachedRate = cacheManager.loadFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
             currentExchangeRate = cachedRate
 
-            val cashItems = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, null)?.let {
-                try { json.decodeFromString<List<CashItem>>(it) } catch (_: Exception) { emptyList() }
-            } ?: emptyList()
-            val accounts = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, null)?.let {
-                try { json.decodeFromString<List<AccountWithCount>>(it) } catch (_: Exception) { emptyList() }
-            } ?: emptyList()
-            val portfolioSparkline = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, null)?.let {
-                try { json.decodeFromString<List<Double>>(it) } catch (_: Exception) { emptyList() }
-            } ?: emptyList()
-            val portfolioStats = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, null)?.let {
-                try { json.decodeFromString<PortfolioStats>(it) } catch (_: Exception) { PortfolioStats() }
-            } ?: PortfolioStats()
-            val periodReturns = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS, null)?.let {
-                try {
-                    val map = json.decodeFromString<Map<String, Double>>(it)
-                    map.mapKeys { (key, _) -> TimePeriod.valueOf(key) }
-                } catch (_: Exception) { emptyMap() }
-            } ?: emptyMap()
+            val cashItems = cacheManager.loadOrDefault<List<CashItem>>(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, emptyList())
+            val accounts = cacheManager.loadOrDefault<List<AccountWithCount>>(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, emptyList())
+            val portfolioSparkline = cacheManager.loadOrDefault<List<Double>>(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, emptyList())
+            val portfolioStats = cacheManager.loadOrDefault<PortfolioStats>(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, PortfolioStats())
+            val periodReturns = cacheManager.load<Map<String, Double>>(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS)
+                ?.mapKeys { (key, _) -> TimePeriod.valueOf(key) }
+                ?: emptyMap()
 
             DashboardUiState.Success(
                 stocks = stocks,
@@ -162,18 +162,11 @@ class DashboardViewModel @Inject constructor(
     }
 
     private fun saveStateToCache(stocks: List<Stock>, cashItems: List<CashItem>, accounts: List<AccountWithCount>, exchangeRate: Double) {
-        try {
-            val stocksJson = json.encodeToString(stocks)
-            val cashItemsJson = json.encodeToString(cashItems)
-            val accountsJson = json.encodeToString(accounts)
-            sharedPreferences.edit()
-                .putString(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, stocksJson)
-                .putString(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, cashItemsJson)
-                .putString(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, accountsJson)
-                .putFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
-                .apply()
-        } catch (_: Exception) {
-            // Ignore cache errors
+        cacheManager.saveMultiple {
+            put(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, stocks)
+            put(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, cashItems)
+            put(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, accounts)
+            putFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
         }
     }
 
@@ -334,23 +327,18 @@ class DashboardViewModel @Inject constructor(
     }
 
     private fun updatePeriodReturn(period: TimePeriod, returnPercent: Double) {
-        val currentState = _uiState.value
-        if (currentState is DashboardUiState.Success) {
-            val updatedReturns = currentState.periodReturns.toMutableMap()
+        updateSuccessState { state ->
+            val updatedReturns = state.periodReturns.toMutableMap()
             updatedReturns[period] = returnPercent
-            _uiState.value = currentState.copy(
-                periodReturns = updatedReturns,
-                isLoadingPeriodReturns = false
-            )
+            state.copy(periodReturns = updatedReturns, isLoadingPeriodReturns = false)
         }
     }
 
     private fun updateBenchmarkReturns(period: TimePeriod, benchmarks: BenchmarkReturns) {
-        val currentState = _uiState.value
-        if (currentState is DashboardUiState.Success) {
-            val updatedBenchmarks = currentState.benchmarkReturns.toMutableMap()
+        updateSuccessState { state ->
+            val updatedBenchmarks = state.benchmarkReturns.toMutableMap()
             updatedBenchmarks[period] = benchmarks
-            _uiState.value = currentState.copy(benchmarkReturns = updatedBenchmarks)
+            state.copy(benchmarkReturns = updatedBenchmarks)
         }
     }
 
@@ -547,14 +535,8 @@ class DashboardViewModel @Inject constructor(
     private fun savePeriodReturnsToCache() {
         val currentState = _uiState.value as? DashboardUiState.Success ?: return
         if (currentState.periodReturns.isEmpty()) return
-        try {
-            val stringKeyMap = currentState.periodReturns.mapKeys { (key, _) -> key.name }
-            sharedPreferences.edit()
-                .putString(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS, json.encodeToString(stringKeyMap))
-                .apply()
-        } catch (_: Exception) {
-            // Ignore cache errors
-        }
+        val stringKeyMap = currentState.periodReturns.mapKeys { (key, _) -> key.name }
+        cacheManager.save(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS, stringKeyMap)
     }
 
     private suspend fun fetchBenchmarkSparklines(period: TimePeriod): Map<String, List<Double>> {
@@ -584,24 +566,19 @@ class DashboardViewModel @Inject constructor(
         stats: PortfolioStats = PortfolioStats(),
         benchmarkSparklines: Map<String, List<Double>> = emptyMap()
     ) {
-        val currentState = _uiState.value
-        if (currentState is DashboardUiState.Success) {
-            _uiState.value = currentState.copy(
+        updateSuccessState { state ->
+            state.copy(
                 portfolioSparkline = sparkline,
                 portfolioSparklineTimestamps = timestamps,
                 benchmarkSparklines = benchmarkSparklines,
                 portfolioStats = stats
             )
-            // Cache portfolio sparkline for fast cold start (only for All Accounts with valid data)
-            if (selectedAccountId == ALL_ACCOUNTS_ID && sparkline.isNotEmpty()) {
-                try {
-                    sharedPreferences.edit()
-                        .putString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, json.encodeToString(sparkline))
-                        .putString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, json.encodeToString(stats))
-                        .apply()
-                } catch (_: Exception) {
-                    // Ignore cache errors
-                }
+        }
+        // Cache portfolio sparkline for fast cold start (only for All Accounts with valid data)
+        if (selectedAccountId == ALL_ACCOUNTS_ID && sparkline.isNotEmpty()) {
+            cacheManager.saveMultiple {
+                put(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, sparkline)
+                put(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, stats)
             }
         }
     }
@@ -757,23 +734,7 @@ class DashboardViewModel @Inject constructor(
                     // Normal view for single account
                     holdings.map { holding ->
                         val quote = quotes.find { it.symbol == holding.symbol }
-                        val stockName = quote?.longName ?: quote?.shortName ?: holding.symbol
-                        Stock(
-                            id = holding.id,
-                            symbol = holding.symbol,
-                            name = stockName,
-                            quantity = holding.quantity,
-                            averagePrice = holding.averagePrice,
-                            currentPrice = quote?.regularMarketPrice ?: holding.averagePrice,
-                            dayChange = quote?.regularMarketChange,
-                            dayChangePercent = quote?.regularMarketChangePercent,
-                            currency = holding.currency,
-                            priceHistory = priceHistoryMap[holding.symbol]?.prices ?: emptyList(),
-                            priceHistoryTimestamps = priceHistoryMap[holding.symbol]?.timestamps ?: emptyList(),
-                            annualDividend = quote?.trailingAnnualDividendRate,
-                            dividendYield = quote?.trailingAnnualDividendYield?.let { it * 100 },
-                            targetPercentage = holding.targetPercentage
-                        )
+                        StockMapper.createStock(holding, quote, priceHistoryMap[holding.symbol])
                     }
                 }
                 val sortedStocks = sortStocks(stocks, currentSortOption)
@@ -819,63 +780,16 @@ class DashboardViewModel @Inject constructor(
         allAccounts: List<AccountEntity>
     ): List<Stock> {
         val existingStockMap = existingStocks.associateBy { it.symbol }
-        val accountMap = allAccounts.associateBy { it.id }
-        val accountOrderMap = allAccounts.associate { it.id to it.orderIndex }
 
         return if (selectedAccountId == ALL_ACCOUNTS_ID) {
             // Aggregate holdings by symbol
             holdings.groupBy { it.symbol }.map { (symbol, holdingGroup) ->
-                val existingStock = existingStockMap[symbol]
-                val totalQuantity = holdingGroup.sumOf { it.quantity }
-                val totalCost = holdingGroup.sumOf { it.quantity * it.averagePrice }
-                val weightedAvgPrice = if (totalQuantity > 0) totalCost / totalQuantity else 0.0
-
-                val accountDetails = holdingGroup.map { holding ->
-                    StockAccountDetail(
-                        holdingId = holding.id,
-                        accountId = holding.accountId,
-                        accountName = accountMap[holding.accountId]?.name ?: "Unknown",
-                        quantity = holding.quantity,
-                        averagePrice = holding.averagePrice
-                    )
-                }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
-
-                Stock(
-                    id = holdingGroup.first().id,
-                    symbol = symbol,
-                    name = existingStock?.name ?: symbol,
-                    quantity = totalQuantity,
-                    averagePrice = weightedAvgPrice,
-                    currentPrice = existingStock?.currentPrice ?: weightedAvgPrice,
-                    dayChange = existingStock?.dayChange,
-                    dayChangePercent = existingStock?.dayChangePercent,
-                    currency = holdingGroup.first().currency,
-                    accountDetails = accountDetails,
-                    priceHistory = existingStock?.priceHistory ?: emptyList(),
-                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),
-                    annualDividend = existingStock?.annualDividend,
-                    dividendYield = existingStock?.dividendYield
-                )
+                StockMapper.mergeAggregatedWithExisting(holdingGroup, existingStockMap[symbol], allAccounts)
             }
         } else {
             // Single account view
             holdings.map { holding ->
-                val existingStock = existingStockMap[holding.symbol]
-                Stock(
-                    id = holding.id,
-                    symbol = holding.symbol,
-                    name = existingStock?.name ?: holding.symbol,
-                    quantity = holding.quantity,
-                    averagePrice = holding.averagePrice,
-                    currentPrice = existingStock?.currentPrice ?: holding.averagePrice,
-                    dayChange = existingStock?.dayChange,
-                    dayChangePercent = existingStock?.dayChangePercent,
-                    currency = holding.currency,
-                    priceHistory = existingStock?.priceHistory ?: emptyList(),
-                    priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),
-                    annualDividend = existingStock?.annualDividend,
-                    dividendYield = existingStock?.dividendYield
-                )
+                StockMapper.mergeWithExisting(holding, existingStockMap[holding.symbol])
             }
         }.let { sortStocks(it, currentSortOption) }
     }
@@ -886,45 +800,9 @@ class DashboardViewModel @Inject constructor(
         accounts: List<AccountEntity>,
         priceHistoryMap: Map<String, PriceHistoryData>
     ): List<Stock> {
-        val accountMap = accounts.associateBy { it.id }
-        val accountOrderMap = accounts.associate { it.id to it.orderIndex }
-
         return holdings.groupBy { it.symbol }.map { (symbol, holdingGroup) ->
             val quote = quotes.find { it.symbol == symbol }
-            val firstHolding = holdingGroup.first()
-
-            val totalQuantity = holdingGroup.sumOf { it.quantity }
-            val totalCost = holdingGroup.sumOf { it.quantity * it.averagePrice }
-            val weightedAvgPrice = if (totalQuantity > 0) totalCost / totalQuantity else 0.0
-
-            val accountDetails = holdingGroup.map { holding ->
-                StockAccountDetail(
-                    holdingId = holding.id,
-                    accountId = holding.accountId,
-                    accountName = accountMap[holding.accountId]?.name ?: "Unknown",
-                    quantity = holding.quantity,
-                    averagePrice = holding.averagePrice
-                )
-            }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
-
-            val stockName = quote?.longName ?: quote?.shortName ?: symbol
-
-            Stock(
-                id = firstHolding.id,
-                symbol = symbol,
-                name = stockName,
-                quantity = totalQuantity,
-                averagePrice = weightedAvgPrice,
-                currentPrice = quote?.regularMarketPrice ?: weightedAvgPrice,
-                dayChange = quote?.regularMarketChange,
-                dayChangePercent = quote?.regularMarketChangePercent,
-                currency = firstHolding.currency,
-                accountDetails = accountDetails,
-                priceHistory = priceHistoryMap[symbol]?.prices ?: emptyList(),
-                priceHistoryTimestamps = priceHistoryMap[symbol]?.timestamps ?: emptyList(),
-                annualDividend = quote?.trailingAnnualDividendRate,
-                dividendYield = quote?.trailingAnnualDividendYield?.let { it * 100 }
-            )
+            StockMapper.aggregateHoldings(holdingGroup, quote, accounts, priceHistoryMap[symbol])
         }
     }
 
