@@ -82,21 +82,24 @@ fun PortfolioSummary(
     val totalValueKrw = stocksValueKrw + cashValueKrw
 
     val totalValue = if (showInKrw) totalValueKrw else totalValueUsd
-    // Gain/loss only from stocks (cash has no gain/loss tracking)
     val stocksCost = if (showInKrw) stocksCostKrw else stocksCostUsd
     val stocksValue = if (showInKrw) stocksValueKrw else stocksValueUsd
     val cashValue = if (showInKrw) cashValueKrw else cashValueUsd
-    val totalGainLoss = stocksValue - stocksCost
-    val totalGainLossPercent = if (stocksCost > 0) ((stocksValue - stocksCost) / stocksCost) * 100 else 0.0
     // Total invested = stocks cost + cash value (cash is treated as invested amount)
     val totalInvested = stocksCost + cashValue
+    // Gain/loss from stocks only (cash has no gain/loss), but % based on total invested
+    val totalGainLoss = stocksValue - stocksCost
+    val totalGainLossPercent = if (totalInvested > 0) (totalGainLoss / totalInvested) * 100 else 0.0
 
     // Calculate day change (sum of each stock's day change * quantity, converted to display currency)
+    // Cash has no day change but is included in the base for % calculation
     val dayChange = stocks.sumOf { stock ->
         val valueChange = (stock.dayChange ?: 0.0) * stock.quantity
         CurrencyConverter.convert(valueChange, stock.currency, showInKrw, exchangeRate)
     }
-    val dayChangePercent = if (totalValue > 0) (dayChange / (totalValue - dayChange)) * 100 else 0.0
+    // Yesterday's total = today's total - day change (cash value is the same)
+    val yesterdayTotal = totalValue - dayChange
+    val dayChangePercent = if (yesterdayTotal > 0) (dayChange / yesterdayTotal) * 100 else 0.0
 
     // Calculate annual dividend income (stocks + cash savings income)
     val stockDividends = stocks.sumOf { stock ->
