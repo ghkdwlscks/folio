@@ -68,10 +68,16 @@ class AddHoldingViewModel @Inject constructor(
             if (holdingId != null) {
                 repository.getHoldingById(holdingId)?.let { holding ->
                     existingTargetPercentage = holding.targetPercentage
+                    // Format price as integer for KRW, with decimals for USD
+                    val priceStr = if (holding.currency == "KRW") {
+                        holding.averagePrice.toLong().toString()
+                    } else {
+                        holding.averagePrice.toString()
+                    }
                     _uiState.update { it.copy(
                         symbol = holding.symbol,
                         quantity = holding.quantity.toString(),
-                        averagePrice = holding.averagePrice.toString(),
+                        averagePrice = priceStr,
                         currency = holding.currency,
                         selectedAccountId = holding.accountId
                     )}

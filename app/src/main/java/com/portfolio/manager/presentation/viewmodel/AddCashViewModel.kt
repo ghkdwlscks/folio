@@ -61,9 +61,15 @@ class AddCashViewModel @Inject constructor(
             // Load existing cash item for edit mode
             if (cashItemId != null) {
                 cashRepository.getCashItemById(cashItemId)?.let { cashItem ->
+                    // Format value as integer for KRW, with decimals for USD
+                    val valueStr = if (cashItem.currency == "KRW") {
+                        cashItem.originalValue.toLong().toString()
+                    } else {
+                        cashItem.originalValue.toString()
+                    }
                     _uiState.update { it.copy(
                         name = cashItem.name,
-                        value = cashItem.originalValue.toString(),
+                        value = valueStr,
                         yieldRate = cashItem.annualYieldRate.toString(),
                         currency = cashItem.currency,
                         selectedAccountId = cashItem.accountId
