@@ -109,6 +109,9 @@ class DashboardViewModel @Inject constructor(
             val stocks = json.decodeFromString<List<Stock>>(cachedStocksJson)
             currentExchangeRate = cachedRate
 
+            val cashItems = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, null)?.let {
+                try { json.decodeFromString<List<CashItem>>(it) } catch (_: Exception) { emptyList() }
+            } ?: emptyList()
             val accounts = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, null)?.let {
                 try { json.decodeFromString<List<AccountWithCount>>(it) } catch (_: Exception) { emptyList() }
             } ?: emptyList()
@@ -127,6 +130,7 @@ class DashboardViewModel @Inject constructor(
 
             DashboardUiState.Success(
                 stocks = stocks,
+                cashItems = cashItems,
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
                 periodReturns = periodReturns,
@@ -156,12 +160,14 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun saveStateToCache(stocks: List<Stock>, accounts: List<AccountWithCount>, exchangeRate: Double) {
+    private fun saveStateToCache(stocks: List<Stock>, cashItems: List<CashItem>, accounts: List<AccountWithCount>, exchangeRate: Double) {
         try {
             val stocksJson = json.encodeToString(stocks)
+            val cashItemsJson = json.encodeToString(cashItems)
             val accountsJson = json.encodeToString(accounts)
             sharedPreferences.edit()
                 .putString(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, stocksJson)
+                .putString(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, cashItemsJson)
                 .putString(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, accountsJson)
                 .putFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
                 .apply()
@@ -737,7 +743,7 @@ class DashboardViewModel @Inject constructor(
             )
             // Cache and update portfolio calculations
             if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                saveStateToCache(updatedStocks, accounts, currentExchangeRate)
+                saveStateToCache(updatedStocks, sortedCashItems, accounts, currentExchangeRate)
             }
             loadBenchmarkReturns(currentSuccess.selectedPeriod)
             loadPortfolioSparkline(updatedStocks, sortedCashItems, currentSuccess.selectedPeriod)
@@ -805,7 +811,7 @@ class DashboardViewModel @Inject constructor(
                 )
                 // Cache state for fast cold start (only for All Accounts view)
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                    saveStateToCache(sortedStocks, accounts, currentExchangeRate)
+                    saveStateToCache(sortedStocks, sortedCashItems, accounts, currentExchangeRate)
                 }
                 // Load period returns for all periods and portfolio sparkline for selected period
                 loadAllPeriodReturns(stocks, sortedCashItems)

@@ -24,6 +24,7 @@ object PreferenceKeys {
     // Dashboard preferences
     const val DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
     const val DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
+    const val DASHBOARD_CACHED_CASH_ITEMS_JSON = "dashboard_cached_cash_items_json"
     const val DASHBOARD_CACHED_ACCOUNTS_JSON = "dashboard_cached_accounts_json"
     const val DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
     const val DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
