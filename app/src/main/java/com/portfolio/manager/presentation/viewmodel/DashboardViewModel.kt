@@ -114,11 +114,18 @@ class DashboardViewModel @Inject constructor(
             val portfolioStats = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, null)?.let {
                 try { json.decodeFromString<PortfolioStats>(it) } catch (_: Exception) { PortfolioStats() }
             } ?: PortfolioStats()
+            val periodReturns = sharedPreferences.getString(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS, null)?.let {
+                try {
+                    val map = json.decodeFromString<Map<String, Double>>(it)
+                    map.mapKeys { (key, _) -> TimePeriod.valueOf(key) }
+                } catch (_: Exception) { emptyMap() }
+            } ?: emptyMap()
 
             DashboardUiState.Success(
                 stocks = stocks,
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
+                periodReturns = periodReturns,
                 selectedPeriod = summaryPeriod,
                 exchangeRate = cachedRate,
                 showInKrw = allAccountsCurrencyKrw,
@@ -462,6 +469,24 @@ class DashboardViewModel @Inject constructor(
             }.awaitAll().forEach { (period, returnPercent) ->
                 updatePeriodReturn(period, returnPercent)
             }
+
+            // Cache period returns for fast cold start (only for All Accounts view)
+            if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                savePeriodReturnsToCache()
+            }
+        }
+    }
+
+    private fun savePeriodReturnsToCache() {
+        val currentState = _uiState.value as? DashboardUiState.Success ?: return
+        if (currentState.periodReturns.isEmpty()) return
+        try {
+            val stringKeyMap = currentState.periodReturns.mapKeys { (key, _) -> key.name }
+            sharedPreferences.edit()
+                .putString(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS, json.encodeToString(stringKeyMap))
+                .apply()
+        } catch (_: Exception) {
+            // Ignore cache errors
         }
     }
 
@@ -548,13 +573,18 @@ class DashboardViewModel @Inject constructor(
     ) {
         if (holdings.isEmpty()) {
             val showInKrw = getShowInKrwForCurrentAccount()
+            val currentSuccess = _uiState.value as? DashboardUiState.Success
             _uiState.value = DashboardUiState.Success(
                 stocks = emptyList(),
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
+                periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
+                selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
                 exchangeRate = currentExchangeRate,
                 showInKrw = showInKrw,
                 sparklinePeriod = sparklinePeriod,
+                portfolioSparkline = currentSuccess?.portfolioSparkline ?: emptyList(),
+                portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
                 sortOption = currentSortOption
             )
             return

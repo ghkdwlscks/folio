@@ -1223,4 +1223,90 @@ class DashboardViewModelTest {
         viewModel.toggleCurrency()
         assertThat(viewModel.isShowingInKrw()).isTrue()
     }
+
+    @Test
+    fun `cold start - loads cached period returns when no holdings`() = runTest {
+        // Test that cached period returns are loaded properly when there are no holdings
+        // (fresh data won't overwrite cached values in this case)
+        val cachedStocksJson = """[{"id":1,"symbol":"AAPL","name":"Apple","quantity":10,"averagePrice":100.0,"currentPrice":150.0,"currency":"USD","accountDetails":[],"priceHistory":[],"priceHistoryTimestamps":[]}]"""
+        val cachedPeriodReturnsJson = """{"ONE_WEEK":1.5,"ONE_MONTH":3.2,"ONE_YEAR":15.0}"""
+        every { sharedPreferences.getString("dashboard_cached_stocks_json", null) } returns cachedStocksJson
+        every { sharedPreferences.getString("dashboard_cached_period_returns", null) } returns cachedPeriodReturnsJson
+        // Empty holdings means loadAllPeriodReturns won't overwrite cached values
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        val state = viewModel.uiState.value as DashboardUiState.Success
+
+        // Cached period returns should be loaded and persist when no fresh data
+        assertThat(state.periodReturns[TimePeriod.ONE_WEEK]).isWithin(0.01).of(1.5)
+        assertThat(state.periodReturns[TimePeriod.ONE_MONTH]).isWithin(0.01).of(3.2)
+        assertThat(state.periodReturns[TimePeriod.ONE_YEAR]).isWithin(0.01).of(15.0)
+    }
+
+    @Test
+    fun `cold start - invalid cached period returns - does not crash`() = runTest {
+        // Test that invalid cached JSON is handled gracefully
+        val cachedStocksJson = """[{"id":1,"symbol":"AAPL","name":"Apple","quantity":10,"averagePrice":100.0,"currentPrice":150.0,"currency":"USD","accountDetails":[],"priceHistory":[],"priceHistoryTimestamps":[]}]"""
+        every { sharedPreferences.getString("dashboard_cached_stocks_json", null) } returns cachedStocksJson
+        every { sharedPreferences.getString("dashboard_cached_period_returns", null) } returns "invalid json"
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        // Should not crash with invalid cache JSON
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        val state = viewModel.uiState.value as DashboardUiState.Success
+
+        // Invalid cache should result in empty map (graceful degradation)
+        assertThat(state.periodReturns).isEmpty()
+    }
+
+    @Test
+    fun `loadAllPeriodReturns - saves period returns to cache for all accounts`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+
+        // Verify period returns are saved to cache
+        io.mockk.verify { sharedPreferencesEditor.putString("dashboard_cached_period_returns", any()) }
+    }
+
+    @Test
+    fun `loadAllPeriodReturns - single account view - does not cache period returns`() = runTest {
+        val account = AccountEntity(1, "Default", 1000L)
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account))
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(
+            listOf(HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD"))
+        )
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0))
+        )
+        coEvery { accountRepository.getAccountById(1L) } returns account
+        val day1 = 1704067200L
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns mapOf(
+            "AAPL" to PriceHistoryData(
+                prices = listOf(100.0, 110.0),
+                timestamps = listOf(day1, day1 + 86400)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, sharedPreferences)
+        viewModel.selectAccount(1L)
+
+        // Verify period returns are NOT saved for single account view
+        io.mockk.verify(exactly = 0) { sharedPreferencesEditor.putString("dashboard_cached_period_returns", any()) }
+    }
 }

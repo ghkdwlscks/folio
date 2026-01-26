@@ -45,6 +45,7 @@ class PreferenceKeysTest {
         assertThat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE).isEqualTo("dashboard_cached_exchange_rate")
         assertThat(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE).isEqualTo("dashboard_cached_portfolio_sparkline")
         assertThat(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS).isEqualTo("dashboard_cached_portfolio_stats")
+        assertThat(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS).isEqualTo("dashboard_cached_period_returns")
         assertThat(PreferenceKeys.STOCK_SPARKLINE_PERIOD).isEqualTo("stock_sparkline_period")
         assertThat(PreferenceKeys.PORTFOLIO_SUMMARY_PERIOD).isEqualTo("portfolio_summary_period")
         assertThat(PreferenceKeys.SORT_OPTION).isEqualTo("sort_option")

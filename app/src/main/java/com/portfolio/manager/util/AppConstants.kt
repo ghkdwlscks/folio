@@ -28,6 +28,7 @@ object PreferenceKeys {
     const val DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
     const val DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
     const val DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
+    const val DASHBOARD_CACHED_PERIOD_RETURNS = "dashboard_cached_period_returns"
     const val STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
     const val PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
     const val SORT_OPTION = "sort_option"
