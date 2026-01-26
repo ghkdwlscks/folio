@@ -1,6 +1,7 @@
 package com.portfolio.manager.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -12,7 +13,6 @@ import com.portfolio.manager.presentation.screen.AddCashScreen
 import com.portfolio.manager.presentation.screen.AddHoldingScreen
 import com.portfolio.manager.presentation.screen.DashboardScreen
 import com.portfolio.manager.presentation.screen.FIRECalculatorScreen
-import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
 
 object Routes {
     const val DASHBOARD = "dashboard"
@@ -32,22 +32,37 @@ object Routes {
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    onOpenDrawer: () -> Unit
+    modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = Routes.DASHBOARD
+        startDestination = Routes.DASHBOARD,
+        modifier = modifier
     ) {
         composable(Routes.DASHBOARD) {
-            val viewModel: DashboardViewModel = hiltViewModel()
+            val viewModel = hiltViewModel<com.portfolio.manager.presentation.viewmodel.DashboardViewModel>()
             DashboardScreen(
                 viewModel = viewModel,
-                onAddHolding = { navController.navigate(Routes.addHolding(viewModel.getSelectedAccountId())) },
-                onAddCash = { navController.navigate(Routes.addCash(viewModel.getSelectedAccountId())) },
-                onManageAccounts = { navController.navigate(Routes.ACCOUNTS) },
-                onEditHolding = { holdingId -> navController.navigate(Routes.editHolding(holdingId)) },
-                onEditCash = { cashItemId -> navController.navigate(Routes.editCash(cashItemId)) },
-                onOpenDrawer = onOpenDrawer
+                onAddHolding = {
+                    val accountId = viewModel.getSelectedAccountId()
+                    navController.navigate(Routes.addHolding(accountId))
+                },
+                onAddCash = {
+                    val accountId = viewModel.getSelectedAccountId()
+                    navController.navigate(Routes.addCash(accountId))
+                },
+                onManageAccounts = {
+                    navController.navigate(Routes.ACCOUNTS)
+                },
+                onEditHolding = { holdingId ->
+                    navController.navigate(Routes.editHolding(holdingId))
+                },
+                onEditCash = { cashItemId ->
+                    navController.navigate(Routes.editCash(cashItemId))
+                },
+                onNavigateToFIRE = {
+                    navController.navigate(Routes.FIRE_CALCULATOR)
+                }
             )
         }
         composable(

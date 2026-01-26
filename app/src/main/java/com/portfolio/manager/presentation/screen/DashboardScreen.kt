@@ -25,7 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Balance
@@ -110,8 +110,8 @@ private fun createAllocationItems(
     totalPortfolioValue: Double,
     exchangeRate: Double
 ): List<AllocationItem> {
-    // Create stock allocation items
-    val stockItems = stocks.map { stock ->
+    // Create stock allocation items sorted by weight
+    val stockItems = stocks.sortedByDescending { it.totalValueInUsd(exchangeRate) }.map { stock ->
         AllocationItem(
             symbol = stock.symbol,
             name = stock.name,
@@ -120,20 +120,23 @@ private fun createAllocationItems(
         )
     }
 
-    // Create individual cash allocation items
-    val cashAllocationItems = cashItems.map { cash ->
-        val valueUsd = cash.valueInUsd(exchangeRate)
-        val weight = if (totalPortfolioValue > 0) (valueUsd / totalPortfolioValue) * 100 else 0.0
-        AllocationItem(
-            symbol = "CASH",
-            name = cash.name,
-            value = valueUsd,
-            weight = weight
+    // Add single "Cash" item if there are cash items
+    val totalCashValue = cashItems.sumOf { it.valueInUsd(exchangeRate) }
+    val cashItem = if (totalCashValue > 0) {
+        val cashWeight = if (totalPortfolioValue > 0) (totalCashValue / totalPortfolioValue) * 100 else 0.0
+        listOf(
+            AllocationItem(
+                symbol = "CASH",
+                name = "Cash",
+                value = totalCashValue,
+                weight = cashWeight
+            )
         )
+    } else {
+        emptyList()
     }
 
-    // Combine and sort by weight descending
-    return (stockItems + cashAllocationItems).sortedByDescending { it.weight }
+    return stockItems + cashItem
 }
 
 private data class DeleteConfirmation(
@@ -156,7 +159,7 @@ fun DashboardScreen(
     onManageAccounts: () -> Unit,
     onEditHolding: (Long) -> Unit,
     onEditCash: (Long) -> Unit,
-    onOpenDrawer: () -> Unit,
+    onNavigateToFIRE: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
@@ -202,7 +205,7 @@ fun DashboardScreen(
         topBar = {
             DashboardTopBarWrapper(
                 viewModel = viewModel,
-                onOpenDrawer = onOpenDrawer,
+                onNavigateToFIRE = onNavigateToFIRE,
                 onManageAccounts = onManageAccounts
             )
         },
@@ -594,7 +597,7 @@ private fun DashboardContent(
 @Composable
 private fun DashboardTopBarWrapper(
     viewModel: DashboardViewModel,
-    onOpenDrawer: () -> Unit,
+    onNavigateToFIRE: () -> Unit,
     onManageAccounts: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -602,7 +605,7 @@ private fun DashboardTopBarWrapper(
 
     DashboardTopBar(
         isRefreshing = isRefreshing,
-        onOpenDrawer = onOpenDrawer,
+        onNavigateToFIRE = onNavigateToFIRE,
         onManageAccounts = onManageAccounts,
         onRefresh = { viewModel.refresh() }
     )
@@ -652,19 +655,11 @@ private fun AccountDropdownWrapper(
 @Composable
 private fun DashboardTopBar(
     isRefreshing: Boolean,
-    onOpenDrawer: () -> Unit,
+    onNavigateToFIRE: () -> Unit,
     onManageAccounts: () -> Unit,
     onRefresh: () -> Unit
 ) {
     TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onOpenDrawer) {
-                Icon(
-                    imageVector = Icons.Filled.Menu,
-                    contentDescription = "Open menu"
-                )
-            }
-        },
         title = {
             Text(
                 text = "Portfolio Manager",
@@ -672,10 +667,10 @@ private fun DashboardTopBar(
             )
         },
         actions = {
-            IconButton(onClick = onManageAccounts) {
+            IconButton(onClick = onNavigateToFIRE) {
                 Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = "Manage Accounts"
+                    imageVector = Icons.Outlined.LocalFireDepartment,
+                    contentDescription = "FIRE Calculator"
                 )
             }
             IconButton(onClick = onRefresh, enabled = !isRefreshing) {
@@ -690,6 +685,12 @@ private fun DashboardTopBar(
                         contentDescription = "Refresh"
                     )
                 }
+            }
+            IconButton(onClick = onManageAccounts) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Manage Accounts"
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
