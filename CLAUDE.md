@@ -1,39 +1,42 @@
 # Stock Portfolio Manager
 
-A personal Android app for manually tracking your stock portfolio with real-time price updates.
+A personal Android app for manually tracking your stock portfolio and cash savings with real-time price updates.
 
 ## Current Features
 
 ### Portfolio Management
 - **Multiple Accounts**: Create and manage multiple portfolio accounts (e.g., "Retirement", "Trading")
 - **Manual Holdings Entry**: Add stocks with symbol, quantity, average price, and currency
-- **Edit/Delete Holdings**: Modify or remove existing holdings with confirmation dialog
-- **Duplicate Prevention**: Same stock symbol cannot be added twice in the same account (checked in both add and edit modes)
+- **Cash Savings**: Add cash/savings items with name, value, annual yield rate, and currency
+- **Edit/Delete**: Modify or remove holdings and cash items with confirmation dialogs
+- **Duplicate Prevention**: Same stock symbol cannot be added twice in the same account
 - **Input Validation**: Quantity (1-1,000,000) and price (0.0001-1,000,000,000) bounds enforced
-- **Target Weight**: Set target percentage for each holding, displayed as "Weight X% / Y%" in account view
+- **Target Weight**: Set target percentage for each holding, preserved on edit
 
 ### Dashboard
-- **Portfolio Summary**: Total value (large font), gain/loss with colored percentage badge, invested amount, day change
+- **Portfolio Summary**: Total value (large font), gain/loss % (includes cash), invested amount (stocks + cash), day change %
 - **Exchange Rate Display**: Live USD/KRW rate shown next to currency toggle
-- **Portfolio Sparkline**: Weighted portfolio performance chart with logarithmic scaling and proper aspect ratio
+- **Portfolio Sparkline**: Weighted portfolio performance chart with logarithmic scaling (includes cash value)
 - **Full-Screen Chart**: Interactive chart dialog with benchmark overlays, period selector, and statistics
 - **Benchmark Comparison**: S&P 500 and KOSPI returns displayed alongside portfolio returns
 - **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (daily returns within period)
 - **Period Returns**: All time periods (1W, 1M, 3M, 6M, 1Y) show returns simultaneously, loaded in parallel on startup
-- **Allocation Pie Chart**: Donut chart showing stock distribution with top 5 + "Others" legend, color bars, auto-sizing text
-- **Currency Toggle**: View totals in USD or KRW with animated sliding indicator (compact custom layout)
+- **Allocation Pie Chart**: Donut chart showing all stocks and cash items individually (no "Others" grouping)
+- **Currency Toggle**: View totals in USD or KRW with animated sliding indicator (default: KRW)
 - **Holdings List**: Stock cards with customizable sorting (weight, name, symbol, gain/loss %, day change %)
+- **Cash List**: Cash cards showing name, value, yield rate with edit/delete buttons
 - **Stock Sparklines**: Each card shows price history chart with configurable period
-- **Weight Display**: Each stock shows its percentage of total portfolio
+- **Weight Display**: Each stock shows its percentage of total portfolio, with target if set
 - **Account Filter**: Dropdown menu to view all accounts aggregated or filter by specific account
 - **Multi-Account Details**: Expandable stock cards showing per-account holdings breakdown
-- **Delete Confirmation**: Dialog confirms before deleting any holding
+- **Annual Income**: Shows combined dividend income from stocks and yield income from cash
+- **Delete Confirmation**: Separate dialogs for holdings and cash items
 - **Refresh Indicator**: Loading spinner in refresh button during price updates
 - **Persisted Settings**: Period, currency, and sort preferences saved across app restarts
-- **Portfolio Caching**: Fast cold start with cached All Accounts view
+- **Portfolio Caching**: Fast cold start with cached stocks, cash items, accounts, and period returns
 
 ### FIRE Calculator
-- **Portfolio Value Display**: Shows total portfolio value with currency toggle (USD/KRW)
+- **Portfolio Value Display**: Shows total portfolio value (stocks + cash) with currency toggle
 - **Settings Configuration**: Adjustable annual return rate and annual inflation rate sliders
 - **Real Return Calculation**: Displays real return (annual return - inflation)
 - **Sustainable Spending**: Shows monthly and annual sustainable spending based on real return
@@ -45,7 +48,7 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Real-time Prices**: Fetched from Yahoo Finance API (parallel async requests)
 - **Multi-market Support**: US stocks (AAPL) and Korean stocks (005930.KS)
 - **Korean Stock Auto-Detection**: 6-digit codes auto-append .KS suffix
-- **Day Change**: Shows daily price change using previous day's close from price history
+- **Day Change**: Shows daily price change (displayed even when zero)
 - **Name Resolution**: Uses longName → shortName → symbol fallback
 - **Dynamic Exchange Rate**: Live USD/KRW rate from Yahoo Finance API (1-hour cache, fallback to AppConstants)
 - **Price History Cache**: Historical prices cached locally with daily refresh
@@ -57,13 +60,12 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **Material 3 Design**: Modern Android design language with dynamic colors (Android 12+)
 - **Navigation Drawer**: Menu button in top bar for feature navigation
 - **Pull to Refresh**: Manual price refresh with hidden center indicator
-- **Swipe Actions**: Edit and delete holdings
 - **Account Reordering**: Up/down buttons to reorder account priority
 - **Skeleton Loading**: Shimmer animation placeholders during data loading
 - **Card Elevation**: Subtle shadows for visual depth hierarchy
 - **Press Animations**: Scale effect (0.98x) on card tap for tactile feedback
 - **List Animations**: Smooth item placement animations
-- **FAB Scroll Behavior**: Floating action button hides on scroll down, shows on scroll up
+- **Horizontal FABs**: Rebalance button (left) and Add button (right) side by side
 - **Crossfade Transitions**: Smooth transitions between loading and content states
 - **Colored Gain/Loss**: Green for gains, red for losses throughout the UI
 - **Heatmap Intensity**: Stock card colors based on gain/loss percentage
@@ -77,7 +79,7 @@ A personal Android app for manually tracking your stock portfolio with real-time
 - **UI**: Jetpack Compose (Compiler 1.5.15, BOM 2024.12.01) + Material 3
 - **Architecture**: MVVM + Clean Architecture
 - **DI**: Hilt 2.51.1 (with KSP)
-- **Database**: Room 2.6.1 (version 10, fallbackToDestructiveMigration)
+- **Database**: Room 2.6.1 (version 1, fallbackToDestructiveMigration)
 - **Networking**: Retrofit 2.9.0 + OkHttp 4.12.0 + Kotlin Serialization 1.6.0
 - **Navigation**: Navigation Compose 2.8.5
 - **Async**: Coroutines + Flow
@@ -92,23 +94,26 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── AppDatabase.kt
 │   │   ├── AccountDao.kt, AccountEntity.kt
 │   │   ├── HoldingDao.kt, HoldingEntity.kt
-│   │   └── PriceHistoryDao.kt, PriceHistoryEntity.kt
+│   │   ├── CashItemDao.kt, CashItemEntity.kt
+│   │   ├── PriceHistoryDao.kt, PriceHistoryEntity.kt
+│   │   └── StockNameDao.kt, StockNameEntity.kt
 │   ├── remote/             # Yahoo Finance API
 │   │   ├── YahooFinanceApi.kt
 │   │   └── dto/            # YahooChartResponse, YahooQuoteResponse
 │   └── repository/         # Repository implementations
 │       ├── AccountRepositoryImpl.kt
 │       ├── HoldingsRepositoryImpl.kt
+│       ├── CashRepositoryImpl.kt
 │       └── StockRepositoryImpl.kt
 ├── domain/
-│   ├── model/              # Stock, StockAccountDetail, PeriodReturn, BenchmarkReturns, TimePeriod, SortOption, PortfolioStats, FIRECalculation, FIRETargetCalculation
+│   ├── model/              # Stock, CashItem, StockAccountDetail, PeriodReturn, BenchmarkReturns, TimePeriod, SortOption, PortfolioStats, FIRECalculation, FIRETargetCalculation
 │   ├── service/            # PortfolioStatsCalculator, PriceHistoryProcessor
 │   └── repository/         # Repository interfaces
 ├── presentation/
-│   ├── screen/             # DashboardScreen, AddHoldingScreen, AccountsScreen, FIRECalculatorScreen
-│   ├── component/          # PortfolioSummary, StockCard, Sparkline, InteractiveChart, FullScreenChart, AllocationPieChart, CurrencyToggle, Skeleton, ErrorContent
-│   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AccountsViewModel, FIRECalculatorViewModel
-│   ├── navigation/         # NavGraph
+│   ├── screen/             # DashboardScreen, AddHoldingScreen, AddCashScreen, AccountsScreen, FIRECalculatorScreen
+│   ├── component/          # PortfolioSummary, StockCard, CashCard, Sparkline, InteractiveChart, FullScreenChart, AllocationPieChart, CurrencyToggle, Skeleton, ErrorContent
+│   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AddCashViewModel, AccountsViewModel, FIRECalculatorViewModel
+│   ├── navigation/         # NavGraph, Routes
 │   ├── theme/              # Color, Theme
 │   └── util/               # CurrencyFormatter, CurrencyConverter, TrendIndicator, PresentationConstants
 ├── di/                     # Hilt modules (Database, Network, Repository)
@@ -117,10 +122,11 @@ app/src/main/java/com/portfolio/manager/
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary with sparkline and statistics, benchmark comparison (S&P 500, KOSPI), period selector (1W-1Y), full-screen interactive chart, allocation pie chart, sortable holdings list with individual sparklines, account dropdown filter, expandable multi-account details
+1. **Dashboard**: Portfolio summary with sparkline and statistics, benchmark comparison (S&P 500, KOSPI), period selector (1W-1Y), full-screen interactive chart, allocation pie chart, sortable holdings list with individual sparklines, cash items list, account dropdown filter, expandable multi-account details
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation, account chips (add mode), symbol lock (edit mode)
-3. **Accounts**: Manage accounts with add, edit, delete, reorder (up/down buttons), and error snackbar
-4. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking
+3. **Add/Edit Cash**: Form for name, value, annual yield rate, currency selection (USD/KRW)
+4. **Accounts**: Manage accounts with add, edit, delete, reorder (up/down buttons), and error snackbar
+5. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking
 
 ## Data Flow
 
@@ -129,6 +135,7 @@ Yahoo Finance API → StockRepository → DashboardViewModel → DashboardScreen
                                     ↘                    ↓
 Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIRECalculatorScreen
              → AccountRepository
+             → CashRepository
 ```
 
 ## Code Conventions
@@ -162,10 +169,12 @@ object PreferenceKeys {
     // Dashboard preferences
     const val DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
     const val DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
+    const val DASHBOARD_CACHED_CASH_ITEMS_JSON = "dashboard_cached_cash_items_json"
     const val DASHBOARD_CACHED_ACCOUNTS_JSON = "dashboard_cached_accounts_json"
     const val DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
     const val DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
     const val DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
+    const val DASHBOARD_CACHED_PERIOD_RETURNS = "dashboard_cached_period_returns"
     const val STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
     const val PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
     const val SORT_OPTION = "sort_option"
@@ -217,12 +226,12 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debu
 app/src/test/java/com/portfolio/manager/
 ├── data/
 │   ├── remote/               # YahooFinanceApiTest
-│   └── repository/           # Repository tests
+│   └── repository/           # Repository tests (Holdings, Account, Cash, Stock)
 ├── domain/
-│   ├── model/                # Model tests (Stock, PortfolioStats, FIRECalculation)
+│   ├── model/                # Model tests (Stock, CashItem, PortfolioStats, FIRECalculation)
 │   └── service/              # Service tests (PortfolioStatsCalculator, PriceHistoryProcessor)
 ├── presentation/
-│   ├── viewmodel/            # ViewModel tests (all 4 viewmodels)
+│   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)
 │   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, TrendIndicator)
 └── util/                     # Extension tests (StockExtensions, AppConstants, PreferenceKeys)
 ```
