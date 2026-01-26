@@ -110,8 +110,8 @@ private fun createAllocationItems(
     totalPortfolioValue: Double,
     exchangeRate: Double
 ): List<AllocationItem> {
-    // Create stock allocation items sorted by weight
-    val stockItems = stocks.sortedByDescending { it.totalValueInUsd(exchangeRate) }.map { stock ->
+    // Create stock allocation items
+    val stockItems = stocks.map { stock ->
         AllocationItem(
             symbol = stock.symbol,
             name = stock.name,
@@ -120,23 +120,20 @@ private fun createAllocationItems(
         )
     }
 
-    // Add single "Cash" item if there are cash items
-    val totalCashValue = cashItems.sumOf { it.valueInUsd(exchangeRate) }
-    val cashItem = if (totalCashValue > 0) {
-        val cashWeight = if (totalPortfolioValue > 0) (totalCashValue / totalPortfolioValue) * 100 else 0.0
-        listOf(
-            AllocationItem(
-                symbol = "CASH",
-                name = "Cash",
-                value = totalCashValue,
-                weight = cashWeight
-            )
+    // Create individual cash allocation items
+    val cashAllocationItems = cashItems.map { cash ->
+        val valueUsd = cash.valueInUsd(exchangeRate)
+        val weight = if (totalPortfolioValue > 0) (valueUsd / totalPortfolioValue) * 100 else 0.0
+        AllocationItem(
+            symbol = "CASH",
+            name = cash.name,
+            value = valueUsd,
+            weight = weight
         )
-    } else {
-        emptyList()
     }
 
-    return stockItems + cashItem
+    // Combine and sort by weight descending
+    return (stockItems + cashAllocationItems).sortedByDescending { it.weight }
 }
 
 private data class DeleteConfirmation(

@@ -108,19 +108,11 @@ fun AllocationPieChart(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items.take(5).forEachIndexed { index, item ->
+                    items.forEachIndexed { index, item ->
                         LegendItem(
                             color = ChartColors[index % ChartColors.size],
                             label = item.name,
                             weight = item.weight
-                        )
-                    }
-                    if (items.size > 5) {
-                        val othersWeight = items.drop(5).sumOf { it.weight }
-                        LegendItem(
-                            color = ChartColors[5 % ChartColors.size],
-                            label = "Others (${items.size - 5})",
-                            weight = othersWeight
                         )
                     }
                 }
@@ -134,13 +126,7 @@ private fun DonutChart(
     items: List<AllocationItem>,
     modifier: Modifier = Modifier
 ) {
-    val sweepAngles = if (items.size <= 5) {
-        items.map { (it.weight / 100f * 360f).toFloat() }
-    } else {
-        val top5 = items.take(5).map { (it.weight / 100f * 360f).toFloat() }
-        val othersWeight = items.drop(5).sumOf { it.weight }
-        top5 + (othersWeight / 100f * 360f).toFloat()
-    }
+    val sweepAngles = items.map { (it.weight / 100f * 360f).toFloat() }
 
     Canvas(modifier = modifier) {
         val strokeWidth = 24.dp.toPx()
