@@ -2,8 +2,10 @@ package com.portfolio.manager.presentation.viewmodel
 
 import android.content.SharedPreferences
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.data.local.CashItemEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
+import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
@@ -26,6 +28,7 @@ class FIRECalculatorViewModelTest {
 
     private lateinit var stockRepository: StockRepository
     private lateinit var holdingsRepository: HoldingsRepository
+    private lateinit var cashRepository: CashRepository
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var editor: SharedPreferences.Editor
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -43,8 +46,12 @@ class FIRECalculatorViewModelTest {
         Dispatchers.setMain(testDispatcher)
         stockRepository = mockk()
         holdingsRepository = mockk()
+        cashRepository = mockk()
         sharedPreferences = mockk()
         editor = mockk(relaxed = true)
+
+        // Default: no cash items
+        every { cashRepository.getAllCashItems() } returns flowOf(emptyList())
 
         every { sharedPreferences.edit() } returns editor
         every { editor.putFloat(any(), any()) } answers {
@@ -77,7 +84,7 @@ class FIRECalculatorViewModelTest {
     }
 
     private fun createViewModel(): FIRECalculatorViewModel {
-        return FIRECalculatorViewModel(stockRepository, holdingsRepository, sharedPreferences)
+        return FIRECalculatorViewModel(stockRepository, holdingsRepository, cashRepository, sharedPreferences)
     }
 
     @Test
@@ -328,5 +335,69 @@ class FIRECalculatorViewModelTest {
         assertThat(state.fireCalculation.realReturn).isEqualTo(-3.0)
         assertThat(state.fireTargetCalculation.requiredPortfolio).isPositiveInfinity()
         assertThat(state.fireTargetCalculation.progressPercent).isEqualTo(0.0)
+    }
+
+    @Test
+    fun `portfolio value - includes cash items in USD`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD")
+        )
+        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
+        val cashItems = listOf(
+            CashItemEntity(1, 1L, "Emergency Fund", 5000.0, 4.0, "USD", 0L)
+        )
+
+        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        every { cashRepository.getAllCashItems() } returns flowOf(cashItems)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+
+        val viewModel = createViewModel()
+
+        val state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        // Stocks: 10 * $100 = $1,000
+        // Cash: $5,000
+        // Total: $6,000
+        assertThat(state.totalPortfolioValue).isEqualTo(6000.0)
+    }
+
+    @Test
+    fun `portfolio value - includes cash items in KRW converted to USD`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD")
+        )
+        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
+        val cashItems = listOf(
+            CashItemEntity(1, 1L, "Korean Savings", 1400000.0, 3.5, "KRW", 0L)
+        )
+
+        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        every { cashRepository.getAllCashItems() } returns flowOf(cashItems)
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+
+        val viewModel = createViewModel()
+
+        val state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        // Stocks: 10 * $100 = $1,000
+        // Cash: 1,400,000 KRW / 1400 = $1,000
+        // Total: $2,000
+        assertThat(state.totalPortfolioValue).isWithin(0.01).of(2000.0)
+    }
+
+    @Test
+    fun `portfolio value - cash only with no holdings`() = runTest {
+        val cashItems = listOf(
+            CashItemEntity(1, 1L, "Savings", 10000.0, 5.0, "USD", 0L)
+        )
+
+        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        every { cashRepository.getAllCashItems() } returns flowOf(cashItems)
+
+        val viewModel = createViewModel()
+
+        val state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        assertThat(state.totalPortfolioValue).isEqualTo(10000.0)
     }
 }

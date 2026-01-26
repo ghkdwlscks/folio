@@ -3,8 +3,10 @@ package com.portfolio.manager.presentation.viewmodel
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
+import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.presentation.util.CurrencyConverter
@@ -39,6 +41,7 @@ sealed interface FIRECalculatorUiState {
 class FIRECalculatorViewModel @Inject constructor(
     private val stockRepository: StockRepository,
     private val holdingsRepository: HoldingsRepository,
+    private val cashRepository: CashRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -74,11 +77,17 @@ class FIRECalculatorViewModel @Inject constructor(
                 currentExchangeRate = stockRepository.getExchangeRate("USD", "KRW")
                     .getOrDefault(KRW_TO_USD_RATE)
 
-                // Get all holdings and calculate total portfolio value
+                // Get all holdings and cash items
                 val holdings = holdingsRepository.getAllHoldings().first()
+                val cashItems = cashRepository.getAllCashItems().first()
+                    .map { CashItem.fromEntity(it) }
+
+                // Calculate cash value in USD
+                val cashValueUsd = cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
 
                 if (holdings.isEmpty()) {
-                    updateState(0.0)
+                    // Even with no holdings, we may have cash
+                    updateState(cashValueUsd)
                     return@launch
                 }
 
@@ -92,13 +101,16 @@ class FIRECalculatorViewModel @Inject constructor(
                 }
                 val pricesBySymbol = quotes.associateBy { it.symbol }
 
-                // Calculate total portfolio value in USD
-                val totalValueUsd = holdings.sumOf { holding ->
+                // Calculate stocks value in USD
+                val stocksValueUsd = holdings.sumOf { holding ->
                     val quote = pricesBySymbol[holding.symbol]
                     val currentPrice = quote?.regularMarketPrice ?: holding.averagePrice
                     val value = holding.quantity * currentPrice
                     CurrencyConverter.toUsd(value, holding.currency, currentExchangeRate)
                 }
+
+                // Total portfolio value = stocks + cash
+                val totalValueUsd = stocksValueUsd + cashValueUsd
 
                 updateState(totalValueUsd)
             } catch (e: Exception) {
