@@ -72,7 +72,7 @@ The APK will be at `app/build/outputs/apk/debug/app-debug.apk`
 4. **Enter Details** - Symbol (e.g., AAPL or 005930.KS), quantity, average price
 5. **View Portfolio** - Dashboard shows total value including stocks and cash
 6. **Switch Currency** - Tap USD/KRW toggle in portfolio summary
-7. **FIRE Planning** - Access FIRE Calculator from navigation drawer
+7. **FIRE Planning** - Tap fire icon in top bar for FIRE Calculator
 
 ## License
 

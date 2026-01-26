@@ -58,7 +58,7 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 
 ### UI/UX
 - **Material 3 Design**: Modern Android design language with dynamic colors (Android 12+)
-- **Navigation Drawer**: Menu button in top bar for feature navigation
+- **Top Bar Actions**: Fire icon (FIRE Calculator), refresh, and settings buttons
 - **Pull to Refresh**: Manual price refresh with hidden center indicator
 - **Account Reordering**: Up/down buttons to reorder account priority
 - **Skeleton Loading**: Shimmer animation placeholders during data loading
