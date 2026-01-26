@@ -31,11 +31,15 @@ import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -69,8 +73,10 @@ import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.presentation.component.AllocationItem
 import com.portfolio.manager.presentation.component.AllocationPieChart
+import com.portfolio.manager.presentation.component.CashCard
 import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.component.PortfolioSummary
 import com.portfolio.manager.presentation.component.RebalanceDialog
@@ -96,11 +102,16 @@ private fun calculateWeightPercent(stock: Stock, totalPortfolioValue: Double, ex
 }
 
 /**
- * Creates allocation items from stocks for the pie chart.
+ * Creates allocation items from stocks and cash for the pie chart.
  */
-private fun createAllocationItems(stocks: List<Stock>, totalPortfolioValue: Double, exchangeRate: Double): List<AllocationItem> {
-    // Always sort by weight for allocation chart, regardless of list sort option
-    return stocks.sortedByDescending { it.totalValueInUsd(exchangeRate) }.map { stock ->
+private fun createAllocationItems(
+    stocks: List<Stock>,
+    cashItems: List<CashItem>,
+    totalPortfolioValue: Double,
+    exchangeRate: Double
+): List<AllocationItem> {
+    // Create stock allocation items sorted by weight
+    val stockItems = stocks.sortedByDescending { it.totalValueInUsd(exchangeRate) }.map { stock ->
         AllocationItem(
             symbol = stock.symbol,
             name = stock.name,
@@ -108,6 +119,24 @@ private fun createAllocationItems(stocks: List<Stock>, totalPortfolioValue: Doub
             weight = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate)
         )
     }
+
+    // Add single "Cash" item if there are cash items
+    val totalCashValue = cashItems.sumOf { it.valueInUsd(exchangeRate) }
+    val cashItem = if (totalCashValue > 0) {
+        val cashWeight = if (totalPortfolioValue > 0) (totalCashValue / totalPortfolioValue) * 100 else 0.0
+        listOf(
+            AllocationItem(
+                symbol = "CASH",
+                name = "Cash",
+                value = totalCashValue,
+                weight = cashWeight
+            )
+        )
+    } else {
+        emptyList()
+    }
+
+    return stockItems + cashItem
 }
 
 private data class DeleteConfirmation(
@@ -116,26 +145,37 @@ private data class DeleteConfirmation(
     val quantity: Int
 )
 
+private data class CashDeleteConfirmation(
+    val cashItemId: Long,
+    val name: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onAddHolding: () -> Unit,
+    onAddCash: () -> Unit,
     onManageAccounts: () -> Unit,
     onEditHolding: (Long) -> Unit,
+    onEditCash: (Long) -> Unit,
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
+    var cashDeleteConfirmation by remember { mutableStateOf<CashDeleteConfirmation?>(null) }
     var showRebalanceDialog by remember { mutableStateOf(false) }
+    var showAddChoiceDialog by remember { mutableStateOf(false) }
     var rebalanceItems by remember { mutableStateOf<List<RebalanceItem>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     // Reactively compute whether rebalance button should show
     val uiState by viewModel.uiState.collectAsState()
-    val canShowRebalance = remember(uiState, viewModel.getSelectedAccountId()) {
-        viewModel.getSelectedAccountId() != ALL_ACCOUNTS_ID &&
+    val selectedAccountId = viewModel.getSelectedAccountId()
+    val isSpecificAccount = selectedAccountId != ALL_ACCOUNTS_ID
+    val canShowRebalance = remember(uiState, selectedAccountId) {
+        isSpecificAccount &&
             (uiState as? DashboardUiState.Success)?.stocks?.isNotEmpty() == true
     }
 
@@ -206,10 +246,12 @@ fun DashboardScreen(
                             )
                         }
                     }
-                    FloatingActionButton(onClick = onAddHolding) {
+                    FloatingActionButton(
+                        onClick = { showAddChoiceDialog = true }
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = "Add Holding"
+                            contentDescription = "Add"
                         )
                     }
                 }
@@ -228,7 +270,11 @@ fun DashboardScreen(
                 onDeleteHolding = { id, symbol, quantity ->
                     deleteConfirmation = DeleteConfirmation(id, symbol, quantity)
                 },
-                onEditHolding = onEditHolding
+                onEditHolding = onEditHolding,
+                onDeleteCash = { id, name ->
+                    cashDeleteConfirmation = CashDeleteConfirmation(id, name)
+                },
+                onEditCash = onEditCash
             )
         }
     }
@@ -258,6 +304,31 @@ fun DashboardScreen(
         )
     }
 
+    cashDeleteConfirmation?.let { confirmation ->
+        AlertDialog(
+            onDismissRequest = { cashDeleteConfirmation = null },
+            title = { Text("Delete Cash") },
+            text = {
+                Text("Are you sure you want to delete \"${confirmation.name}\"?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteCashItem(confirmation.cashItemId)
+                        cashDeleteConfirmation = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { cashDeleteConfirmation = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (showRebalanceDialog && rebalanceItems.isNotEmpty()) {
         RebalanceDialog(
             items = rebalanceItems,
@@ -270,6 +341,42 @@ fun DashboardScreen(
             }
         )
     }
+
+    if (showAddChoiceDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddChoiceDialog = false },
+            title = { Text("Add to Account") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            showAddChoiceDialog = false
+                            onAddHolding()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Add Stock")
+                    }
+                    Button(
+                        onClick = {
+                            showAddChoiceDialog = false
+                            onAddCash()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Add Cash")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAddChoiceDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
 }
 
 private enum class DashboardStateType { Loading, Success, Error }
@@ -279,7 +386,9 @@ private fun DashboardStateContent(
     viewModel: DashboardViewModel,
     listState: LazyListState,
     onDeleteHolding: (Long, String, Int) -> Unit,
-    onEditHolding: (Long) -> Unit
+    onEditHolding: (Long) -> Unit,
+    onDeleteCash: (Long, String) -> Unit,
+    onEditCash: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -302,6 +411,7 @@ private fun DashboardStateContent(
                 val state = uiState as? DashboardUiState.Success ?: return@Crossfade
                 DashboardContent(
                     stocks = state.stocks,
+                    cashItems = state.cashItems,
                     exchangeRate = state.exchangeRate,
                     periodReturns = state.periodReturns,
                     benchmarkReturns = state.benchmarkReturns,
@@ -320,6 +430,8 @@ private fun DashboardStateContent(
                     onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
                     onDeleteHolding = onDeleteHolding,
                     onEditHolding = onEditHolding,
+                    onDeleteCash = onDeleteCash,
+                    onEditCash = onEditCash,
                     listState = listState,
                     isRefreshing = state.isRefreshing,
                     onRefresh = { viewModel.refresh() }
@@ -341,6 +453,7 @@ private fun DashboardStateContent(
 @Composable
 private fun DashboardContent(
     stocks: List<Stock>,
+    cashItems: List<CashItem>,
     exchangeRate: Double,
     periodReturns: Map<TimePeriod, Double>,
     benchmarkReturns: Map<TimePeriod, BenchmarkReturns>,
@@ -359,12 +472,16 @@ private fun DashboardContent(
     onSparklinePeriodSelected: (TimePeriod) -> Unit,
     onDeleteHolding: (Long, String, Int) -> Unit,
     onEditHolding: (Long) -> Unit,
+    onDeleteCash: (Long, String) -> Unit,
+    onEditCash: (Long) -> Unit,
     listState: LazyListState,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
+    val totalStocksValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
+    val totalCashValue = cashItems.sumOf { it.valueInUsd(exchangeRate) }
+    val totalPortfolioValue = totalStocksValue + totalCashValue
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -381,6 +498,7 @@ private fun DashboardContent(
         item {
             PortfolioSummary(
                 stocks = stocks,
+                cashItems = cashItems,
                 exchangeRate = exchangeRate,
                 periodReturns = periodReturns,
                 benchmarkReturns = benchmarkReturns,
@@ -397,52 +515,80 @@ private fun DashboardContent(
             )
         }
 
-        if (stocks.isNotEmpty()) {
+        if (stocks.isNotEmpty() || cashItems.isNotEmpty()) {
             item {
                 val totalValueForDisplay = if (showInKrw) {
-                    stocks.sumOf { it.totalValueInKrw(exchangeRate) }
+                    stocks.sumOf { it.totalValueInKrw(exchangeRate) } +
+                        cashItems.sumOf { it.valueInKrw(exchangeRate) }
                 } else {
                     totalPortfolioValue
                 }
                 AllocationPieChart(
-                    items = createAllocationItems(stocks, totalPortfolioValue, exchangeRate),
+                    items = createAllocationItems(stocks, cashItems, totalPortfolioValue, exchangeRate),
                     totalValue = totalValueForDisplay,
                     showInKrw = showInKrw
                 )
             }
         }
 
-        item {
-            SectionHeader(
-                title = "My Holdings",
-                count = stocks.size,
-                sortOption = sortOption,
-                onSortOptionSelected = onSortOptionSelected,
-                sparklinePeriod = sparklinePeriod,
-                onSparklinePeriodSelected = onSparklinePeriodSelected
-            )
+        if (stocks.isNotEmpty()) {
+            item {
+                SectionHeader(
+                    title = "My Holdings",
+                    count = stocks.size,
+                    sortOption = sortOption,
+                    onSortOptionSelected = onSortOptionSelected,
+                    sparklinePeriod = sparklinePeriod,
+                    onSparklinePeriodSelected = onSparklinePeriodSelected
+                )
+            }
+
+            items(
+                items = stocks,
+                key = { it.id }
+            ) { stock ->
+                val isAggregated = stock.accountDetails.isNotEmpty()
+                StockCard(
+                    stock = stock,
+                    weightPercent = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate),
+                    targetWeight = stock.targetPercentage.takeIf { !isAggregated },
+                    onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated },
+                    onDeleteAccountHolding = { holdingId: Long ->
+                        val detail = stock.accountDetails.find { it.holdingId == holdingId }
+                        if (detail != null) {
+                            onDeleteHolding(holdingId, stock.symbol, detail.quantity)
+                        }
+                    }.takeIf { isAggregated },
+                    onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated },
+                    onEditAccountHolding = onEditHolding.takeIf { isAggregated },
+                    modifier = Modifier.animateItemPlacement()
+                )
+            }
         }
 
-        items(
-            items = stocks,
-            key = { it.id }
-        ) { stock ->
-            val isAggregated = stock.accountDetails.isNotEmpty()
-            StockCard(
-                stock = stock,
-                weightPercent = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate),
-                targetWeight = stock.targetPercentage.takeIf { !isAggregated },
-                onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated },
-                onDeleteAccountHolding = { holdingId: Long ->
-                    val detail = stock.accountDetails.find { it.holdingId == holdingId }
-                    if (detail != null) {
-                        onDeleteHolding(holdingId, stock.symbol, detail.quantity)
-                    }
-                }.takeIf { isAggregated },
-                onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated },
-                onEditAccountHolding = onEditHolding.takeIf { isAggregated },
-                modifier = Modifier.animateItemPlacement()
-            )
+        if (cashItems.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Cash (${cashItems.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            items(
+                items = cashItems,
+                key = { "cash_${it.id}" }
+            ) { cashItem ->
+                CashCard(
+                    cashItem = cashItem,
+                    showInKrw = showInKrw,
+                    exchangeRate = exchangeRate,
+                    onEdit = { onEditCash(cashItem.id) },
+                    onDelete = { onDeleteCash(cashItem.id, cashItem.name) },
+                    modifier = Modifier.animateItemPlacement()
+                )
+            }
         }
         }
     }
@@ -647,22 +793,12 @@ private fun SectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "$count items",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = "$title ($count)",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically

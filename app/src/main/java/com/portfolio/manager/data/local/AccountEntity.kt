@@ -12,5 +12,5 @@ data class AccountEntity(
     val name: String,
     val createdAt: Long = System.currentTimeMillis(),
     val orderIndex: Int = 0,
-    val preferredCurrency: String = "USD"
+    val preferredCurrency: String = "KRW"
 )

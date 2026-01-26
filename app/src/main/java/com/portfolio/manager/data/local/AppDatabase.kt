@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [AccountEntity::class, HoldingEntity::class, PriceHistoryEntity::class, StockNameEntity::class],
-    version = 10,
+    entities = [AccountEntity::class, HoldingEntity::class, PriceHistoryEntity::class, StockNameEntity::class, CashItemEntity::class],
+    version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -15,6 +15,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun holdingDao(): HoldingDao
     abstract fun priceHistoryDao(): PriceHistoryDao
     abstract fun stockNameDao(): StockNameDao
+    abstract fun cashItemDao(): CashItemDao
 
     companion object {
         @Volatile

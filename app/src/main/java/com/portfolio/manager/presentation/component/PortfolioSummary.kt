@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.portfolio.manager.domain.model.BenchmarkReturns
+import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
@@ -52,6 +53,7 @@ import com.portfolio.manager.presentation.util.createTrendIndicator
 @Composable
 fun PortfolioSummary(
     stocks: List<Stock>,
+    cashItems: List<CashItem> = emptyList(),
     exchangeRate: Double,
     periodReturns: Map<TimePeriod, Double> = emptyMap(),
     benchmarkReturns: Map<TimePeriod, BenchmarkReturns> = emptyMap(),
@@ -68,15 +70,23 @@ fun PortfolioSummary(
 ) {
     var showFullScreenChart by remember { mutableStateOf(false) }
 
-    val totalValueUsd = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
-    val totalCostUsd = stocks.sumOf { it.totalCostInUsd(exchangeRate) }
-    val totalValueKrw = stocks.sumOf { it.totalValueInKrw(exchangeRate) }
-    val totalCostKrw = stocks.sumOf { it.totalCostInKrw(exchangeRate) }
+    val stocksValueUsd = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
+    val stocksCostUsd = stocks.sumOf { it.totalCostInUsd(exchangeRate) }
+    val stocksValueKrw = stocks.sumOf { it.totalValueInKrw(exchangeRate) }
+    val stocksCostKrw = stocks.sumOf { it.totalCostInKrw(exchangeRate) }
+
+    val cashValueUsd = cashItems.sumOf { it.valueInUsd(exchangeRate) }
+    val cashValueKrw = cashItems.sumOf { it.valueInKrw(exchangeRate) }
+
+    val totalValueUsd = stocksValueUsd + cashValueUsd
+    val totalValueKrw = stocksValueKrw + cashValueKrw
 
     val totalValue = if (showInKrw) totalValueKrw else totalValueUsd
-    val totalCost = if (showInKrw) totalCostKrw else totalCostUsd
-    val totalGainLoss = totalValue - totalCost
-    val totalGainLossPercent = if (totalCost > 0) ((totalValue - totalCost) / totalCost) * 100 else 0.0
+    // Gain/loss only from stocks (cash has no gain/loss tracking)
+    val stocksCost = if (showInKrw) stocksCostKrw else stocksCostUsd
+    val stocksValue = if (showInKrw) stocksValueKrw else stocksValueUsd
+    val totalGainLoss = stocksValue - stocksCost
+    val totalGainLossPercent = if (stocksCost > 0) ((stocksValue - stocksCost) / stocksCost) * 100 else 0.0
 
     // Calculate day change (sum of each stock's day change * quantity, converted to display currency)
     val dayChange = stocks.sumOf { stock ->
@@ -85,10 +95,15 @@ fun PortfolioSummary(
     }
     val dayChangePercent = if (totalValue > 0) (dayChange / (totalValue - dayChange)) * 100 else 0.0
 
-    // Calculate annual dividend income
-    val annualDividend = stocks.sumOf { stock ->
+    // Calculate annual dividend income (stocks + cash savings income)
+    val stockDividends = stocks.sumOf { stock ->
         CurrencyConverter.convert(stock.annualDividendIncome, stock.currency, showInKrw, exchangeRate)
     }
+    val cashIncome = cashItems.sumOf { cash ->
+        val annualIncome = cash.originalValue * cash.annualYieldRate / 100.0
+        CurrencyConverter.convert(annualIncome, cash.currency, showInKrw, exchangeRate)
+    }
+    val annualDividend = stockDividends + cashIncome
     val portfolioDividendYield = if (totalValue > 0) (annualDividend / totalValue) * 100 else 0.0
 
     val trend = createTrendIndicator(totalGainLoss, usePastel = true)
@@ -191,7 +206,7 @@ fun PortfolioSummary(
                     color = Color.White.copy(alpha = 0.4f)
                 )
                 Text(
-                    text = "${formatValue(totalCost)} invested",
+                    text = "${formatValue(stocksCost)} invested",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.6f)
                 )
@@ -297,7 +312,8 @@ fun PortfolioSummary(
                 currency = if (showInKrw) "KRW" else "USD",
                 priceHistory = actualPriceHistory,
                 priceHistoryTimestamps = portfolioSparklineTimestamps,
-                benchmarkSparklines = scaledBenchmarks
+                benchmarkSparklines = scaledBenchmarks,
+                periodReturn = periodReturns[selectedPeriod]
             ),
             onDismiss = { showFullScreenChart = false },
             currentPeriod = selectedPeriod

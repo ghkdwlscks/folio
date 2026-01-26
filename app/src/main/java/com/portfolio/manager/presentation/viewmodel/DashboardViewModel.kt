@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import android.content.SharedPreferences
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
+import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.StockAccountDetail
@@ -15,6 +16,7 @@ import com.portfolio.manager.domain.service.PortfolioStatsCalculator
 import com.portfolio.manager.domain.service.PriceHistoryProcessor
 import com.portfolio.manager.domain.service.StockHolding
 import com.portfolio.manager.domain.repository.AccountRepository
+import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
@@ -51,6 +53,7 @@ sealed interface DashboardUiState {
     data object Loading : DashboardUiState
     data class Success(
         val stocks: List<Stock>,
+        val cashItems: List<CashItem> = emptyList(),
         val accounts: List<AccountWithCount> = emptyList(),
         val selectedAccountId: Long = 1L,
         val periodReturns: Map<TimePeriod, Double> = emptyMap(),
@@ -59,7 +62,7 @@ sealed interface DashboardUiState {
         val isLoadingPeriodReturns: Boolean = false,
         val isRefreshing: Boolean = false,
         val exchangeRate: Double = KRW_TO_USD_RATE,
-        val showInKrw: Boolean = false,
+        val showInKrw: Boolean = true,
         val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR,
         val portfolioSparkline: List<Double> = emptyList(),
         val portfolioSparklineTimestamps: List<Long> = emptyList(),
@@ -75,6 +78,7 @@ class DashboardViewModel @Inject constructor(
     private val stockRepository: StockRepository,
     private val holdingsRepository: HoldingsRepository,
     private val accountRepository: AccountRepository,
+    private val cashRepository: CashRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -83,7 +87,7 @@ class DashboardViewModel @Inject constructor(
     private var holdingsJob: Job? = null
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
-    private var allAccountsCurrencyKrw by sharedPreferences.boolean(PreferenceKeys.DASHBOARD_SHOW_IN_KRW, false)
+    private var allAccountsCurrencyKrw by sharedPreferences.boolean(PreferenceKeys.DASHBOARD_SHOW_IN_KRW, true)
 
     private var sparklinePeriod by sharedPreferences.enum(PreferenceKeys.STOCK_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR)
 
@@ -190,7 +194,7 @@ class DashboardViewModel @Inject constructor(
                 if (currentState.stocks.isNotEmpty()) {
                     loadBenchmarkReturns(currentState.selectedPeriod)
                 }
-                loadPortfolioSparkline(currentState.stocks, currentState.selectedPeriod)
+                loadPortfolioSparkline(currentState.stocks, currentState.cashItems, currentState.selectedPeriod)
             }
         }
     }
@@ -211,6 +215,12 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun addCashItem(accountId: Long, name: String, value: Double, yieldRate: Double, currency: String) {
+        viewModelScope.launch {
+            cashRepository.addCashItem(accountId, name, value, yieldRate, currency)
+        }
+    }
+
     private suspend fun getShowInKrwForCurrentAccount(): Boolean {
         return if (selectedAccountId == ALL_ACCOUNTS_ID) {
             allAccountsCurrencyKrw
@@ -227,7 +237,7 @@ class DashboardViewModel @Inject constructor(
             if (currentState.stocks.isNotEmpty()) {
                 loadBenchmarkReturns(period)
             }
-            loadPortfolioSparkline(currentState.stocks, period)
+            loadPortfolioSparkline(currentState.stocks, currentState.cashItems, period)
         }
     }
 
@@ -267,7 +277,12 @@ class DashboardViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is DashboardUiState.Success) {
             val sortedStocks = sortStocks(currentState.stocks, option)
-            _uiState.value = currentState.copy(stocks = sortedStocks, sortOption = option)
+            val sortedCashItems = sortCashItems(currentState.cashItems, option)
+            _uiState.value = currentState.copy(
+                stocks = sortedStocks,
+                cashItems = sortedCashItems,
+                sortOption = option
+            )
         }
     }
 
@@ -278,6 +293,16 @@ class DashboardViewModel @Inject constructor(
             SortOption.SYMBOL -> stocks.sortedBy { it.symbol.lowercase() }
             SortOption.GAIN_LOSS_PERCENT -> stocks.sortedByDescending { it.gainLossPercent }
             SortOption.DAY_CHANGE_PERCENT -> stocks.sortedByDescending { it.dayChangePercent ?: 0.0 }
+        }
+    }
+
+    private fun sortCashItems(cashItems: List<CashItem>, option: SortOption): List<CashItem> {
+        return when (option) {
+            SortOption.WEIGHT -> cashItems.sortedByDescending { it.valueInUsd(currentExchangeRate) }
+            SortOption.NAME -> cashItems.sortedBy { it.name.lowercase() }
+            SortOption.SYMBOL -> cashItems.sortedBy { it.name.lowercase() } // Same as name for cash
+            SortOption.GAIN_LOSS_PERCENT -> cashItems.sortedByDescending { it.annualYieldRate }
+            SortOption.DAY_CHANGE_PERCENT -> cashItems.sortedByDescending { it.annualYieldRate } // Use yield for cash
         }
     }
 
@@ -336,20 +361,33 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun loadPortfolioSparkline(stocks: List<Stock>, period: TimePeriod) {
-        if (stocks.isEmpty()) return
+    private fun loadPortfolioSparkline(stocks: List<Stock>, cashItems: List<CashItem>, period: TimePeriod) {
+        if (stocks.isEmpty() && cashItems.isEmpty()) return
 
         viewModelScope.launch {
             try {
                 val currentState = _uiState.value
                 val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
 
+                // Calculate constant cash value (doesn't change over time)
+                val totalCashValue = if (showInKrw) {
+                    cashItems.sumOf { it.valueInKrw(currentExchangeRate) }
+                } else {
+                    cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
+                }
+
+                // If only cash (no stocks), we can't show a sparkline (no price history)
+                if (stocks.isEmpty()) {
+                    updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
+                    return@launch
+                }
+
                 val symbols = stocks.map { it.symbol }.distinct()
                 val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
                 val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
 
-                val totalPortfolioValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
-                if (totalPortfolioValue <= 0) return@launch
+                val totalStocksValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
+                if (totalStocksValue <= 0 && totalCashValue <= 0) return@launch
 
                 val stocksWithHistory = stocks.filter { stock ->
                     val data = priceHistoryMap[stock.symbol]
@@ -357,7 +395,6 @@ class DashboardViewModel @Inject constructor(
                 }
                 if (stocksWithHistory.isEmpty()) {
                     updatePortfolioSparkline(emptyList())
-                    updatePeriodReturn(period, 0.0)
                     return@launch
                 }
 
@@ -368,7 +405,6 @@ class DashboardViewModel @Inject constructor(
 
                 if (allDates.size < 2) {
                     updatePortfolioSparkline(emptyList())
-                    updatePeriodReturn(period, 0.0)
                     return@launch
                 }
 
@@ -380,13 +416,15 @@ class DashboardViewModel @Inject constructor(
                 }
 
                 val holdings = stocksWithHistory.map { StockHolding(it.symbol, it.quantity, it.currency) }
-                val portfolioValues = PriceHistoryProcessor.calculatePortfolioValues(
+                val stockPortfolioValues = PriceHistoryProcessor.calculatePortfolioValues(
                     validDates, holdings, filledStockPrices, exchangeRateByDate, currentExchangeRate, showInKrw
                 )
 
+                // Add cash value to each portfolio value point
+                val portfolioValues = stockPortfolioValues.map { it + totalCashValue }
+
                 if (portfolioValues.size < 2) {
                     updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
-                    updatePeriodReturn(period, 0.0)
                     return@launch
                 }
 
@@ -404,25 +442,43 @@ class DashboardViewModel @Inject constructor(
                     stats = stats,
                     benchmarkSparklines = benchmarkSparklines
                 )
-
-                val periodReturn = calculatePeriodReturnPercent(portfolioValues)
-                updatePeriodReturn(period, periodReturn)
+                // Period returns are calculated by loadAllPeriodReturns() which includes cash
             } catch (e: Exception) {
                 updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
             }
         }
     }
 
-    private fun loadAllPeriodReturns(stocks: List<Stock>) {
-        if (stocks.isEmpty()) return
+    private fun loadAllPeriodReturns(stocks: List<Stock>, cashItems: List<CashItem> = emptyList()) {
+        if (stocks.isEmpty() && cashItems.isEmpty()) return
 
         viewModelScope.launch {
             val currentState = _uiState.value
             val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
 
+            // Calculate total cash value in USD
+            val totalCashValueUsd = cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
+
+            // If only cash, use cash returns directly
+            if (stocks.isEmpty()) {
+                TimePeriod.entries.forEach { period ->
+                    val cashReturn = calculateWeightedCashReturn(cashItems, period)
+                    updatePeriodReturn(period, cashReturn)
+                }
+                if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                    savePeriodReturnsToCache()
+                }
+                return@launch
+            }
+
             val symbols = stocks.map { it.symbol }.distinct()
             val stocksForCalc = stocks.filter { it.totalValueInUsd(currentExchangeRate) > 0 }
-            if (stocksForCalc.isEmpty()) return@launch
+            if (stocksForCalc.isEmpty() && cashItems.isEmpty()) return@launch
+
+            val totalStocksValueUsd = stocksForCalc.sumOf { it.totalValueInUsd(currentExchangeRate) }
+            val totalPortfolioValue = totalStocksValueUsd + totalCashValueUsd
+            val stocksWeight = if (totalPortfolioValue > 0) totalStocksValueUsd / totalPortfolioValue else 1.0
+            val cashWeight = if (totalPortfolioValue > 0) totalCashValueUsd / totalPortfolioValue else 0.0
 
             // Load returns for all periods in parallel
             TimePeriod.entries.map { period ->
@@ -435,8 +491,9 @@ class DashboardViewModel @Inject constructor(
                             val data = priceHistoryMap[stock.symbol]
                             data != null && data.prices.size >= 2
                         }
-                        if (stocksWithHistory.isEmpty()) {
-                            period to 0.0
+
+                        val stocksReturn = if (stocksWithHistory.isEmpty()) {
+                            0.0
                         } else {
                             val symbolsWithHistory = stocksWithHistory.map { it.symbol }
                             val stockDatePrices = PriceHistoryProcessor.buildSymbolDatePrices(symbolsWithHistory, priceHistoryMap)
@@ -444,7 +501,7 @@ class DashboardViewModel @Inject constructor(
                             val allDates = stockDatePrices.values.flatMap { it.keys }.toSet().sorted()
 
                             if (allDates.size < 2) {
-                                period to 0.0
+                                0.0
                             } else {
                                 val filledStockPrices = PriceHistoryProcessor.forwardFillPrices(symbolsWithHistory, stockDatePrices, allDates)
                                 val validDates = allDates.filter { date ->
@@ -458,10 +515,16 @@ class DashboardViewModel @Inject constructor(
                                     validDates, holdings, filledStockPrices, exchangeRateByDate, currentExchangeRate, showInKrw
                                 )
 
-                                val returnPercent = calculatePeriodReturnPercent(portfolioValues)
-                                period to returnPercent
+                                calculatePeriodReturnPercent(portfolioValues)
                             }
                         }
+
+                        // Calculate weighted average of cash returns for this period
+                        val cashReturn = calculateWeightedCashReturn(cashItems, period)
+
+                        // Combined return = stocks weight * stocks return + cash weight * cash return
+                        val combinedReturn = (stocksWeight * stocksReturn) + (cashWeight * cashReturn)
+                        period to combinedReturn
                     } catch (e: Exception) {
                         period to 0.0
                     }
@@ -474,6 +537,17 @@ class DashboardViewModel @Inject constructor(
             if (selectedAccountId == ALL_ACCOUNTS_ID) {
                 savePeriodReturnsToCache()
             }
+        }
+    }
+
+    private fun calculateWeightedCashReturn(cashItems: List<CashItem>, period: TimePeriod): Double {
+        if (cashItems.isEmpty()) return 0.0
+        val totalCashValue = cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
+        if (totalCashValue <= 0) return 0.0
+
+        return cashItems.sumOf { cashItem ->
+            val weight = cashItem.valueInUsd(currentExchangeRate) / totalCashValue
+            weight * cashItem.periodReturnPercent(period)
         }
     }
 
@@ -548,34 +622,57 @@ class DashboardViewModel @Inject constructor(
                 holdingsRepository.getHoldingsByAccount(selectedAccountId)
             }
 
+            val cashFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                cashRepository.getAllCashItems()
+            } else {
+                cashRepository.getCashItemsByAccount(selectedAccountId)
+            }
+
             combine(
                 holdingsFlow,
+                cashFlow,
                 accountRepository.getAllAccounts(),
-                holdingsRepository.getHoldingsCountByAccountFlow()
-            ) { holdings, accounts, countMap ->
-                Triple(holdings, accounts, countMap)
-            }.collectLatest { (holdings, accounts, countMap) ->
-                val accountsWithCount = accounts.map { account ->
+                holdingsRepository.getHoldingsCountByAccountFlow(),
+                cashRepository.getAllCashItems() // For counting cash items per account
+            ) { holdings, cashEntities, accounts, holdingsCountMap, allCashEntities ->
+                val cashItems = cashEntities.map { CashItem.fromEntity(it) }
+                // Calculate cash items count per account
+                val cashCountMap = allCashEntities.groupBy { it.accountId }.mapValues { it.value.size }
+                HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
+            }.collectLatest { data ->
+                val accountsWithCount = data.accounts.map { account ->
+                    val holdingsCount = data.holdingsCountMap[account.id] ?: 0
+                    val cashCount = data.cashCountMap[account.id] ?: 0
                     AccountWithCount(
                         account = account,
-                        holdingsCount = countMap[account.id] ?: 0
+                        holdingsCount = holdingsCount + cashCount
                     )
                 }
-                loadPricesForHoldings(holdings, accountsWithCount, accounts)
+                loadPricesForHoldings(data.holdings, data.cashItems, accountsWithCount, data.accounts)
             }
         }
     }
 
+    private data class HoldingsData(
+        val holdings: List<HoldingEntity>,
+        val cashItems: List<CashItem>,
+        val accounts: List<AccountEntity>,
+        val holdingsCountMap: Map<Long, Int>,
+        val cashCountMap: Map<Long, Int>
+    )
+
     private suspend fun loadPricesForHoldings(
         holdings: List<HoldingEntity>,
+        cashItems: List<CashItem>,
         accounts: List<AccountWithCount>,
         allAccounts: List<AccountEntity>
     ) {
-        if (holdings.isEmpty()) {
+        if (holdings.isEmpty() && cashItems.isEmpty()) {
             val showInKrw = getShowInKrwForCurrentAccount()
             val currentSuccess = _uiState.value as? DashboardUiState.Success
             _uiState.value = DashboardUiState.Success(
                 stocks = emptyList(),
+                cashItems = emptyList(),
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
                 periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
@@ -587,6 +684,30 @@ class DashboardViewModel @Inject constructor(
                 portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
                 sortOption = currentSortOption
             )
+            return
+        }
+
+        // Handle case where we only have cash items (no holdings)
+        if (holdings.isEmpty()) {
+            val showInKrw = getShowInKrwForCurrentAccount()
+            val currentSuccess = _uiState.value as? DashboardUiState.Success
+            val sortedCashItems = sortCashItems(cashItems, currentSortOption)
+            _uiState.value = DashboardUiState.Success(
+                stocks = emptyList(),
+                cashItems = sortedCashItems,
+                accounts = accounts,
+                selectedAccountId = selectedAccountId,
+                periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
+                selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
+                exchangeRate = currentExchangeRate,
+                showInKrw = showInKrw,
+                sparklinePeriod = sparklinePeriod,
+                portfolioSparkline = emptyList(),
+                portfolioStats = PortfolioStats(),
+                sortOption = currentSortOption
+            )
+            // Calculate period returns for cash-only portfolio
+            loadAllPeriodReturns(emptyList(), sortedCashItems)
             return
         }
 
@@ -607,8 +728,10 @@ class DashboardViewModel @Inject constructor(
         // If we have existing data and no new symbols, just merge holdings with existing prices
         if (currentSuccess != null && newSymbols.isEmpty() && !isRefreshing) {
             val updatedStocks = mergeHoldingsWithExistingStocks(holdings, existingStocks, allAccounts)
+            val sortedCashItems = sortCashItems(cashItems, currentSortOption)
             _uiState.value = currentSuccess.copy(
                 stocks = updatedStocks,
+                cashItems = sortedCashItems,
                 accounts = accounts,
                 selectedAccountId = selectedAccountId
             )
@@ -617,7 +740,8 @@ class DashboardViewModel @Inject constructor(
                 saveStateToCache(updatedStocks, accounts, currentExchangeRate)
             }
             loadBenchmarkReturns(currentSuccess.selectedPeriod)
-            loadPortfolioSparkline(updatedStocks, currentSuccess.selectedPeriod)
+            loadPortfolioSparkline(updatedStocks, sortedCashItems, currentSuccess.selectedPeriod)
+            loadAllPeriodReturns(updatedStocks, sortedCashItems)
             return
         }
 
@@ -660,11 +784,13 @@ class DashboardViewModel @Inject constructor(
                     }
                 }
                 val sortedStocks = sortStocks(stocks, currentSortOption)
+                val sortedCashItems = sortCashItems(cashItems, currentSortOption)
                 val previousReturns = currentSuccess?.periodReturns ?: emptyMap()
                 val selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod
                 val showInKrw = getShowInKrwForCurrentAccount()
                 _uiState.value = DashboardUiState.Success(
                     stocks = sortedStocks,
+                    cashItems = sortedCashItems,
                     accounts = accounts,
                     selectedAccountId = selectedAccountId,
                     periodReturns = previousReturns,
@@ -682,9 +808,9 @@ class DashboardViewModel @Inject constructor(
                     saveStateToCache(sortedStocks, accounts, currentExchangeRate)
                 }
                 // Load period returns for all periods and portfolio sparkline for selected period
-                loadAllPeriodReturns(stocks)
+                loadAllPeriodReturns(stocks, sortedCashItems)
                 loadBenchmarkReturns(selectedPeriod)
-                loadPortfolioSparkline(stocks, selectedPeriod)
+                loadPortfolioSparkline(stocks, sortedCashItems, selectedPeriod)
             },
             onFailure = { exception ->
                 _uiState.value = DashboardUiState.Error(
@@ -851,15 +977,27 @@ class DashboardViewModel @Inject constructor(
 
     fun getTotalPortfolioValue(): Double {
         val state = _uiState.value as? DashboardUiState.Success ?: return 0.0
-        return if (state.showInKrw) {
+        val stocksValue = if (state.showInKrw) {
             state.stocks.sumOf { it.totalValueInKrw(currentExchangeRate) }
         } else {
             state.stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
         }
+        val cashValue = if (state.showInKrw) {
+            state.cashItems.sumOf { it.valueInKrw(currentExchangeRate) }
+        } else {
+            state.cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
+        }
+        return stocksValue + cashValue
     }
 
     fun isShowingInKrw(): Boolean {
         return (_uiState.value as? DashboardUiState.Success)?.showInKrw ?: false
+    }
+
+    fun deleteCashItem(cashItemId: Long) {
+        viewModelScope.launch {
+            cashRepository.deleteCashItem(cashItemId)
+        }
     }
 }
 

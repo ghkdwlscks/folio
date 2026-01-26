@@ -49,7 +49,8 @@ data class FullScreenChartData(
     val currency: String,
     val priceHistory: List<Double>,
     val priceHistoryTimestamps: List<Long>,
-    val benchmarkSparklines: Map<String, List<Double>> = emptyMap()
+    val benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
+    val periodReturn: Double? = null
 )
 
 @Composable
@@ -221,7 +222,8 @@ fun FullScreenChartDialog(
                     Spacer(modifier = Modifier.height(8.dp))
                     ChartStatistics(
                         priceHistory = data.priceHistory,
-                        currency = data.currency
+                        currency = data.currency,
+                        periodReturn = data.periodReturn
                     )
                 }
 
@@ -273,13 +275,15 @@ fun FullScreenChartDialog(
 @Composable
 private fun ChartStatistics(
     priceHistory: List<Double>,
-    currency: String
+    currency: String,
+    periodReturn: Double? = null
 ) {
     val high = priceHistory.maxOrNull() ?: 0.0
     val low = priceHistory.minOrNull() ?: 0.0
     val startPrice = priceHistory.firstOrNull() ?: 0.0
     val endPrice = priceHistory.lastOrNull() ?: 0.0
-    val periodReturn = if (startPrice > 0) ((endPrice - startPrice) / startPrice) * 100 else 0.0
+    // Use provided period return if available, otherwise calculate from price history
+    val displayPeriodReturn = periodReturn ?: if (startPrice > 0) ((endPrice - startPrice) / startPrice) * 100 else 0.0
     val average = if (priceHistory.isNotEmpty()) priceHistory.average() else 0.0
 
     Surface(
@@ -317,8 +321,8 @@ private fun ChartStatistics(
                 )
                 StatItem(
                     label = "Period Return",
-                    value = "${if (periodReturn >= 0) "+" else ""}${String.format("%.2f", periodReturn)}%",
-                    valueColor = getTrendColor(periodReturn),
+                    value = "${if (displayPeriodReturn >= 0) "+" else ""}${String.format("%.2f", displayPeriodReturn)}%",
+                    valueColor = getTrendColor(displayPeriodReturn),
                     modifier = Modifier.weight(1f)
                 )
             }
