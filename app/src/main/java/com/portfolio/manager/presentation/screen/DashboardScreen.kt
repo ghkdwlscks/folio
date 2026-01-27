@@ -213,7 +213,7 @@ fun DashboardScreen(
                 exit = slideOutVertically(targetOffsetY = { it * 2 })
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (canShowRebalance) {
@@ -259,7 +259,7 @@ fun DashboardScreen(
         Column(modifier = Modifier.padding(paddingValues)) {
             AccountDropdownWrapper(
                 viewModel = viewModel,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
             DashboardStateContent(
                 viewModel = viewModel,
@@ -489,8 +489,8 @@ private fun DashboardContent(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 88.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         item {
             PortfolioSummary(

@@ -65,7 +65,7 @@ fun AllocationPieChart(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             Text(
                 text = "Allocation",

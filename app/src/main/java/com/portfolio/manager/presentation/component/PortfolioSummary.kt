@@ -129,7 +129,7 @@ fun PortfolioSummary(
                     )
                 )
             )
-            .padding(start = 20.dp, end = 10.dp, top = 10.dp, bottom = 20.dp)
+            .padding(start = 24.dp, end = 14.dp, top = 14.dp, bottom = 24.dp)
     ) {
         // Currency toggle and exchange rate
         Row(
