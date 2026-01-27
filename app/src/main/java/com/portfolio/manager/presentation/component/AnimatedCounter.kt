@@ -1,7 +1,9 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.TwoWayConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +19,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 
+/**
+ * TwoWayConverter for Double to preserve precision for large currency values.
+ * Float has only ~7 digits of precision, which causes display errors for values
+ * like 150,234,567 KRW. Using Double preserves ~15 digits of precision.
+ */
+private val DoubleToVector: TwoWayConverter<Double, AnimationVector1D> =
+    TwoWayConverter(
+        convertToVector = { AnimationVector1D(it.toFloat()) },
+        convertFromVector = { it.value.toDouble() }
+    )
+
 @Composable
 fun AnimatedCurrencyCounter(
     targetValue: Double,
@@ -28,13 +41,14 @@ fun AnimatedCurrencyCounter(
     durationMillis: Int = 800
 ) {
     var previousValue by remember { mutableDoubleStateOf(targetValue) }
-    val animatable = remember { Animatable(targetValue.toFloat()) }
+    // Use Double directly to preserve precision for large values (especially KRW)
+    val animatable = remember { Animatable(targetValue, DoubleToVector) }
 
     LaunchedEffect(targetValue) {
         // Only animate if value actually changed
         if (previousValue != targetValue) {
             animatable.animateTo(
-                targetValue = targetValue.toFloat(),
+                targetValue = targetValue,
                 animationSpec = tween(
                     durationMillis = durationMillis,
                     easing = FastOutSlowInEasing
@@ -44,7 +58,7 @@ fun AnimatedCurrencyCounter(
         }
     }
 
-    val displayValue = animatable.value.toDouble()
+    val displayValue = animatable.value
     val formattedValue = if (showInKrw) {
         CurrencyFormatter.formatKrw(displayValue)
     } else {
@@ -72,12 +86,13 @@ fun AnimatedPercentCounter(
     durationMillis: Int = 600
 ) {
     var previousValue by remember { mutableDoubleStateOf(targetValue) }
-    val animatable = remember { Animatable(targetValue.toFloat()) }
+    // Use Double directly to preserve precision
+    val animatable = remember { Animatable(targetValue, DoubleToVector) }
 
     LaunchedEffect(targetValue) {
         if (previousValue != targetValue) {
             animatable.animateTo(
-                targetValue = targetValue.toFloat(),
+                targetValue = targetValue,
                 animationSpec = tween(
                     durationMillis = durationMillis,
                     easing = FastOutSlowInEasing
@@ -87,7 +102,7 @@ fun AnimatedPercentCounter(
         }
     }
 
-    val displayValue = animatable.value.toDouble()
+    val displayValue = animatable.value
     val sign = if (displayValue >= 0 && prefix.isEmpty()) "+" else prefix
 
     Text(
