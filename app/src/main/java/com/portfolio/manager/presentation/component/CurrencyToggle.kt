@@ -1,7 +1,8 @@
 package com.portfolio.manager.presentation.component
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -27,7 +28,10 @@ fun CurrencyToggle(
 ) {
     val indicatorOffset by animateFloatAsState(
         targetValue = if (showInKrw) 1f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "currencyToggleIndicator"
     )
 

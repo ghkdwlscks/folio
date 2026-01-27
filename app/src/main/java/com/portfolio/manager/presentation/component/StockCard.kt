@@ -1,7 +1,9 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -72,11 +74,15 @@ fun StockCard(
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
     val canExpand = hasAccountDetails || onDelete != null || onEdit != null
 
-    // Scale animation on press
+    // Scale animation on press with spring bounce
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f,
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
         label = "cardScale"
     )
 
