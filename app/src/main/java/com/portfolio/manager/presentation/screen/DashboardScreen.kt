@@ -8,16 +8,11 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,22 +21,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.ShowChart
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -76,13 +62,16 @@ import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.presentation.component.AccountDropdown
 import com.portfolio.manager.presentation.component.AllocationItem
 import com.portfolio.manager.presentation.component.AllocationPieChart
 import com.portfolio.manager.presentation.component.CashCard
+import com.portfolio.manager.presentation.component.DeleteConfirmationDialog
 import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.component.PortfolioSummary
 import com.portfolio.manager.presentation.component.RebalanceDialog
 import com.portfolio.manager.presentation.component.RebalanceItem
+import com.portfolio.manager.presentation.component.SectionHeader
 import com.portfolio.manager.presentation.component.SkeletonDashboard
 import com.portfolio.manager.presentation.component.StockCard
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
@@ -279,52 +268,26 @@ fun DashboardScreen(
     }
 
     deleteConfirmation?.let { confirmation ->
-        AlertDialog(
-            onDismissRequest = { deleteConfirmation = null },
-            title = { Text("Delete Holding") },
-            text = {
-                Text("Are you sure you want to delete ${confirmation.symbol} (${confirmation.quantity} shares)?")
+        DeleteConfirmationDialog(
+            title = "Delete Holding",
+            message = "Are you sure you want to delete ${confirmation.symbol} (${confirmation.quantity} shares)?",
+            onConfirm = {
+                viewModel.deleteHolding(confirmation.holdingId)
+                deleteConfirmation = null
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteHolding(confirmation.holdingId)
-                        deleteConfirmation = null
-                    }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteConfirmation = null }) {
-                    Text("Cancel")
-                }
-            }
+            onDismiss = { deleteConfirmation = null }
         )
     }
 
     cashDeleteConfirmation?.let { confirmation ->
-        AlertDialog(
-            onDismissRequest = { cashDeleteConfirmation = null },
-            title = { Text("Delete Cash") },
-            text = {
-                Text("Are you sure you want to delete \"${confirmation.name}\"?")
+        DeleteConfirmationDialog(
+            title = "Delete Cash",
+            message = "Are you sure you want to delete \"${confirmation.name}\"?",
+            onConfirm = {
+                viewModel.deleteCashItem(confirmation.cashItemId)
+                cashDeleteConfirmation = null
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteCashItem(confirmation.cashItemId)
-                        cashDeleteConfirmation = null
-                    }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { cashDeleteConfirmation = null }) {
-                    Text("Cancel")
-                }
-            }
+            onDismiss = { cashDeleteConfirmation = null }
         )
     }
 
@@ -710,200 +673,3 @@ private fun DashboardTopBar(
     )
 }
 
-@Composable
-private fun AccountDropdown(
-    accounts: List<AccountWithCount>,
-    selectedAccountId: Long,
-    onAccountSelected: (Long) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val totalHoldings = accounts.sumOf { it.holdingsCount }
-
-    val selectedLabel = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-        "All ($totalHoldings)"
-    } else {
-        accounts.find { it.account.id == selectedAccountId }?.let {
-            "${it.account.name} (${it.holdingsCount})"
-        } ?: "All ($totalHoldings)"
-    }
-
-    Box(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .clickable { expanded = true }
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = selectedLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
-                contentDescription = "Select account",
-                tint = MaterialTheme.colorScheme.onBackground
-            )
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = "All ($totalHoldings)",
-                        fontWeight = if (selectedAccountId == ALL_ACCOUNTS_ID) FontWeight.Bold else FontWeight.Normal
-                    )
-                },
-                onClick = {
-                    onAccountSelected(ALL_ACCOUNTS_ID)
-                    expanded = false
-                }
-            )
-            accounts.forEach { accountWithCount ->
-                val isSelected = selectedAccountId == accountWithCount.account.id
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = "${accountWithCount.account.name} (${accountWithCount.holdingsCount})",
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    },
-                    onClick = {
-                        onAccountSelected(accountWithCount.account.id)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(
-    title: String,
-    count: Int,
-    sortOption: SortOption,
-    onSortOptionSelected: (SortOption) -> Unit,
-    sparklinePeriod: TimePeriod,
-    onSparklinePeriodSelected: (TimePeriod) -> Unit
-) {
-    var sortMenuExpanded by remember { mutableStateOf(false) }
-    var sparklineMenuExpanded by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "$title ($count)",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Sort dropdown
-            Box {
-                Row(
-                    modifier = Modifier.clickable { sortMenuExpanded = true },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Sort,
-                        contentDescription = "Sort",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = sortOption.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                DropdownMenu(
-                    expanded = sortMenuExpanded,
-                    onDismissRequest = { sortMenuExpanded = false }
-                ) {
-                    SortOption.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = option.label,
-                                    fontWeight = if (option == sortOption) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            onClick = {
-                                onSortOptionSelected(option)
-                                sortMenuExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-            // Sparkline period dropdown
-            Box {
-                Row(
-                    modifier = Modifier.clickable { sparklineMenuExpanded = true },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ShowChart,
-                        contentDescription = "Sparkline Period",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = sparklinePeriod.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                DropdownMenu(
-                    expanded = sparklineMenuExpanded,
-                    onDismissRequest = { sparklineMenuExpanded = false }
-                ) {
-                    TimePeriod.entries.forEach { period ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = period.label,
-                                    fontWeight = if (period == sparklinePeriod) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            onClick = {
-                                onSparklinePeriodSelected(period)
-                                sparklineMenuExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}

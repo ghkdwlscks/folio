@@ -7,7 +7,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -23,24 +22,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,13 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.Stock
-import com.portfolio.manager.presentation.theme.GainGreen
-import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
 import com.portfolio.manager.presentation.util.getTrendColor
@@ -94,43 +84,13 @@ fun StockCard(
     val heatmapIntensity = min(abs(stock.gainLossPercent) / 50.0, 1.0).toFloat()
     val heatmapColor = getTrendColor(stock.gainLoss)
 
-    val shape = RoundedCornerShape(20.dp)
-    val surfaceColor = MaterialTheme.colorScheme.surface
-
-    // Glass effect gradient
-    val glassGradient = Brush.linearGradient(
-        colors = listOf(
-            surfaceColor.copy(alpha = 0.9f),
-            surfaceColor.copy(alpha = 0.75f)
-        )
-    )
-    val highlightGradient = Brush.verticalGradient(
-        colors = listOf(
-            Color.White.copy(alpha = 0.08f),
-            Color.Transparent
-        )
-    )
-
-    Box(
+    GlassSurface(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(shape)
-            .background(glassGradient)
-            .background(highlightGradient)
-            .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                    )
-                ),
-                shape = shape
-            )
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Heatmap indicator bar
@@ -325,7 +285,7 @@ fun StockCard(
             }
             } // Column (card content)
         } // Row (heatmap + content)
-    } // Box (glass card)
+    } // GlassSurface
 
     // Full screen chart dialog
     if (showFullScreenChart) {
@@ -355,7 +315,7 @@ private fun StockCardExpandableContent(
     onDeleteAccountHolding: ((Long) -> Unit)?
 ) {
     Column {
-        Divider(
+        HorizontalDivider(
             modifier = Modifier.padding(horizontal = 16.dp),
             color = MaterialTheme.colorScheme.outlineVariant
         )
