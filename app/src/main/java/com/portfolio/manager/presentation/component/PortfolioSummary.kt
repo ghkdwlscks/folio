@@ -200,57 +200,36 @@ fun PortfolioSummary(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Gain/loss amount, invested, and day change in one compact row
+            // Info cards row
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "${if (trend.isGain) "+" else ""}${formatValue(totalGainLoss)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = trend.color
+                // Gain/Loss card
+                InfoCard(
+                    label = "Gain/Loss",
+                    value = "${if (trend.isGain) "+" else ""}${formatValue(totalGainLoss)}",
+                    valueColor = trend.color,
+                    modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = "•",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.4f)
+                // Invested card
+                InfoCard(
+                    label = "Invested",
+                    value = formatValue(totalInvested),
+                    valueColor = Color.White,
+                    modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = "${formatValue(totalInvested)} invested",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.6f)
-                )
+                // Today's change card
                 if (dayChange != 0.0) {
-                    Text(
-                        text = "•",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.4f)
+                    InfoCard(
+                        label = "Today",
+                        value = "${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%",
+                        valueColor = dayTrend.color,
+                        icon = dayTrend.icon,
+                        modifier = Modifier.weight(1f)
                     )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(3.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Today",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.6f)
-                        )
-                        Icon(
-                            imageVector = dayTrend.icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = dayTrend.color
-                        )
-                        Text(
-                            text = "${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = dayTrend.color
-                        )
-                    }
                 }
             }
 
@@ -335,6 +314,52 @@ fun PortfolioSummary(
 }
 
 @Composable
+private fun InfoCard(
+    label: String,
+    value: String,
+    valueColor: Color,
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.12f),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = valueColor
+                    )
+                }
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = valueColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun DividendInfoRow(
     annualDividend: Double,
     dividendYield: Double,
@@ -373,36 +398,58 @@ private fun DividendInfoRow(
 
 @Composable
 private fun StatsRow(stats: PortfolioStats) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.08f),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        CompactStatItem(
-            label = "MDD",
-            value = "-${CurrencyFormatter.formatPercent(stats.maxDrawdown)}%",
-            color = LossRedPastel
-        )
-        CompactStatItem(
-            label = "Vol",
-            value = "${CurrencyFormatter.formatPercent(stats.volatility)}%",
-            color = Color.White.copy(alpha = 0.8f)
-        )
-        CompactStatItem(
-            label = "Sharpe",
-            value = String.format("%.2f", stats.sharpeRatio),
-            color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel
-        )
-        CompactStatItem(
-            label = "Best",
-            value = "+${CurrencyFormatter.formatPercent(stats.bestDay)}%",
-            color = GainGreenPastel
-        )
-        CompactStatItem(
-            label = "Worst",
-            value = "${CurrencyFormatter.formatPercent(stats.worstDay)}%",
-            color = LossRedPastel
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp, horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            CompactStatItem(
+                label = "MDD",
+                value = "-${CurrencyFormatter.formatPercent(stats.maxDrawdown)}%",
+                color = LossRedPastel
+            )
+            StatDivider()
+            CompactStatItem(
+                label = "Vol",
+                value = "${CurrencyFormatter.formatPercent(stats.volatility)}%",
+                color = Color.White.copy(alpha = 0.8f)
+            )
+            StatDivider()
+            CompactStatItem(
+                label = "Sharpe",
+                value = String.format("%.2f", stats.sharpeRatio),
+                color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel
+            )
+            StatDivider()
+            CompactStatItem(
+                label = "Best",
+                value = "+${CurrencyFormatter.formatPercent(stats.bestDay)}%",
+                color = GainGreenPastel
+            )
+            StatDivider()
+            CompactStatItem(
+                label = "Worst",
+                value = "${CurrencyFormatter.formatPercent(stats.worstDay)}%",
+                color = LossRedPastel
+            )
+        }
     }
+}
+
+@Composable
+private fun StatDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(24.dp)
+            .background(Color.White.copy(alpha = 0.15f))
+    )
 }
 
 @Composable
