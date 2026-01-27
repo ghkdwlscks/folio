@@ -44,36 +44,6 @@ import kotlinx.coroutines.launch
 import com.portfolio.manager.util.JsonSerializer
 import javax.inject.Inject
 
-@kotlinx.serialization.Serializable
-data class AccountWithCount(
-    val account: AccountEntity,
-    val holdingsCount: Int
-)
-
-sealed interface DashboardUiState {
-    data object Loading : DashboardUiState
-    data class Success(
-        val stocks: List<Stock>,
-        val cashItems: List<CashItem> = emptyList(),
-        val accounts: List<AccountWithCount> = emptyList(),
-        val selectedAccountId: Long = 1L,
-        val periodReturns: Map<TimePeriod, Double> = emptyMap(),
-        val benchmarkReturns: Map<TimePeriod, BenchmarkReturns> = emptyMap(),
-        val selectedPeriod: TimePeriod = TimePeriod.ONE_YEAR,
-        val isLoadingPeriodReturns: Boolean = false,
-        val isRefreshing: Boolean = false,
-        val exchangeRate: Double = KRW_TO_USD_RATE,
-        val showInKrw: Boolean = true,
-        val sparklinePeriod: TimePeriod = TimePeriod.ONE_YEAR,
-        val portfolioSparkline: List<Double> = emptyList(),
-        val portfolioSparklineTimestamps: List<Long> = emptyList(),
-        val benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
-        val portfolioStats: PortfolioStats = PortfolioStats(),
-        val sortOption: SortOption = SortOption.WEIGHT
-    ) : DashboardUiState
-    data class Error(val message: String) : DashboardUiState
-}
-
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val stockRepository: StockRepository,
