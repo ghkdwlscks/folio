@@ -28,32 +28,36 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = Accent80,
     onTertiary = Color.Black,
     surface = SurfaceDark,
-    onSurface = Color(0xFFE2E8F0),  // Slate 200
-    surfaceVariant = Color(0xFF1E293B),  // Slate 800
-    onSurfaceVariant = Color(0xFF94A3B8),  // Slate 400
-    background = SurfaceDark,
-    onBackground = Color(0xFFE2E8F0),
-    outline = Color(0xFF475569)  // Slate 600
+    onSurface = Color(0xFFFAFAFA),  // Zinc 50 - bright text
+    surfaceVariant = Color(0xFF27272A),  // Zinc 800
+    onSurfaceVariant = Color(0xFFA1A1AA),  // Zinc 400
+    background = Color(0xFF09090B),  // Zinc 950 - deeper background
+    onBackground = Color(0xFFFAFAFA),
+    outline = Color(0xFF52525B),  // Zinc 600
+    error = LossRed,
+    onError = Color.White
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = Primary40,
     onPrimary = Color.White,
-    primaryContainer = Primary80,
+    primaryContainer = Color(0xFFE0E7FF),  // Indigo 100
     onPrimaryContainer = Primary20,
     secondary = Secondary40,
     onSecondary = Color.White,
-    secondaryContainer = Secondary80,
+    secondaryContainer = Color(0xFFCCFBF1),  // Teal 100
     onSecondaryContainer = Secondary20,
     tertiary = Accent40,
     onTertiary = Color.Black,
-    surface = SurfaceLight,
-    onSurface = Color(0xFF1E293B),  // Slate 800
-    surfaceVariant = Color(0xFFE2E8F0),  // Slate 200
-    onSurfaceVariant = Color(0xFF64748B),  // Slate 500
-    background = SurfaceLight,
-    onBackground = Color(0xFF1E293B),
-    outline = Color(0xFFCBD5E1)  // Slate 300
+    surface = Color.White,
+    onSurface = Color(0xFF18181B),  // Zinc 900 - high contrast text
+    surfaceVariant = Color(0xFFF4F4F5),  // Zinc 100
+    onSurfaceVariant = Color(0xFF52525B),  // Zinc 600
+    background = Color(0xFFFAFAFA),  // Zinc 50 - subtle off-white
+    onBackground = Color(0xFF18181B),
+    outline = Color(0xFFD4D4D8),  // Zinc 300
+    error = LossRed,
+    onError = Color.White
 )
 
 @Composable
