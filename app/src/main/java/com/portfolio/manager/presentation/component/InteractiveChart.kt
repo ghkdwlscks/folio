@@ -69,12 +69,19 @@ fun InteractiveChart(
 ) {
     if (prices.size < 2) return
 
-    val chartData = remember(prices, timestamps) {
+    val chartData = remember(prices, timestamps, overlayLines) {
         val logPrices = prices.filter { it > 0 }.map { ln(it) }
         if (logPrices.size < 2) return@remember null
 
-        val minLog = logPrices.min()
-        val maxLog = logPrices.max()
+        // Include overlay lines in min/max calculation for proper scaling
+        val allLogPrices = mutableListOf<Double>()
+        allLogPrices.addAll(logPrices)
+        overlayLines.forEach { overlay ->
+            allLogPrices.addAll(overlay.prices.filter { it > 0 }.map { ln(it) })
+        }
+
+        val minLog = allLogPrices.min()
+        val maxLog = allLogPrices.max()
         ChartData(
             logPrices = logPrices,
             minLog = minLog,
