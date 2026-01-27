@@ -1,5 +1,10 @@
 package com.portfolio.manager.presentation.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,12 +39,44 @@ fun NavGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
+    val transitionDuration = 300
+
     NavHost(
         navController = navController,
         startDestination = Routes.DASHBOARD,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(transitionDuration, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(transitionDuration))
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(transitionDuration, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(transitionDuration / 2))
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(transitionDuration, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(transitionDuration))
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(transitionDuration, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(transitionDuration / 2))
+        }
     ) {
-        composable(Routes.DASHBOARD) {
+        composable(
+            route = Routes.DASHBOARD,
+            enterTransition = { fadeIn(animationSpec = tween(transitionDuration)) },
+            exitTransition = {
+                fadeOut(animationSpec = tween(transitionDuration / 2))
+            }
+        ) {
             val viewModel = hiltViewModel<com.portfolio.manager.presentation.viewmodel.DashboardViewModel>()
             DashboardScreen(
                 viewModel = viewModel,
