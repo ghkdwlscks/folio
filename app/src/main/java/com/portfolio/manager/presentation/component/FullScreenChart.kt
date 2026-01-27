@@ -123,14 +123,13 @@ fun FullScreenChartDialog(
                     fontWeight = FontWeight.Bold
                 )
 
-                data.dayChange?.let { change ->
-                    val changePercent = data.dayChangePercent ?: 0.0
-                    val trendColor = getTrendColor(change)
-                    val sign = if (change >= 0) "+" else ""
-                    val formattedChange = CurrencyFormatter.format(kotlin.math.abs(change), data.currency)
+                // Show period return instead of daily change
+                data.periodReturn?.let { periodReturn ->
+                    val trendColor = getTrendColor(periodReturn)
+                    val sign = if (periodReturn >= 0) "+" else ""
 
                     Text(
-                        text = "$sign$formattedChange ($sign${String.format("%.2f", changePercent)}%)",
+                        text = "$sign${String.format("%.2f", periodReturn)}% (${selectedPeriod.label})",
                         style = MaterialTheme.typography.bodyLarge,
                         color = trendColor,
                         fontWeight = FontWeight.Medium
