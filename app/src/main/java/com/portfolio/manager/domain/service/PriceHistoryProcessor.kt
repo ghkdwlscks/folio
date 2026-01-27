@@ -25,7 +25,7 @@ object PriceHistoryProcessor {
      */
     fun timestampToDate(timestamp: Long): String {
         val instant = Instant.ofEpochSecond(timestamp)
-        return LocalDate.ofInstant(instant, ZoneId.systemDefault()).toString()
+        return LocalDate.ofInstant(instant, ZoneId.of("UTC")).toString()
     }
 
     /**
@@ -36,7 +36,7 @@ object PriceHistoryProcessor {
         if (dateString.startsWith("idx_")) return null
         return try {
             val localDate = LocalDate.parse(dateString)
-            localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().epochSecond
+            localDate.atStartOfDay(ZoneId.of("UTC")).toInstant().epochSecond
         } catch (e: Exception) {
             null
         }
@@ -142,6 +142,9 @@ object PriceHistoryProcessor {
         startExchangeRate: Double,
         endExchangeRate: Double
     ): Double {
+        // Validate exchange rates to prevent division by zero
+        if (startExchangeRate <= 0 || endExchangeRate <= 0) return stockReturn
+
         return when {
             showInKrw && currency == "USD" -> {
                 // USD stock viewed in KRW: factor in exchange rate change

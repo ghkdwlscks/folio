@@ -1,5 +1,6 @@
 package com.portfolio.manager.domain.service
 
+import android.util.Log
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
@@ -11,6 +12,7 @@ import com.portfolio.manager.domain.repository.PriceHistoryData
  * Service for mapping holding entities and quotes to Stock domain model.
  */
 object StockMapper {
+    private const val TAG = "StockMapper"
 
     /**
      * Creates a Stock from a single holding and quote.
@@ -59,10 +61,14 @@ object StockMapper {
         val weightedAvgPrice = if (totalQuantity > 0) totalCost / totalQuantity else 0.0
 
         val accountDetails = holdingGroup.map { holding ->
+            val accountName = accountMap[holding.accountId]?.name ?: run {
+                Log.w(TAG, "Account ${holding.accountId} not found for holding ${holding.id}")
+                "Unknown"
+            }
             StockAccountDetail(
                 holdingId = holding.id,
                 accountId = holding.accountId,
-                accountName = accountMap[holding.accountId]?.name ?: "Unknown",
+                accountName = accountName,
                 quantity = holding.quantity,
                 averagePrice = holding.averagePrice
             )
@@ -132,10 +138,14 @@ object StockMapper {
         val weightedAvgPrice = if (totalQuantity > 0) totalCost / totalQuantity else 0.0
 
         val accountDetails = holdingGroup.map { holding ->
+            val accountName = accountMap[holding.accountId]?.name ?: run {
+                Log.w(TAG, "Account ${holding.accountId} not found for holding ${holding.id}")
+                "Unknown"
+            }
             StockAccountDetail(
                 holdingId = holding.id,
                 accountId = holding.accountId,
-                accountName = accountMap[holding.accountId]?.name ?: "Unknown",
+                accountName = accountName,
                 quantity = holding.quantity,
                 averagePrice = holding.averagePrice
             )

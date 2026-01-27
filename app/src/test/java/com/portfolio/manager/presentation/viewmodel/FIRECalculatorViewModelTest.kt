@@ -33,11 +33,11 @@ class FIRECalculatorViewModelTest {
     private lateinit var editor: SharedPreferences.Editor
     private val testDispatcher = UnconfinedTestDispatcher()
 
-    // Mutable storage to track SharedPreferences values
+    // Mutable storage to track SharedPreferences values (doubles stored as strings for precision)
     private val prefValues = mutableMapOf<String, Any>(
-        "fire_annual_return" to 7.0f,
-        "fire_annual_inflation" to 2.0f,
-        "fire_target_monthly_spending" to 3000.0f,
+        "fire_annual_return" to "7.0",
+        "fire_annual_inflation" to "2.0",
+        "fire_target_monthly_spending" to "3000.0",
         "fire_show_in_krw" to false
     )
 
@@ -54,8 +54,8 @@ class FIRECalculatorViewModelTest {
         every { cashRepository.getAllCashItems() } returns flowOf(emptyList())
 
         every { sharedPreferences.edit() } returns editor
-        every { editor.putFloat(any(), any()) } answers {
-            prefValues[firstArg()] = secondArg<Float>()
+        every { editor.putString(any(), any()) } answers {
+            prefValues[firstArg()] = secondArg<String>()
             editor
         }
         every { editor.putBoolean(any(), any()) } answers {
@@ -63,15 +63,15 @@ class FIRECalculatorViewModelTest {
             editor
         }
 
-        // Return values from our mutable storage
-        every { sharedPreferences.getFloat("fire_annual_return", any()) } answers {
-            prefValues["fire_annual_return"] as Float
+        // Return values from our mutable storage (doubles use getString)
+        every { sharedPreferences.getString("fire_annual_return", null) } answers {
+            prefValues["fire_annual_return"] as? String
         }
-        every { sharedPreferences.getFloat("fire_annual_inflation", any()) } answers {
-            prefValues["fire_annual_inflation"] as Float
+        every { sharedPreferences.getString("fire_annual_inflation", null) } answers {
+            prefValues["fire_annual_inflation"] as? String
         }
-        every { sharedPreferences.getFloat("fire_target_monthly_spending", any()) } answers {
-            prefValues["fire_target_monthly_spending"] as Float
+        every { sharedPreferences.getString("fire_target_monthly_spending", null) } answers {
+            prefValues["fire_target_monthly_spending"] as? String
         }
         every { sharedPreferences.getBoolean("fire_show_in_krw", any()) } answers {
             prefValues["fire_show_in_krw"] as Boolean
@@ -142,8 +142,8 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `calculateFIRE - with zero real return`() = runTest {
-        prefValues["fire_annual_return"] = 3.0f
-        prefValues["fire_annual_inflation"] = 3.0f
+        prefValues["fire_annual_return"] = "3.0"
+        prefValues["fire_annual_inflation"] = "3.0"
 
         val holdings = listOf(
             HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
@@ -316,8 +316,8 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `calculateFIRETarget - with negative real return returns infinity`() = runTest {
-        prefValues["fire_annual_return"] = 2.0f
-        prefValues["fire_annual_inflation"] = 5.0f
+        prefValues["fire_annual_return"] = "2.0"
+        prefValues["fire_annual_inflation"] = "5.0"
 
         val holdings = listOf(
             HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")

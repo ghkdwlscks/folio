@@ -161,7 +161,7 @@ class AddHoldingViewModel @Inject constructor(
         }
 
         val holding = HoldingEntity(
-            id = if (state.isEditMode) holdingId!! else 0,
+            id = if (state.isEditMode && holdingId != null) holdingId else 0,
             accountId = targetAccountId,
             symbol = symbolValue,
             name = symbolValue,

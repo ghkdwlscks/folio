@@ -19,6 +19,7 @@ class SharedPreferencesDelegateTest {
             every { putBoolean(any(), any()) } returns this
             every { putInt(any(), any()) } returns this
             every { putFloat(any(), any()) } returns this
+            every { putString(any(), any()) } returns this
         }
         sharedPreferences = mockk {
             every { edit() } returns editor
@@ -118,20 +119,20 @@ class SharedPreferencesDelegateTest {
         verify { editor.apply() }
     }
 
-    // Double delegate tests
+    // Double delegate tests (uses String for precision)
     @Test
     fun `double - getValue - returns stored value`() {
-        every { sharedPreferences.getFloat("test_key", 0f) } returns 3.14f
+        every { sharedPreferences.getString("test_key", null) } returns "3.14159265358979"
 
         val delegate = sharedPreferences.double("test_key", 0.0)
         val value by delegate
 
-        assertThat(value).isEqualTo(3.14f.toDouble())
+        assertThat(value).isEqualTo(3.14159265358979)
     }
 
     @Test
     fun `double - getValue - returns default when not set`() {
-        every { sharedPreferences.getFloat("test_key", 7.0f) } returns 7.0f
+        every { sharedPreferences.getString("test_key", null) } returns null
 
         val delegate = sharedPreferences.double("test_key", 7.0)
         val value by delegate
@@ -140,12 +141,28 @@ class SharedPreferencesDelegateTest {
     }
 
     @Test
-    fun `double - setValue - stores value as float`() {
+    fun `double - getValue - migrates from old float storage`() {
+        // Simulate old Float data causing ClassCastException when reading as String
+        every { sharedPreferences.getString("test_key", null) } throws ClassCastException()
+        every { sharedPreferences.getFloat("test_key", 0f) } returns 3.14f
+        every { editor.remove("test_key") } returns editor
+
+        val delegate = sharedPreferences.double("test_key", 0.0)
+        val value by delegate
+
+        assertThat(value).isWithin(0.001).of(3.14)
+        verify { editor.remove("test_key") }
+        verify { editor.putString("test_key", any()) }
+        verify { editor.apply() }
+    }
+
+    @Test
+    fun `double - setValue - stores value as string`() {
         val delegate = sharedPreferences.double("test_key", 0.0)
         var value by delegate
         value = 2.5
 
-        verify { editor.putFloat("test_key", 2.5f) }
+        verify { editor.putString("test_key", "2.5") }
         verify { editor.apply() }
     }
 

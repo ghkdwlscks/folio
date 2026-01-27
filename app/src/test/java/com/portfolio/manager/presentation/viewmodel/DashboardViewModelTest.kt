@@ -1,6 +1,7 @@
 package com.portfolio.manager.presentation.viewmodel
 
 import android.content.SharedPreferences
+import android.util.Log
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
@@ -20,6 +21,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -48,6 +51,12 @@ class DashboardViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+
+        // Mock android.util.Log
+        mockkStatic(Log::class)
+        every { Log.w(any<String>(), any<String>(), any()) } returns 0
+        every { Log.w(any<String>(), any<String>()) } returns 0
+
         stockRepository = mockk()
         holdingsRepository = mockk()
         accountRepository = mockk()
@@ -95,6 +104,7 @@ class DashboardViewModelTest {
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        unmockkStatic(Log::class)
     }
 
     @Test

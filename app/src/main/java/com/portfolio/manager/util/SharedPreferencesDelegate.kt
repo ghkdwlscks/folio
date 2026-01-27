@@ -44,11 +44,20 @@ fun SharedPreferences.double(
     key: String,
     defaultValue: Double = 0.0
 ): ReadWriteProperty<Any?, Double> = object : ReadWriteProperty<Any?, Double> {
-    override fun getValue(thisRef: Any?, property: KProperty<*>): Double =
-        getFloat(key, defaultValue.toFloat()).toDouble()
+    override fun getValue(thisRef: Any?, property: KProperty<*>): Double {
+        // Try String first (new format), fall back to Float (old format) for migration
+        return try {
+            getString(key, null)?.toDoubleOrNull() ?: defaultValue
+        } catch (e: ClassCastException) {
+            // Migrate from old Float storage to new String storage
+            val floatValue = getFloat(key, defaultValue.toFloat()).toDouble()
+            edit().remove(key).putString(key, floatValue.toString()).apply()
+            floatValue
+        }
+    }
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: Double) {
-        edit().putFloat(key, value.toFloat()).apply()
+        edit().putString(key, value.toString()).apply()
     }
 }
 

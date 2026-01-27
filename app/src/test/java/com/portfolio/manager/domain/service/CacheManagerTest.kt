@@ -1,10 +1,14 @@
 package com.portfolio.manager.domain.service
 
 import android.content.SharedPreferences
+import android.util.Log
 import com.google.common.truth.Truth.assertThat
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
@@ -16,12 +20,21 @@ class CacheManagerTest {
 
     @Before
     fun setup() {
+        mockkStatic(Log::class)
+        every { Log.w(any<String>(), any<String>(), any()) } returns 0
+        every { Log.w(any<String>(), any<String>()) } returns 0
+
         sharedPreferences = mockk(relaxed = true)
         editor = mockk(relaxed = true)
         every { sharedPreferences.edit() } returns editor
         every { editor.putString(any(), any()) } returns editor
         every { editor.putFloat(any(), any()) } returns editor
         cacheManager = CacheManager(sharedPreferences)
+    }
+
+    @After
+    fun tearDown() {
+        unmockkStatic(Log::class)
     }
 
     @Test

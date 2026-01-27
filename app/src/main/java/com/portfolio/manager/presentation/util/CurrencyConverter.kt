@@ -14,7 +14,7 @@ object CurrencyConverter {
      * @param exchangeRate The KRW to USD exchange rate
      */
     fun toUsd(value: Double, currency: String, exchangeRate: Double = AppConstants.KRW_TO_USD_RATE): Double {
-        return if (currency == "KRW") value / exchangeRate else value
+        return if (currency == "KRW" && exchangeRate > 0) value / exchangeRate else value
     }
 
     /**

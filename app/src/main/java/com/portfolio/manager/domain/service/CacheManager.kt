@@ -1,6 +1,7 @@
 package com.portfolio.manager.domain.service
 
 import android.content.SharedPreferences
+import android.util.Log
 import com.portfolio.manager.util.JsonSerializer
 import kotlinx.serialization.encodeToString
 
@@ -10,6 +11,9 @@ import kotlinx.serialization.encodeToString
 class CacheManager(
     @PublishedApi internal val sharedPreferences: SharedPreferences
 ) {
+    companion object {
+        @PublishedApi internal const val TAG = "CacheManager"
+    }
 
     @PublishedApi internal val json = JsonSerializer.instance
 
@@ -26,7 +30,8 @@ class CacheManager(
                 .putString(key, jsonString)
                 .apply()
             true
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to save cache for key: $key", e)
             false
         }
     }
@@ -40,7 +45,8 @@ class CacheManager(
         return try {
             val jsonString = sharedPreferences.getString(key, null) ?: return null
             json.decodeFromString<T>(jsonString)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load cache for key: $key", e)
             null
         }
     }
@@ -94,8 +100,8 @@ class CacheManager(
             try {
                 val jsonString = json.encodeToString(value)
                 editor.putString(key, jsonString)
-            } catch (_: Exception) {
-                // Ignore serialization errors
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to serialize value for key: $key", e)
             }
         }
 

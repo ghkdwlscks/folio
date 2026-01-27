@@ -234,8 +234,9 @@ class FIRECalculatorViewModel @Inject constructor(
         val realReturn = annualReturn - annualInflation
 
         // Required portfolio = target annual spending / real return rate
+        // Use minimum 0.01% to avoid extremely large numbers from near-zero returns
         val targetAnnualSpending = targetMonthlySpending * 12
-        val requiredPortfolio = if (realReturn > 0) {
+        val requiredPortfolio = if (realReturn >= 0.01) {
             targetAnnualSpending / (realReturn / 100.0)
         } else {
             Double.POSITIVE_INFINITY

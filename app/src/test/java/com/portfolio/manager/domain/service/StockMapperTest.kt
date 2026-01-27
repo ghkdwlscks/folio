@@ -1,14 +1,31 @@
 package com.portfolio.manager.domain.service
 
+import android.util.Log
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.repository.PriceHistoryData
+import io.mockk.every
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 
 class StockMapperTest {
+
+    @Before
+    fun setup() {
+        mockkStatic(Log::class)
+        every { Log.w(any<String>(), any<String>()) } returns 0
+    }
+
+    @After
+    fun tearDown() {
+        unmockkStatic(Log::class)
+    }
 
     private fun createHolding(
         id: Long = 1,

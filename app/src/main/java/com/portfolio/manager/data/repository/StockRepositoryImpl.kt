@@ -200,8 +200,9 @@ class StockRepositoryImpl(
 
                 // Validate rate is positive
                 if (rate <= 0) {
-                    return@withLock cachedAfterLock?.let { Result.success(it) }
-                        ?: Result.failure(Exception("Invalid exchange rate"))
+                    // Return cached value if available, otherwise use default constant
+                    return@withLock cachedAfterLock?.takeIf { it > 0 }?.let { Result.success(it) }
+                        ?: Result.success(com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE)
                 }
 
                 // Update cache

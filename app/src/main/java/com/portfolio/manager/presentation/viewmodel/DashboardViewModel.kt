@@ -1,5 +1,6 @@
 package com.portfolio.manager.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.SharedPreferences
@@ -52,6 +53,10 @@ class DashboardViewModel @Inject constructor(
     private val cashRepository: CashRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
+
+    companion object {
+        private const val TAG = "DashboardViewModel"
+    }
 
     // Declare all properties BEFORE _uiState since loadCachedStateOrDefault() uses them
     private var selectedAccountId: Long = ALL_ACCOUNTS_ID
@@ -114,9 +119,15 @@ class DashboardViewModel @Inject constructor(
                 portfolioStats = portfolioStats,
                 sortOption = currentSortOption
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load cached state, starting fresh", e)
             DashboardUiState.Loading
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        holdingsJob?.cancel()
     }
 
     init {
