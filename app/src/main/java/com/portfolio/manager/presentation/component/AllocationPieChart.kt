@@ -55,10 +55,14 @@ fun AllocationPieChart(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp,
-        tonalElevation = 1.dp
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

@@ -91,13 +91,17 @@ fun StockCard(
                 scaleX = scale
                 scaleY = scale
             },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 1.dp
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
         )
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {

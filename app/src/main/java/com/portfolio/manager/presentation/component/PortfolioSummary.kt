@@ -120,12 +120,12 @@ fun PortfolioSummary(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.tertiary
+                        MaterialTheme.colorScheme.secondary
                     )
                 )
             )
