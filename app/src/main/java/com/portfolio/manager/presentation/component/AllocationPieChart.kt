@@ -1,7 +1,12 @@
 package com.portfolio.manager.presentation.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,14 +22,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +56,8 @@ data class AllocationItem(
     val weight: Double
 )
 
+private const val COLLAPSED_ITEM_COUNT = 5
+
 @Composable
 fun AllocationPieChart(
     items: List<AllocationItem>,
@@ -52,6 +66,15 @@ fun AllocationPieChart(
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
+
+    var expanded by remember { mutableStateOf(false) }
+    val canExpand = items.size > COLLAPSED_ITEM_COUNT
+    val remainingCount = items.size - COLLAPSED_ITEM_COUNT
+
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "arrowRotation"
+    )
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -67,11 +90,43 @@ fun AllocationPieChart(
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
-            Text(
-                text = "Allocation",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            // Header with expand/collapse
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (canExpand) Modifier.clickable { expanded = !expanded }
+                        else Modifier
+                    ),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Allocation",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (canExpand) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = if (expanded) "Show less" else "+$remainingCount more",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (expanded) "Collapse" else "Expand",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .rotate(arrowRotation),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -80,7 +135,7 @@ fun AllocationPieChart(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Pie chart
+                // Pie chart (always shows all items)
                 Box(
                     modifier = Modifier.size(120.dp),
                     contentAlignment = Alignment.Center
@@ -96,7 +151,7 @@ fun AllocationPieChart(
                     }
                     AutoSizeText(
                         text = formattedValue,
-                        maxWidth = 72.dp,  // Inner circle width (120 - 24*2 stroke)
+                        maxWidth = 72.dp,
                         style = MaterialTheme.typography.labelMedium.copy(
                             letterSpacing = (-0.5).sp
                         ),
@@ -107,17 +162,38 @@ fun AllocationPieChart(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Legend
+                // Legend (shows limited items when collapsed)
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items.forEachIndexed { index, item ->
+                    // Always visible items (top 5)
+                    items.take(COLLAPSED_ITEM_COUNT).forEachIndexed { index, item ->
                         LegendItem(
                             color = ChartColors[index % ChartColors.size],
                             label = item.name,
                             weight = item.weight
                         )
+                    }
+
+                    // Expandable items (6+)
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items.drop(COLLAPSED_ITEM_COUNT).forEachIndexed { index, item ->
+                                val colorIndex = index + COLLAPSED_ITEM_COUNT
+                                LegendItem(
+                                    color = ChartColors[colorIndex % ChartColors.size],
+                                    label = item.name,
+                                    weight = item.weight
+                                )
+                            }
+                        }
                     }
                 }
             }
