@@ -249,7 +249,18 @@ private fun LegendItem(
     label: String,
     weight: Double
 ) {
-    val barFraction = (weight / 100.0).toFloat().coerceIn(0f, 1f)
+    val targetFraction = (weight / 100.0).toFloat().coerceIn(0f, 1f)
+
+    // Animate the bar width
+    val animatedFraction by animateFloatAsState(
+        targetValue = targetFraction,
+        animationSpec = tween(
+            durationMillis = 600,
+            delayMillis = 100,
+            easing = FastOutSlowInEasing
+        ),
+        label = "barFraction"
+    )
 
     Box(
         modifier = Modifier
@@ -257,10 +268,10 @@ private fun LegendItem(
             .height(28.dp)
             .clip(RoundedCornerShape(4.dp))
     ) {
-        // Background bar based on percentage relative to max
+        // Animated background bar based on percentage
         Box(
             modifier = Modifier
-                .fillMaxWidth(barFraction)
+                .fillMaxWidth(animatedFraction)
                 .fillMaxHeight()
                 .background(color.copy(alpha = 0.15f))
         )
