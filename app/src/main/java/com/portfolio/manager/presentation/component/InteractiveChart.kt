@@ -2,6 +2,7 @@ package com.portfolio.manager.presentation.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -103,18 +104,38 @@ fun InteractiveChart(
     val density = LocalDensity.current
     val tooltipOffsetPx = with(density) { 8.dp.toPx() }
 
+    // Helper to calculate index from x position
+    fun calculateIndexFromX(x: Float, width: Float, dataSize: Int): Int {
+        if (dataSize <= 1 || width <= 0) return 0
+        val stepX = width / (dataSize - 1)
+        return (x / stepX).roundToInt().coerceIn(0, dataSize - 1)
+    }
+
     Box(modifier = modifier) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(chartData) {
                     detectTapGestures { offset ->
-                        val stepX = chartWidth / (chartData.logPrices.size - 1)
-                        val index = (offset.x / stepX).roundToInt()
-                            .coerceIn(0, chartData.logPrices.size - 1)
+                        val index = calculateIndexFromX(offset.x, chartWidth, chartData.logPrices.size)
                         selectedIndex = if (selectedIndex == index) null else index
                         tapX = offset.x
                     }
+                }
+                .pointerInput(chartData) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val index = calculateIndexFromX(offset.x, chartWidth, chartData.logPrices.size)
+                            selectedIndex = index
+                            tapX = offset.x
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val index = calculateIndexFromX(change.position.x, chartWidth, chartData.logPrices.size)
+                            selectedIndex = index
+                            tapX = change.position.x.coerceIn(0f, chartWidth)
+                        }
+                    )
                 }
         ) {
             chartWidth = size.width
