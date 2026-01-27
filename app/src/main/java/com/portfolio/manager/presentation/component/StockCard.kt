@@ -7,6 +7,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -37,6 +38,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -90,25 +94,43 @@ fun StockCard(
     val heatmapIntensity = min(abs(stock.gainLossPercent) / 50.0, 1.0).toFloat()
     val heatmapColor = getTrendColor(stock.gainLoss)
 
-    Card(
+    val shape = RoundedCornerShape(20.dp)
+    val surfaceColor = MaterialTheme.colorScheme.surface
+
+    // Glass effect gradient
+    val glassGradient = Brush.linearGradient(
+        colors = listOf(
+            surfaceColor.copy(alpha = 0.9f),
+            surfaceColor.copy(alpha = 0.75f)
+        )
+    )
+    val highlightGradient = Brush.verticalGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.08f),
+            Color.Transparent
+        )
+    )
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-        )
+            }
+            .clip(shape)
+            .background(glassGradient)
+            .background(highlightGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    )
+                ),
+                shape = shape
+            )
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Heatmap indicator bar
@@ -303,7 +325,7 @@ fun StockCard(
             }
             } // Column (card content)
         } // Row (heatmap + content)
-    } // Card
+    } // Box (glass card)
 
     // Full screen chart dialog
     if (showFullScreenChart) {

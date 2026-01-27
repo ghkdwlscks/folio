@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,16 +79,39 @@ fun AllocationPieChart(
         label = "arrowRotation"
     )
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 0.dp,
-        tonalElevation = 0.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+    val shape = RoundedCornerShape(20.dp)
+    val surfaceColor = MaterialTheme.colorScheme.surface
+
+    // Glass effect gradient
+    val glassGradient = Brush.linearGradient(
+        colors = listOf(
+            surfaceColor.copy(alpha = 0.9f),
+            surfaceColor.copy(alpha = 0.75f)
         )
+    )
+    val highlightGradient = Brush.verticalGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.08f),
+            Color.Transparent
+        )
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(glassGradient)
+            .background(highlightGradient)
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                    )
+                ),
+                shape = shape
+            )
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
