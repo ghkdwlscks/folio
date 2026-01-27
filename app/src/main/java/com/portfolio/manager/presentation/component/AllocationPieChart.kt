@@ -1,7 +1,10 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
@@ -26,7 +29,9 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -194,18 +199,37 @@ private fun DonutChart(
     items: List<AllocationItem>,
     modifier: Modifier = Modifier
 ) {
-    val sweepAngles = items.map { (it.weight / 100f * 360f).toFloat() }
+    val targetSweepAngles = items.map { (it.weight / 100f * 360f).toFloat() }
+
+    // Animation progress from 0 to 1
+    val animationProgress = remember { Animatable(0f) }
+
+    // Trigger animation when items change
+    LaunchedEffect(items.map { it.symbol to it.weight }) {
+        animationProgress.snapTo(0f)
+        animationProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 800,
+                easing = FastOutSlowInEasing
+            )
+        )
+    }
 
     Canvas(modifier = modifier) {
         val strokeWidth = 24.dp.toPx()
         val radius = (size.minDimension - strokeWidth) / 2
         var startAngle = -90f
+        val progress = animationProgress.value
 
-        sweepAngles.forEachIndexed { index, sweepAngle ->
+        targetSweepAngles.forEachIndexed { index, targetSweepAngle ->
+            val animatedSweepAngle = targetSweepAngle * progress
+            val gap = if (animatedSweepAngle > 2f) 2f else 0f
+
             drawArc(
                 color = ChartColors[index % ChartColors.size],
                 startAngle = startAngle,
-                sweepAngle = sweepAngle - 2f, // Small gap between segments
+                sweepAngle = (animatedSweepAngle - gap).coerceAtLeast(0f),
                 useCenter = false,
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
                 size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
@@ -214,7 +238,7 @@ private fun DonutChart(
                     (size.height - radius * 2) / 2
                 )
             )
-            startAngle += sweepAngle
+            startAngle += animatedSweepAngle
         }
     }
 }
