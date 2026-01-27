@@ -17,19 +17,43 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
+    primary = Primary60,
+    onPrimary = Color.White,
+    primaryContainer = Primary20,
+    onPrimaryContainer = Primary80,
+    secondary = Secondary60,
+    onSecondary = Color.White,
+    secondaryContainer = Secondary20,
+    onSecondaryContainer = Secondary80,
+    tertiary = Accent80,
+    onTertiary = Color.Black,
     surface = SurfaceDark,
-    background = SurfaceDark
+    onSurface = Color(0xFFE2E8F0),  // Slate 200
+    surfaceVariant = Color(0xFF1E293B),  // Slate 800
+    onSurfaceVariant = Color(0xFF94A3B8),  // Slate 400
+    background = SurfaceDark,
+    onBackground = Color(0xFFE2E8F0),
+    outline = Color(0xFF475569)  // Slate 600
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
+    primary = Primary40,
+    onPrimary = Color.White,
+    primaryContainer = Primary80,
+    onPrimaryContainer = Primary20,
+    secondary = Secondary40,
+    onSecondary = Color.White,
+    secondaryContainer = Secondary80,
+    onSecondaryContainer = Secondary20,
+    tertiary = Accent40,
+    onTertiary = Color.Black,
     surface = SurfaceLight,
-    background = SurfaceLight
+    onSurface = Color(0xFF1E293B),  // Slate 800
+    surfaceVariant = Color(0xFFE2E8F0),  // Slate 200
+    onSurfaceVariant = Color(0xFF64748B),  // Slate 500
+    background = SurfaceLight,
+    onBackground = Color(0xFF1E293B),
+    outline = Color(0xFFCBD5E1)  // Slate 300
 )
 
 @Composable
