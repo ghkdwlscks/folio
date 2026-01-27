@@ -21,7 +21,7 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 - **Benchmark Comparison**: S&P 500 and KOSPI returns displayed alongside portfolio returns
 - **Portfolio Statistics**: MDD, Volatility, Sharpe Ratio, Best/Worst Day (daily returns within period)
 - **Period Returns**: All time periods (1W, 1M, 3M, 6M, 1Y) show returns simultaneously, loaded in parallel on startup
-- **Allocation Pie Chart**: Donut chart showing all stocks and cash items individually (no "Others" grouping)
+- **Allocation Pie Chart**: Animated donut chart showing all stocks and cash items individually (no "Others" grouping)
 - **Currency Toggle**: View totals in USD or KRW with animated sliding indicator (default: KRW)
 - **Holdings List**: Stock cards with customizable sorting (weight, name, symbol, gain/loss %, day change %)
 - **Cash List**: Cash cards showing name, value, yield rate with edit/delete buttons
@@ -30,7 +30,7 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 - **Account Filter**: Dropdown menu to view all accounts aggregated or filter by specific account
 - **Multi-Account Details**: Expandable stock cards showing per-account holdings breakdown
 - **Annual Income**: Shows combined dividend income from stocks and yield income from cash
-- **Delete Confirmation**: Separate dialogs for holdings and cash items
+- **Delete Confirmation**: Reusable dialogs for holdings and cash items
 - **Refresh Indicator**: Loading spinner in refresh button during price updates
 - **Persisted Settings**: Period, currency, and sort preferences saved across app restarts
 - **Portfolio Caching**: Fast cold start with cached stocks, cash items, accounts, and period returns
@@ -58,6 +58,8 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 
 ### UI/UX
 - **Material 3 Design**: Modern Android design language with dynamic colors (Android 12+)
+- **Glassmorphism**: Semi-transparent glass surfaces with gradient highlights and borders
+- **Premium Color Palette**: Rich indigo primary, vibrant teal secondary, warm amber accents
 - **Top Bar Actions**: Fire icon (FIRE Calculator), refresh, and settings buttons
 - **Pull to Refresh**: Manual price refresh with hidden center indicator
 - **Account Reordering**: Up/down buttons to reorder account priority
@@ -65,6 +67,8 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 - **Card Elevation**: Subtle shadows for visual depth hierarchy
 - **Press Animations**: Scale effect (0.98x) on card tap for tactile feedback
 - **List Animations**: Smooth item placement animations
+- **Chart Animations**: Animated donut segments and legend bars
+- **Animated Counters**: Smooth value transitions for currency and percentage displays
 - **Horizontal FABs**: Rebalance button (left) and Add button (right) side by side
 - **Crossfade Transitions**: Smooth transitions between loading and content states
 - **Colored Gain/Loss**: Green for gains, red for losses throughout the UI
@@ -106,18 +110,61 @@ app/src/main/java/com/portfolio/manager/
 │       ├── CashRepositoryImpl.kt
 │       └── StockRepositoryImpl.kt
 ├── domain/
-│   ├── model/              # Stock, CashItem, StockAccountDetail, PeriodReturn, BenchmarkReturns, TimePeriod, SortOption, PortfolioStats, FIRECalculation, FIRETargetCalculation
-│   ├── service/            # PortfolioStatsCalculator, PriceHistoryProcessor
+│   ├── model/              # Domain models
+│   │   ├── Stock.kt, CashItem.kt, StockAccountDetail.kt
+│   │   ├── PeriodReturn.kt, BenchmarkReturns.kt, TimePeriod.kt
+│   │   ├── SortOption.kt, PortfolioStats.kt
+│   │   └── FIRECalculation.kt
+│   ├── service/            # Domain services
+│   │   ├── PortfolioStatsCalculator.kt  # MDD, Sharpe, Volatility calculations
+│   │   ├── PriceHistoryProcessor.kt     # Date alignment, forward-fill logic
+│   │   ├── PortfolioSorter.kt           # Stock/cash sorting by various criteria
+│   │   ├── StockMapper.kt               # Entity to domain model mapping
+│   │   └── CacheManager.kt              # JSON-based SharedPreferences caching
 │   └── repository/         # Repository interfaces
 ├── presentation/
-│   ├── screen/             # DashboardScreen, AddHoldingScreen, AddCashScreen, AccountsScreen, FIRECalculatorScreen
-│   ├── component/          # PortfolioSummary, StockCard, CashCard, Sparkline, InteractiveChart, FullScreenChart, AllocationPieChart, CurrencyToggle, Skeleton, ErrorContent
-│   ├── viewmodel/          # DashboardViewModel, AddHoldingViewModel, AddCashViewModel, AccountsViewModel, FIRECalculatorViewModel
+│   ├── screen/             # Screen composables
+│   │   ├── DashboardScreen.kt
+│   │   ├── AddHoldingScreen.kt, AddCashScreen.kt
+│   │   ├── AccountsScreen.kt
+│   │   └── FIRECalculatorScreen.kt
+│   ├── component/          # Reusable UI components
+│   │   ├── GlassSurface.kt, GlassCard.kt     # Glassmorphism surfaces
+│   │   ├── PortfolioSummary.kt               # Header with total value
+│   │   ├── StockCard.kt, CashCard.kt         # List item cards
+│   │   ├── Sparkline.kt                      # Mini line charts
+│   │   ├── InteractiveChart.kt               # Touch-interactive chart
+│   │   ├── FullScreenChart.kt                # Modal chart dialog
+│   │   ├── AllocationPieChart.kt             # Animated donut chart
+│   │   ├── CurrencyToggle.kt                 # USD/KRW switcher
+│   │   ├── AnimatedCounter.kt                # Value transition animations
+│   │   ├── AccountDropdown.kt                # Account filter dropdown
+│   │   ├── SectionHeader.kt                  # Holdings section with sort options
+│   │   ├── ConfirmationDialog.kt             # Reusable confirmation dialogs
+│   │   ├── RebalanceDialog.kt                # Portfolio rebalancing UI
+│   │   ├── Skeleton.kt                       # Loading placeholders
+│   │   └── ErrorContent.kt                   # Error state display
+│   ├── viewmodel/          # ViewModels and UI states
+│   │   ├── DashboardViewModel.kt, DashboardUiState.kt
+│   │   ├── AddHoldingViewModel.kt, AddCashViewModel.kt
+│   │   ├── AccountsViewModel.kt
+│   │   └── FIRECalculatorViewModel.kt
 │   ├── navigation/         # NavGraph, Routes
-│   ├── theme/              # Color, Theme
-│   └── util/               # CurrencyFormatter, CurrencyConverter, TrendIndicator, PresentationConstants
-├── di/                     # Hilt modules (Database, Network, Repository)
-└── util/                   # AppConstants, PreferenceKeys, StockExtensions, JsonSerializer
+│   ├── theme/              # Color, Theme, Type
+│   └── util/               # Presentation utilities
+│       ├── CurrencyFormatter.kt    # Format currency values
+│       ├── CurrencyConverter.kt    # USD/KRW conversion
+│       ├── TrendIndicator.kt       # Up/down/neutral indicators
+│       └── PresentationConstants.kt
+├── di/                     # Hilt modules
+│   ├── DatabaseModule.kt
+│   ├── NetworkModule.kt
+│   └── RepositoryModule.kt
+└── util/                   # App-wide utilities
+    ├── AppConstants.kt          # Global constants
+    ├── StockExtensions.kt       # Symbol formatting helpers
+    ├── JsonSerializer.kt        # Kotlinx serialization config
+    └── SharedPreferencesDelegate.kt  # Property delegates for prefs
 ```
 
 ## Key Screens
@@ -149,6 +196,8 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Batch queries to avoid N+1 problems (e.g., `getHoldingsCountByAccountFlow`)
 - Room `@Transaction` for atomic operations
 - Domain services for complex calculations (PortfolioStatsCalculator, PriceHistoryProcessor)
+- SharedPreferences delegates for clean preference access
+- CacheManager for JSON-based caching with type safety
 
 ## AppConstants & PreferenceKeys
 
@@ -228,12 +277,12 @@ app/src/test/java/com/portfolio/manager/
 │   ├── remote/               # YahooFinanceApiTest
 │   └── repository/           # Repository tests (Holdings, Account, Cash, Stock)
 ├── domain/
-│   ├── model/                # Model tests (Stock, CashItem, PortfolioStats, FIRECalculation)
-│   └── service/              # Service tests (PortfolioStatsCalculator, PriceHistoryProcessor)
+│   ├── model/                # Model tests (Stock, CashItem, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns)
+│   └── service/              # Service tests (PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CacheManager)
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)
 │   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, TrendIndicator)
-└── util/                     # Extension tests (StockExtensions, AppConstants, PreferenceKeys)
+└── util/                     # Extension tests (StockExtensions, AppConstants, SharedPreferencesDelegate)
 ```
 
 ### Test Tools

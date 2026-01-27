@@ -17,7 +17,7 @@ A personal Android app for tracking your stock portfolio and cash savings with r
 - **Benchmark Comparison** - Compare returns against S&P 500 and KOSPI
 - **Portfolio Analytics** - MDD, Volatility, Sharpe Ratio, Best/Worst Day
 - **Interactive Charts** - Full-screen charts with benchmark overlays and touch interactions
-- **Allocation Chart** - Donut chart showing portfolio distribution (stocks + cash)
+- **Allocation Chart** - Animated donut chart showing portfolio distribution (stocks + cash)
 - **Sortable Holdings** - Sort by weight, name, symbol, gain/loss %, or day change %
 - **Currency Toggle** - Switch between USD and KRW with live exchange rate display
 - **Dividend & Income Tracking** - Stock dividends plus cash savings income
@@ -27,11 +27,19 @@ A personal Android app for tracking your stock portfolio and cash savings with r
 - **Sustainable Spending** - Calculate safe withdrawal based on real return
 - **FIRE Target Tracking** - Progress bar toward financial independence goal
 
+### Modern UI
+- **Glassmorphism Design** - Semi-transparent glass surfaces with gradient effects
+- **Premium Color Palette** - Rich indigo and teal theme with amber accents
+- **Smooth Animations** - Animated charts, counters, and transitions
+- **Material 3** - Modern Android design language with dynamic colors (Android 12+)
+- **Heatmap Cards** - Visual intensity based on gain/loss percentage
+- **Skeleton Loading** - Shimmer placeholders during data loading
+
 ### Additional Features
 - **Rebalancing** - Set target percentages and calculate adjustments needed
-- **Heatmap Cards** - Visual intensity based on gain/loss percentage
 - **Aggregated View** - View all accounts combined or filter by account
 - **Fast Cold Start** - Cached dashboard for instant display
+- **Offline Support** - View cached data when offline
 
 ## Tech Stack
 
@@ -72,7 +80,18 @@ The APK will be at `app/build/outputs/apk/debug/app-debug.apk`
 4. **Enter Details** - Symbol (e.g., AAPL or 005930.KS), quantity, average price
 5. **View Portfolio** - Dashboard shows total value including stocks and cash
 6. **Switch Currency** - Tap USD/KRW toggle in portfolio summary
-7. **FIRE Planning** - Tap fire icon in top bar for FIRE Calculator
+7. **View Charts** - Tap portfolio sparkline for full-screen interactive chart
+8. **FIRE Planning** - Tap fire icon in top bar for FIRE Calculator
+9. **Rebalance** - Tap rebalance button to see target vs actual allocation
+
+## Screenshots
+
+The app features a modern glassmorphism design with:
+- Glass-effect cards with gradient highlights
+- Animated allocation donut chart
+- Interactive portfolio charts with benchmark overlays
+- Heatmap-colored stock cards based on performance
+- Smooth value transitions and animations
 
 ## License
 
