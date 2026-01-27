@@ -160,8 +160,9 @@ fun PortfolioSummary(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = formatValue(totalValue),
+                AnimatedCurrencyCounter(
+                    targetValue = totalValue,
+                    showInKrw = showInKrw,
                     style = MaterialTheme.typography.displayMedium.copy(
                         letterSpacing = (-1.5).sp
                     ),
@@ -183,11 +184,12 @@ fun PortfolioSummary(
                             modifier = Modifier.size(14.dp),
                             tint = Color.White
                         )
-                        Text(
-                            text = "${if (trend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(totalGainLossPercent)}%",
+                        AnimatedPercentCounter(
+                            targetValue = totalGainLossPercent,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            prefix = if (trend.isGain) "+" else ""
                         )
                     }
                 }
