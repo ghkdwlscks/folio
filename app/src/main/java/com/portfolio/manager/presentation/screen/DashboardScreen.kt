@@ -2,6 +2,8 @@ package com.portfolio.manager.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -20,7 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -540,10 +542,10 @@ private fun DashboardContent(
                 )
             }
 
-            items(
+            itemsIndexed(
                 items = stocks,
-                key = { it.id }
-            ) { stock ->
+                key = { _, stock -> stock.id }
+            ) { index, stock ->
                 val isAggregated = stock.accountDetails.isNotEmpty()
                 StockCard(
                     stock = stock,
@@ -558,7 +560,13 @@ private fun DashboardContent(
                     }.takeIf { isAggregated },
                     onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated },
                     onEditAccountHolding = onEditHolding.takeIf { isAggregated },
-                    modifier = Modifier.animateItemPlacement()
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = tween(
+                            durationMillis = 300,
+                            delayMillis = index * 50
+                        ),
+                        fadeOutSpec = tween(durationMillis = 150)
+                    )
                 )
             }
         }
@@ -573,17 +581,23 @@ private fun DashboardContent(
                 )
             }
 
-            items(
+            itemsIndexed(
                 items = cashItems,
-                key = { "cash_${it.id}" }
-            ) { cashItem ->
+                key = { _, cashItem -> "cash_${cashItem.id}" }
+            ) { index, cashItem ->
                 CashCard(
                     cashItem = cashItem,
                     showInKrw = showInKrw,
                     exchangeRate = exchangeRate,
                     onEdit = { onEditCash(cashItem.id) },
                     onDelete = { onDeleteCash(cashItem.id, cashItem.name) },
-                    modifier = Modifier.animateItemPlacement()
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = tween(
+                            durationMillis = 300,
+                            delayMillis = index * 50
+                        ),
+                        fadeOutSpec = tween(durationMillis = 150)
+                    )
                 )
             }
         }
