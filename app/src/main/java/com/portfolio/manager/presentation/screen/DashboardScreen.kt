@@ -261,7 +261,7 @@ fun DashboardScreen(
         Column(modifier = Modifier.padding(paddingValues)) {
             AccountDropdownWrapper(
                 viewModel = viewModel,
-                modifier = Modifier.padding(horizontal = 20.dp)
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp)
             )
             DashboardStateContent(
                 viewModel = viewModel,
