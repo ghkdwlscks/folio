@@ -173,7 +173,7 @@ class DashboardViewModel @Inject constructor(
 
                 // Reload sparkline and period returns with new currency
                 if (currentState.stocks.isNotEmpty()) {
-                    loadBenchmarkReturns(currentState.selectedPeriod)
+                    loadBenchmarkData(currentState.selectedPeriod)
                 }
                 loadPortfolioSparkline(currentState.stocks, currentState.cashItems, currentState.selectedPeriod)
             }
@@ -216,7 +216,7 @@ class DashboardViewModel @Inject constructor(
         if (currentState is DashboardUiState.Success) {
             _uiState.value = currentState.copy(selectedPeriod = period)
             if (currentState.stocks.isNotEmpty()) {
-                loadBenchmarkReturns(period)
+                loadBenchmarkData(period)
             }
             loadPortfolioSparkline(currentState.stocks, currentState.cashItems, period)
         }
@@ -273,7 +273,7 @@ class DashboardViewModel @Inject constructor(
     private fun sortCashItems(cashItems: List<CashItem>, option: SortOption): List<CashItem> =
         PortfolioSorter.sortCashItems(cashItems, option, currentExchangeRate)
 
-    private fun loadBenchmarkReturns(period: TimePeriod) {
+    private fun loadBenchmarkData(period: TimePeriod) {
         viewModelScope.launch {
             val currentState = _uiState.value
             val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
@@ -283,14 +283,14 @@ class DashboardViewModel @Inject constructor(
             val startExchangeRate = exchangeRateData.prices.firstOrNull() ?: currentExchangeRate
             val endExchangeRate = exchangeRateData.prices.lastOrNull() ?: currentExchangeRate
 
-            // Fetch benchmark price histories
+            // Fetch benchmark price histories (single fetch for both returns and sparklines)
             val sp500Deferred = async { stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range) }
             val kospiDeferred = async { stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range) }
 
             val sp500History = sp500Deferred.await()[BENCHMARK_SP500]
             val kospiHistory = kospiDeferred.await()[BENCHMARK_KOSPI]
 
-            // Calculate benchmark returns from price history (same as sparkline)
+            // Calculate benchmark returns
             val sp500Return = sp500History?.prices?.let { prices ->
                 PriceHistoryProcessor.calculateBenchmarkReturn(
                     prices, "USD", showInKrw, startExchangeRate, endExchangeRate
@@ -302,8 +302,18 @@ class DashboardViewModel @Inject constructor(
                 )
             }
 
+            // Build benchmark sparklines from same data
+            val sparklines = buildMap {
+                sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                    put(BENCHMARK_SP500, PriceHistoryProcessor.normalizeValues(prices))
+                }
+                kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
+                    put(BENCHMARK_KOSPI, PriceHistoryProcessor.normalizeValues(prices))
+                }
+            }
+
             val benchmarks = BenchmarkReturns(sp500 = sp500Return, kospi = kospiReturn)
-            updateBenchmarkReturns(period, benchmarks)
+            updateBenchmarkData(period, benchmarks, sparklines)
         }
     }
 
@@ -315,11 +325,11 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun updateBenchmarkReturns(period: TimePeriod, benchmarks: BenchmarkReturns) {
+    private fun updateBenchmarkData(period: TimePeriod, benchmarks: BenchmarkReturns, sparklines: Map<String, List<Double>>) {
         updateSuccessState { state ->
             val updatedBenchmarks = state.benchmarkReturns.toMutableMap()
             updatedBenchmarks[period] = benchmarks
-            state.copy(benchmarkReturns = updatedBenchmarks)
+            state.copy(benchmarkReturns = updatedBenchmarks, benchmarkSparklines = sparklines)
         }
     }
 
@@ -399,13 +409,10 @@ class DashboardViewModel @Inject constructor(
                 val stats = PortfolioStatsCalculator.calculate(portfolioValues)
                 val normalizedPortfolio = PriceHistoryProcessor.normalizeValues(portfolioValues)
 
-                val benchmarkSparklines = fetchBenchmarkSparklines(period)
-
                 updatePortfolioSparkline(
                     sparkline = normalizedPortfolio,
                     timestamps = timestamps,
-                    stats = stats,
-                    benchmarkSparklines = benchmarkSparklines
+                    stats = stats
                 )
                 // Period returns are calculated by loadAllPeriodReturns() which includes cash
             } catch (e: Exception) {
@@ -526,20 +533,6 @@ class DashboardViewModel @Inject constructor(
         cacheManager.save(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS, stringKeyMap)
     }
 
-    private suspend fun fetchBenchmarkSparklines(period: TimePeriod): Map<String, List<Double>> {
-        val sp500History = stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range)[BENCHMARK_SP500]
-        val kospiHistory = stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range)[BENCHMARK_KOSPI]
-
-        return buildMap {
-            sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                put(BENCHMARK_SP500, PriceHistoryProcessor.normalizeValues(prices))
-            }
-            kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                put(BENCHMARK_KOSPI, PriceHistoryProcessor.normalizeValues(prices))
-            }
-        }
-    }
-
     private fun calculatePeriodReturnPercent(portfolioValues: List<Double>): Double {
         if (portfolioValues.size < 2) return 0.0
         val startValue = portfolioValues.first()
@@ -550,14 +543,12 @@ class DashboardViewModel @Inject constructor(
     private fun updatePortfolioSparkline(
         sparkline: List<Double>,
         timestamps: List<Long> = emptyList(),
-        stats: PortfolioStats = PortfolioStats(),
-        benchmarkSparklines: Map<String, List<Double>> = emptyMap()
+        stats: PortfolioStats = PortfolioStats()
     ) {
         updateSuccessState { state ->
             state.copy(
                 portfolioSparkline = sparkline,
                 portfolioSparklineTimestamps = timestamps,
-                benchmarkSparklines = benchmarkSparklines,
                 portfolioStats = stats
             )
         }
@@ -696,7 +687,7 @@ class DashboardViewModel @Inject constructor(
             if (selectedAccountId == ALL_ACCOUNTS_ID) {
                 saveStateToCache(updatedStocks, sortedCashItems, accounts, currentExchangeRate)
             }
-            loadBenchmarkReturns(currentSuccess.selectedPeriod)
+            loadBenchmarkData(currentSuccess.selectedPeriod)
             loadPortfolioSparkline(updatedStocks, sortedCashItems, currentSuccess.selectedPeriod)
             loadAllPeriodReturns(updatedStocks, sortedCashItems)
             return
@@ -750,7 +741,7 @@ class DashboardViewModel @Inject constructor(
                 }
                 // Load period returns for all periods and portfolio sparkline for selected period
                 loadAllPeriodReturns(stocks, sortedCashItems)
-                loadBenchmarkReturns(selectedPeriod)
+                loadBenchmarkData(selectedPeriod)
                 loadPortfolioSparkline(stocks, sortedCashItems, selectedPeriod)
             },
             onFailure = { exception ->
