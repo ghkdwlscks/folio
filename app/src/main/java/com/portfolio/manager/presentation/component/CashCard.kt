@@ -19,8 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.CashItem
-import com.portfolio.manager.presentation.theme.GainGreen
 import com.portfolio.manager.presentation.util.CurrencyFormatter
+import com.portfolio.manager.presentation.util.getTrendColor
 
 @Composable
 fun CashCard(
@@ -62,7 +62,7 @@ fun CashCard(
                 Text(
                     text = "Yield: ${String.format("%.2f", cashItem.annualYieldRate)}%",
                     style = MaterialTheme.typography.bodySmall,
-                    color = GainGreen
+                    color = getTrendColor(cashItem.annualYieldRate)
                 )
             }
             Row(

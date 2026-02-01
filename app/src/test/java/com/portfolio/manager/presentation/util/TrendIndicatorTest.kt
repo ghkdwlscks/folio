@@ -10,6 +10,8 @@ import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.theme.LossRedLight
 import com.portfolio.manager.presentation.theme.LossRedPastel
+import com.portfolio.manager.presentation.theme.NeutralGray
+import com.portfolio.manager.presentation.theme.NeutralGrayLight
 import org.junit.Test
 
 class TrendIndicatorTest {
@@ -20,8 +22,8 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `isGain - zero value - returns true`() {
-        assertThat(isGain(0.0)).isTrue()
+    fun `isGain - zero value - returns false`() {
+        assertThat(isGain(0.0)).isFalse()
     }
 
     @Test
@@ -40,8 +42,8 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `getTrendColor - zero value - returns GainGreen`() {
-        assertThat(getTrendColor(0.0)).isEqualTo(GainGreen)
+    fun `getTrendColor - zero value - returns NeutralGray`() {
+        assertThat(getTrendColor(0.0)).isEqualTo(NeutralGray)
     }
 
     @Test
@@ -55,6 +57,11 @@ class TrendIndicatorTest {
     }
 
     @Test
+    fun `getTrendColor - zero value with pastel - returns NeutralGray`() {
+        assertThat(getTrendColor(0.0, usePastel = true)).isEqualTo(NeutralGray)
+    }
+
+    @Test
     fun `getTrendBackgroundColor - positive value - returns GainGreenLight`() {
         assertThat(getTrendBackgroundColor(100.0)).isEqualTo(GainGreenLight)
     }
@@ -65,8 +72,8 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `getTrendBackgroundColor - zero value - returns GainGreenLight`() {
-        assertThat(getTrendBackgroundColor(0.0)).isEqualTo(GainGreenLight)
+    fun `getTrendBackgroundColor - zero value - returns NeutralGrayLight`() {
+        assertThat(getTrendBackgroundColor(0.0)).isEqualTo(NeutralGrayLight)
     }
 
     @Test
@@ -105,12 +112,12 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `createTrendIndicator - zero value - returns gain indicator`() {
+    fun `createTrendIndicator - zero value - returns neutral indicator`() {
         val indicator = createTrendIndicator(0.0)
 
-        assertThat(indicator.isGain).isTrue()
-        assertThat(indicator.color).isEqualTo(GainGreen)
-        assertThat(indicator.backgroundColor).isEqualTo(GainGreenLight)
+        assertThat(indicator.isGain).isFalse()
+        assertThat(indicator.color).isEqualTo(NeutralGray)
+        assertThat(indicator.backgroundColor).isEqualTo(NeutralGrayLight)
         assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingUp)
     }
 
@@ -135,12 +142,12 @@ class TrendIndicatorTest {
     }
 
     @Test
-    fun `createTrendIndicator - usePastel true - zero value - returns gain pastel indicator`() {
+    fun `createTrendIndicator - usePastel true - zero value - returns neutral indicator`() {
         val indicator = createTrendIndicator(0.0, usePastel = true)
 
-        assertThat(indicator.isGain).isTrue()
-        assertThat(indicator.color).isEqualTo(GainGreenPastel)
-        assertThat(indicator.backgroundColor).isEqualTo(GainGreenPastel.copy(alpha = 0.3f))
+        assertThat(indicator.isGain).isFalse()
+        assertThat(indicator.color).isEqualTo(NeutralGray)
+        assertThat(indicator.backgroundColor).isEqualTo(NeutralGrayLight)
         assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingUp)
     }
 }

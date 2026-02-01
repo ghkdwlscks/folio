@@ -11,6 +11,8 @@ import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.theme.LossRedLight
 import com.portfolio.manager.presentation.theme.LossRedPastel
+import com.portfolio.manager.presentation.theme.NeutralGray
+import com.portfolio.manager.presentation.theme.NeutralGrayLight
 
 /**
  * Represents a trend indicator with its associated visual properties.
@@ -23,19 +25,19 @@ data class TrendIndicator(
 )
 
 /**
- * Determines if a value represents a gain (positive or zero).
+ * Determines if a value represents a gain (strictly positive).
  */
-fun isGain(value: Double): Boolean = value >= 0
+fun isGain(value: Double): Boolean = value > 0
 
 /**
  * Gets the trend color for a given value.
  * Use pastel variant for dark backgrounds (e.g., portfolio summary card).
  */
 fun getTrendColor(value: Double, usePastel: Boolean = false): Color {
-    return if (value >= 0) {
-        if (usePastel) GainGreenPastel else GainGreen
-    } else {
-        if (usePastel) LossRedPastel else LossRed
+    return when {
+        value > 0 -> if (usePastel) GainGreenPastel else GainGreen
+        value < 0 -> if (usePastel) LossRedPastel else LossRed
+        else -> NeutralGray
     }
 }
 
@@ -43,7 +45,11 @@ fun getTrendColor(value: Double, usePastel: Boolean = false): Color {
  * Gets the trend background color for a given value.
  */
 fun getTrendBackgroundColor(value: Double): Color {
-    return if (value >= 0) GainGreenLight else LossRedLight
+    return when {
+        value > 0 -> GainGreenLight
+        value < 0 -> LossRedLight
+        else -> NeutralGrayLight
+    }
 }
 
 /**
@@ -55,22 +61,29 @@ fun getTrendIcon(value: Double): ImageVector {
 
 /**
  * Creates a complete TrendIndicator with configurable color scheme.
- * @param value The value to determine gain/loss
+ * @param value The value to determine gain/loss/neutral
  * @param usePastel Use pastel colors for dark backgrounds (e.g., portfolio summary card)
  */
 fun createTrendIndicator(value: Double, usePastel: Boolean = false): TrendIndicator {
-    val gain = value >= 0
-    val (color, backgroundColor) = if (usePastel) {
-        val pastelColor = if (gain) GainGreenPastel else LossRedPastel
-        pastelColor to pastelColor.copy(alpha = 0.3f)
-    } else {
-        (if (gain) GainGreen else LossRed) to (if (gain) GainGreenLight else LossRedLight)
+    val gain = value > 0
+    val (color, backgroundColor) = when {
+        value > 0 -> if (usePastel) {
+            GainGreenPastel to GainGreenPastel.copy(alpha = 0.3f)
+        } else {
+            GainGreen to GainGreenLight
+        }
+        value < 0 -> if (usePastel) {
+            LossRedPastel to LossRedPastel.copy(alpha = 0.3f)
+        } else {
+            LossRed to LossRedLight
+        }
+        else -> NeutralGray to NeutralGrayLight
     }
 
     return TrendIndicator(
         isGain = gain,
         color = color,
         backgroundColor = backgroundColor,
-        icon = if (gain) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
+        icon = if (value >= 0) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
     )
 }

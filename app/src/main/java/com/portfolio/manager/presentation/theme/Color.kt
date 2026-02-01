@@ -38,6 +38,10 @@ val LossRed = Color(0xFFEF4444)        // Red 500 - clear warning
 val LossRedLight = Color(0xFFFEE2E2)   // Red 100
 val LossRedDark = Color(0xFF991B1B)    // Red 800
 
+// Neutral color for zero change (no gain, no loss)
+val NeutralGray = Color(0xFF9CA3AF)        // Gray 400
+val NeutralGrayLight = Color(0xFFF3F4F6)   // Gray 100
+
 // Pastel variants for dark backgrounds (brighter for visibility)
 val GainGreenPastel = Color(0xFF86EFAC)  // Green 300
 val LossRedPastel = Color(0xFFFCA5A5)    // Red 300
