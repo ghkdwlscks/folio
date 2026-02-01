@@ -30,7 +30,8 @@ data class AddHoldingUiState(
     val selectedAccountId: Long = ALL_ACCOUNTS_ID,
     val accounts: List<AccountEntity> = emptyList(),
     val needsAccountSelection: Boolean = false,
-    val isEditMode: Boolean = false
+    val isEditMode: Boolean = false,
+    val isSaving: Boolean = false
 )
 
 @HiltViewModel
@@ -127,56 +128,61 @@ class AddHoldingViewModel @Inject constructor(
     }
 
     suspend fun saveHolding(): Boolean {
-        _uiState.update { it.copy(errorMessage = null) }
-        val state = _uiState.value
-        val symbolValue = normalizeSymbol(state.symbol)
-        val quantityValue = state.quantity.toIntOrNull()
-        val priceValue = state.averagePrice.toDoubleOrNull()
-        val targetAccountId = state.selectedAccountId
+        if (_uiState.value.isSaving) return false
+        _uiState.update { it.copy(errorMessage = null, isSaving = true) }
+        try {
+            val state = _uiState.value
+            val symbolValue = normalizeSymbol(state.symbol)
+            val quantityValue = state.quantity.toIntOrNull()
+            val priceValue = state.averagePrice.toDoubleOrNull()
+            val targetAccountId = state.selectedAccountId
 
-        if (symbolValue.isEmpty() || quantityValue == null || priceValue == null) {
-            return false
+            if (symbolValue.isEmpty() || quantityValue == null || priceValue == null) {
+                return false
+            }
+
+            // Validate quantity bounds
+            if (quantityValue < MIN_QUANTITY || quantityValue > MAX_QUANTITY) {
+                _uiState.update { it.copy(errorMessage = "Quantity must be between $MIN_QUANTITY and $MAX_QUANTITY") }
+                return false
+            }
+
+            // Validate price bounds
+            if (priceValue < MIN_PRICE || priceValue > MAX_PRICE) {
+                _uiState.update { it.copy(errorMessage = "Price must be between $MIN_PRICE and $MAX_PRICE") }
+                return false
+            }
+
+            if (targetAccountId == ALL_ACCOUNTS_ID) {
+                _uiState.update { it.copy(errorMessage = "Please select an account") }
+                return false
+            }
+
+            // Check for duplicate symbol (exclude current holding in edit mode)
+            if (!validateSymbolUniqueness(targetAccountId, symbolValue, if (state.isEditMode) holdingId else null)) {
+                return false
+            }
+
+            val holding = HoldingEntity(
+                id = if (state.isEditMode && holdingId != null) holdingId else 0,
+                accountId = targetAccountId,
+                symbol = symbolValue,
+                name = symbolValue,
+                quantity = quantityValue,
+                averagePrice = priceValue,
+                currency = state.currency,
+                targetPercentage = if (state.isEditMode) existingTargetPercentage else null
+            )
+
+            if (state.isEditMode) {
+                repository.updateHolding(holding)
+            } else {
+                repository.addHolding(holding)
+            }
+            return true
+        } finally {
+            _uiState.update { it.copy(isSaving = false) }
         }
-
-        // Validate quantity bounds
-        if (quantityValue < MIN_QUANTITY || quantityValue > MAX_QUANTITY) {
-            _uiState.update { it.copy(errorMessage = "Quantity must be between $MIN_QUANTITY and $MAX_QUANTITY") }
-            return false
-        }
-
-        // Validate price bounds
-        if (priceValue < MIN_PRICE || priceValue > MAX_PRICE) {
-            _uiState.update { it.copy(errorMessage = "Price must be between $MIN_PRICE and $MAX_PRICE") }
-            return false
-        }
-
-        if (targetAccountId == ALL_ACCOUNTS_ID) {
-            _uiState.update { it.copy(errorMessage = "Please select an account") }
-            return false
-        }
-
-        // Check for duplicate symbol (exclude current holding in edit mode)
-        if (!validateSymbolUniqueness(targetAccountId, symbolValue, if (state.isEditMode) holdingId else null)) {
-            return false
-        }
-
-        val holding = HoldingEntity(
-            id = if (state.isEditMode && holdingId != null) holdingId else 0,
-            accountId = targetAccountId,
-            symbol = symbolValue,
-            name = symbolValue,
-            quantity = quantityValue,
-            averagePrice = priceValue,
-            currency = state.currency,
-            targetPercentage = if (state.isEditMode) existingTargetPercentage else null
-        )
-
-        if (state.isEditMode) {
-            repository.updateHolding(holding)
-        } else {
-            repository.addHolding(holding)
-        }
-        return true
     }
 
     private suspend fun validateSymbolUniqueness(

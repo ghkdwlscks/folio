@@ -547,4 +547,36 @@ class AddHoldingViewModelTest {
 
         assertThat(viewModel.uiState.value.currency).isEqualTo("USD")
     }
+
+    @Test
+    fun `saveHolding - isSaving resets after validation failure`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("0")
+        viewModel.updateAveragePrice("150.0")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.uiState.value.isSaving).isFalse()
+    }
+
+    @Test
+    fun `saveHolding - isSaving resets after successful save`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("AAPL")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("150.0")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        assertThat(viewModel.uiState.value.isSaving).isFalse()
+    }
 }

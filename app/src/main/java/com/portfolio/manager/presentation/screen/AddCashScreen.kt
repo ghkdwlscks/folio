@@ -146,7 +146,8 @@ fun AddCashScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isSaving
             ) {
                 Text(if (uiState.isEditMode) "Update" else "Add Cash")
             }

@@ -279,4 +279,35 @@ class AddCashViewModelTest {
         assertThat(result).isTrue()
         coVerify { cashRepository.addCashItem(1L, "Cash", 10000.0, 0.0, "KRW") }
     }
+
+    @Test
+    fun `saveCashItem - isSaving resets after validation failure`() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
+        val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
+
+        viewModel.updateName("")
+        viewModel.updateValue("1000")
+        viewModel.updateYieldRate("3.5")
+
+        val result = viewModel.saveCashItem()
+
+        assertThat(result).isFalse()
+        assertThat(viewModel.uiState.value.isSaving).isFalse()
+    }
+
+    @Test
+    fun `saveCashItem - isSaving resets after successful save`() = runTest {
+        coEvery { cashRepository.addCashItem(any(), any(), any(), any(), any()) } returns 1L
+        val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
+        val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
+
+        viewModel.updateName("Savings")
+        viewModel.updateValue("1000")
+        viewModel.updateYieldRate("3.5")
+
+        val result = viewModel.saveCashItem()
+
+        assertThat(result).isTrue()
+        assertThat(viewModel.uiState.value.isSaving).isFalse()
+    }
 }

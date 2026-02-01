@@ -25,7 +25,8 @@ data class AddCashUiState(
     val selectedAccountId: Long = ALL_ACCOUNTS_ID,
     val accounts: List<AccountEntity> = emptyList(),
     val needsAccountSelection: Boolean = false,
-    val isEditMode: Boolean = false
+    val isEditMode: Boolean = false,
+    val isSaving: Boolean = false
 )
 
 @HiltViewModel
@@ -100,38 +101,43 @@ class AddCashViewModel @Inject constructor(
     }
 
     suspend fun saveCashItem(): Boolean {
-        _uiState.update { it.copy(errorMessage = null) }
-        val state = _uiState.value
-        val nameValue = state.name.trim()
-        val valueAmount = state.value.toDoubleOrNull()
-        val yieldRateValue = state.yieldRate.toDoubleOrNull()
-        val targetAccountId = state.selectedAccountId
+        if (_uiState.value.isSaving) return false
+        _uiState.update { it.copy(errorMessage = null, isSaving = true) }
+        try {
+            val state = _uiState.value
+            val nameValue = state.name.trim()
+            val valueAmount = state.value.toDoubleOrNull()
+            val yieldRateValue = state.yieldRate.toDoubleOrNull()
+            val targetAccountId = state.selectedAccountId
 
-        if (nameValue.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "Please enter a name") }
-            return false
-        }
+            if (nameValue.isEmpty()) {
+                _uiState.update { it.copy(errorMessage = "Please enter a name") }
+                return false
+            }
 
-        if (valueAmount == null || valueAmount <= 0) {
-            _uiState.update { it.copy(errorMessage = "Please enter a valid value") }
-            return false
-        }
+            if (valueAmount == null || valueAmount <= 0) {
+                _uiState.update { it.copy(errorMessage = "Please enter a valid value") }
+                return false
+            }
 
-        if (yieldRateValue == null || yieldRateValue < 0) {
-            _uiState.update { it.copy(errorMessage = "Please enter a valid yield rate") }
-            return false
-        }
+            if (yieldRateValue == null || yieldRateValue < 0) {
+                _uiState.update { it.copy(errorMessage = "Please enter a valid yield rate") }
+                return false
+            }
 
-        if (targetAccountId == ALL_ACCOUNTS_ID) {
-            _uiState.update { it.copy(errorMessage = "Please select an account") }
-            return false
-        }
+            if (targetAccountId == ALL_ACCOUNTS_ID) {
+                _uiState.update { it.copy(errorMessage = "Please select an account") }
+                return false
+            }
 
-        if (state.isEditMode && cashItemId != null) {
-            cashRepository.updateCashItem(cashItemId, nameValue, valueAmount, yieldRateValue, state.currency)
-        } else {
-            cashRepository.addCashItem(targetAccountId, nameValue, valueAmount, yieldRateValue, state.currency)
+            if (state.isEditMode && cashItemId != null) {
+                cashRepository.updateCashItem(cashItemId, nameValue, valueAmount, yieldRateValue, state.currency)
+            } else {
+                cashRepository.addCashItem(targetAccountId, nameValue, valueAmount, yieldRateValue, state.currency)
+            }
+            return true
+        } finally {
+            _uiState.update { it.copy(isSaving = false) }
         }
-        return true
     }
 }
