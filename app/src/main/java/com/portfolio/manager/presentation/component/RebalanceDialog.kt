@@ -7,16 +7,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.TrendingDown
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -130,6 +136,7 @@ fun RebalanceDialog(
                         PercentageInputRow(
                             name = item.name,
                             percentage = percentages[item.holdingId] ?: 0,
+                            isOverBudget = totalPercentage > 100,
                             onPercentageChange = { newPercentage ->
                                 percentages = percentages.toMutableMap().apply {
                                     this[item.holdingId] = newPercentage
@@ -151,16 +158,23 @@ fun RebalanceDialog(
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text(
-                                text = "$totalPercentage%",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = when {
-                                    totalPercentage == 100 -> GainGreen
-                                    totalPercentage > 100 -> LossRed
-                                    else -> MaterialTheme.colorScheme.onSurface
-                                }
-                            )
+                            val badgeColor = when {
+                                totalPercentage == 100 -> GainGreen
+                                totalPercentage > 100 -> LossRed
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = badgeColor.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "$totalPercentage%",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = badgeColor,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
                         }
                     }
 
@@ -214,6 +228,7 @@ fun RebalanceDialog(
 private fun PercentageInputRow(
     name: String,
     percentage: Int,
+    isOverBudget: Boolean,
     onPercentageChange: (Int) -> Unit
 ) {
     Row(
@@ -240,7 +255,15 @@ private fun PercentageInputRow(
             ),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            suffix = { Text("%") }
+            suffix = { Text("%") },
+            colors = if (isOverBudget) {
+                OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = LossRed,
+                    unfocusedBorderColor = LossRed.copy(alpha = 0.5f)
+                )
+            } else {
+                OutlinedTextFieldDefaults.colors()
+            }
         )
     }
 }
@@ -255,52 +278,69 @@ private fun RecommendationRow(
     val actionText = if (isBuy) "Buy" else "Sell"
     val absAmount = abs(recommendation.diffAmount)
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = recommendation.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = "${CurrencyFormatter.formatPercent(recommendation.currentPercent)}% → ${CurrencyFormatter.formatPercent(recommendation.targetPercent)}% (${recommendation.currentShares} → ${"%.2f".format(recommendation.idealShares)} shares)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        if (absAmount >= recommendation.currentPrice && recommendation.currentPrice > 0) {
-            Column(horizontalAlignment = Alignment.End) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = actionText,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = actionColor
+                    text = recommendation.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = if (showInKrw) {
-                        CurrencyFormatter.formatKrw(absAmount)
-                    } else {
-                        CurrencyFormatter.formatUsd(absAmount)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = actionColor
+                    text = "${CurrencyFormatter.formatPercent(recommendation.currentPercent)}% → ${CurrencyFormatter.formatPercent(recommendation.targetPercent)}% (${recommendation.currentShares} → ${"%.2f".format(recommendation.idealShares)} shares)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        } else {
-            Text(
-                text = "OK",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (absAmount >= recommendation.currentPrice && recommendation.currentPrice > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = actionText,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = actionColor
+                        )
+                        Text(
+                            text = if (showInKrw) {
+                                CurrencyFormatter.formatKrw(absAmount)
+                            } else {
+                                CurrencyFormatter.formatUsd(absAmount)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = actionColor
+                        )
+                    }
+                    Icon(
+                        imageVector = if (isBuy) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown,
+                        contentDescription = actionText,
+                        tint = actionColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else {
+                Text(
+                    text = "OK",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
