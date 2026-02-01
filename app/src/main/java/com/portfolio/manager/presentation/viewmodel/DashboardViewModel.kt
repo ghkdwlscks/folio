@@ -834,19 +834,13 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun getTotalPortfolioValue(): Double {
+    fun getStocksValue(): Double {
         val state = _uiState.value as? DashboardUiState.Success ?: return 0.0
-        val stocksValue = if (state.showInKrw) {
+        return if (state.showInKrw) {
             state.stocks.sumOf { it.totalValueInKrw(currentExchangeRate) }
         } else {
             state.stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
         }
-        val cashValue = if (state.showInKrw) {
-            state.cashItems.sumOf { it.valueInKrw(currentExchangeRate) }
-        } else {
-            state.cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
-        }
-        return stocksValue + cashValue
     }
 
     fun isShowingInKrw(): Boolean {

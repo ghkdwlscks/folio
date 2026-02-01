@@ -200,7 +200,7 @@ fun RebalanceDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onSave(percentages) },
-                        enabled = totalPercentage > 0
+                        enabled = totalPercentage == 100
                     ) {
                         Text("Save")
                     }

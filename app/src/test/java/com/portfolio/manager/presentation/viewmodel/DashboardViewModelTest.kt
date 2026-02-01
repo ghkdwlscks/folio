@@ -1213,7 +1213,7 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `getTotalPortfolioValue - returns sum of stock values`() = runTest {
+    fun `getStocksValue - returns sum of stock values`() = runTest {
         val holdings = listOf(
             HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
         )
@@ -1225,7 +1225,7 @@ class DashboardViewModelTest {
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences)
 
         // Total value: 10 * 150 = 1500
-        assertThat(viewModel.getTotalPortfolioValue()).isEqualTo(1500.0)
+        assertThat(viewModel.getStocksValue()).isEqualTo(1500.0)
     }
 
     @Test

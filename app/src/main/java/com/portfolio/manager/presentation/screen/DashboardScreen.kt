@@ -299,7 +299,7 @@ fun DashboardScreen(
     if (showRebalanceDialog && rebalanceItems.isNotEmpty()) {
         RebalanceDialog(
             items = rebalanceItems,
-            totalPortfolioValue = viewModel.getTotalPortfolioValue(),
+            totalPortfolioValue = viewModel.getStocksValue(),
             showInKrw = viewModel.isShowingInKrw(),
             onDismiss = { showRebalanceDialog = false },
             onSave = { percentages ->
