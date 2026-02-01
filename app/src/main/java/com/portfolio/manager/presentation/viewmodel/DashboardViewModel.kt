@@ -377,9 +377,12 @@ class DashboardViewModel @Inject constructor(
                     }
                 }
 
+                val filledExchangeRates = PriceHistoryProcessor.forwardFillExchangeRates(
+                    exchangeRateByDate, validDates, currentExchangeRate
+                )
                 val holdings = stocksWithHistory.map { StockHolding(it.symbol, it.quantity, it.currency) }
                 val stockPortfolioValues = PriceHistoryProcessor.calculatePortfolioValues(
-                    validDates, holdings, filledStockPrices, exchangeRateByDate, currentExchangeRate, showInKrw
+                    validDates, holdings, filledStockPrices, filledExchangeRates, currentExchangeRate, showInKrw
                 )
 
                 // Add cash value to each portfolio value point
@@ -472,9 +475,12 @@ class DashboardViewModel @Inject constructor(
                                     }
                                 }
 
+                                val filledExchangeRates = PriceHistoryProcessor.forwardFillExchangeRates(
+                                    exchangeRateByDate, validDates, currentExchangeRate
+                                )
                                 val holdings = stocksWithHistory.map { StockHolding(it.symbol, it.quantity, it.currency) }
                                 val portfolioValues = PriceHistoryProcessor.calculatePortfolioValues(
-                                    validDates, holdings, filledStockPrices, exchangeRateByDate, currentExchangeRate, showInKrw
+                                    validDates, holdings, filledStockPrices, filledExchangeRates, currentExchangeRate, showInKrw
                                 )
 
                                 calculatePeriodReturnPercent(portfolioValues)

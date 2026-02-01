@@ -161,6 +161,28 @@ object PriceHistoryProcessor {
     }
 
     /**
+     * Forward-fills exchange rates across all dates.
+     * Dates before the first exchange rate data point use the default rate.
+     */
+    fun forwardFillExchangeRates(
+        exchangeRateByDate: Map<String, Double>,
+        allDates: List<String>,
+        defaultRate: Double
+    ): Map<String, Double> {
+        val filled = mutableMapOf<String, Double>()
+        var lastRate = defaultRate
+
+        for (date in allDates) {
+            val rate = exchangeRateByDate[date]
+            if (rate != null) {
+                lastRate = rate
+            }
+            filled[date] = lastRate
+        }
+        return filled
+    }
+
+    /**
      * Normalizes portfolio values to start at 100 for percentage comparison.
      */
     fun normalizeValues(values: List<Double>): List<Double> {

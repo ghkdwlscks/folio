@@ -329,6 +329,61 @@ class PriceHistoryProcessorTest {
     }
 
     @Test
+    fun `forwardFillExchangeRates - fills missing dates with last known rate`() {
+        val exchangeRateByDate = mapOf(
+            "2024-01-01" to 1300.0,
+            "2024-01-03" to 1350.0
+        )
+        val allDates = listOf("2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04")
+
+        val result = PriceHistoryProcessor.forwardFillExchangeRates(
+            exchangeRateByDate, allDates, defaultRate = 1400.0
+        )
+
+        assertThat(result["2024-01-01"]).isEqualTo(1300.0)
+        assertThat(result["2024-01-02"]).isEqualTo(1300.0) // Forward-filled from 01-01
+        assertThat(result["2024-01-03"]).isEqualTo(1350.0)
+        assertThat(result["2024-01-04"]).isEqualTo(1350.0) // Forward-filled from 01-03
+    }
+
+    @Test
+    fun `forwardFillExchangeRates - uses default rate before first data point`() {
+        val exchangeRateByDate = mapOf(
+            "2024-01-03" to 1350.0
+        )
+        val allDates = listOf("2024-01-01", "2024-01-02", "2024-01-03")
+
+        val result = PriceHistoryProcessor.forwardFillExchangeRates(
+            exchangeRateByDate, allDates, defaultRate = 1400.0
+        )
+
+        assertThat(result["2024-01-01"]).isEqualTo(1400.0) // Default rate
+        assertThat(result["2024-01-02"]).isEqualTo(1400.0) // Default rate
+        assertThat(result["2024-01-03"]).isEqualTo(1350.0)
+    }
+
+    @Test
+    fun `forwardFillExchangeRates - empty exchange rate data - all use default`() {
+        val allDates = listOf("2024-01-01", "2024-01-02")
+
+        val result = PriceHistoryProcessor.forwardFillExchangeRates(
+            emptyMap(), allDates, defaultRate = 1400.0
+        )
+
+        assertThat(result["2024-01-01"]).isEqualTo(1400.0)
+        assertThat(result["2024-01-02"]).isEqualTo(1400.0)
+    }
+
+    @Test
+    fun `forwardFillExchangeRates - empty dates - returns empty map`() {
+        val result = PriceHistoryProcessor.forwardFillExchangeRates(
+            mapOf("2024-01-01" to 1300.0), emptyList(), defaultRate = 1400.0
+        )
+
+        assertThat(result).isEmpty()
+    }
+
+    @Test
     fun `calculateBenchmarkReturn - insufficient data - returns null`() {
         val result = PriceHistoryProcessor.calculateBenchmarkReturn(
             prices = listOf(100.0),
