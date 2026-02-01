@@ -10,19 +10,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -89,7 +88,6 @@ private fun SkeletonPortfolioSummary(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(280.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
@@ -99,27 +97,66 @@ private fun SkeletonPortfolioSummary(
                     )
                 )
             )
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
+            .padding(start = 24.dp, end = 14.dp, top = 14.dp, bottom = 24.dp)
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ShimmerBox(brush = brush, width = 140.dp, height = 16.dp)
-            Spacer(modifier = Modifier.height(4.dp))
-            ShimmerBox(brush = brush, width = 180.dp, height = 36.dp)
-            Spacer(modifier = Modifier.height(8.dp))
-            ShimmerBox(brush = brush, width = 200.dp, height = 40.dp)
-            Spacer(modifier = Modifier.height(8.dp))
-            ShimmerBox(brush = brush, width = 160.dp, height = 32.dp)
-            Spacer(modifier = Modifier.height(12.dp))
+            // Currency toggle area (top-right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                ShimmerBox(brush = brush, width = 80.dp, height = 24.dp, cornerRadius = 4.dp)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Total value + badge
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ShimmerBox(brush = brush, width = 200.dp, height = 40.dp, cornerRadius = 8.dp)
+                ShimmerBox(brush = brush, width = 60.dp, height = 28.dp, cornerRadius = 8.dp)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Info cards row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ShimmerBox(brush = brush, width = 0.dp, height = 52.dp, cornerRadius = 12.dp,
+                    modifier = Modifier.weight(1f))
+                ShimmerBox(brush = brush, width = 0.dp, height = 52.dp, cornerRadius = 12.dp,
+                    modifier = Modifier.weight(1f))
+                ShimmerBox(brush = brush, width = 0.dp, height = 52.dp, cornerRadius = 12.dp,
+                    modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Sparkline area
+            ShimmerBox(brush = brush, width = 0.dp, height = 100.dp, cornerRadius = 8.dp,
+                modifier = Modifier.fillMaxWidth(0.9f))
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Period selector row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 10.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ShimmerBox(brush = brush, width = 80.dp, height = 40.dp)
-                ShimmerBox(brush = brush, width = 80.dp, height = 40.dp)
+                repeat(5) {
+                    ShimmerBox(brush = brush, width = 48.dp, height = 36.dp, cornerRadius = 8.dp)
+                }
             }
         }
     }
@@ -147,53 +184,44 @@ private fun SkeletonStockCard(
     brush: Brush,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-        )
+    GlassSurface(
+        modifier = modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Circle avatar
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            // Heatmap indicator bar
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
+                    .width(4.dp)
+                    .fillMaxHeight()
                     .background(brush)
             )
 
-            // Stock info
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ShimmerBox(brush = brush, width = 120.dp, height = 18.dp)
-                ShimmerBox(brush = brush, width = 80.dp, height = 12.dp)
-            }
+                // Stock info (name, shares, weight)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    ShimmerBox(brush = brush, width = 120.dp, height = 18.dp)
+                    ShimmerBox(brush = brush, width = 100.dp, height = 12.dp)
+                    ShimmerBox(brush = brush, width = 80.dp, height = 12.dp)
+                }
 
-            // Sparkline placeholder
-            ShimmerBox(brush = brush, width = 60.dp, height = 32.dp)
-
-            // Value
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                ShimmerBox(brush = brush, width = 70.dp, height = 18.dp)
-                ShimmerBox(brush = brush, width = 90.dp, height = 12.dp)
-                ShimmerBox(brush = brush, width = 60.dp, height = 24.dp, cornerRadius = 8.dp)
+                // Value and change (right side)
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    ShimmerBox(brush = brush, width = 70.dp, height = 18.dp)
+                    ShimmerBox(brush = brush, width = 90.dp, height = 12.dp)
+                    ShimmerBox(brush = brush, width = 60.dp, height = 24.dp, cornerRadius = 8.dp)
+                }
             }
         }
     }
@@ -202,14 +230,14 @@ private fun SkeletonStockCard(
 @Composable
 private fun ShimmerBox(
     brush: Brush,
-    width: Dp,
     height: Dp,
+    width: Dp = 0.dp,
     cornerRadius: Dp = 4.dp,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
-            .width(width)
+            .then(if (width > 0.dp) Modifier.width(width) else Modifier)
             .height(height)
             .clip(RoundedCornerShape(cornerRadius))
             .background(brush)
