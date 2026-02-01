@@ -14,9 +14,9 @@ import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.service.CacheManager
 import com.portfolio.manager.domain.service.PortfolioSorter
+import com.portfolio.manager.domain.service.PortfolioCalculationService
 import com.portfolio.manager.domain.service.PortfolioStatsCalculator
 import com.portfolio.manager.domain.service.PriceHistoryProcessor
-import com.portfolio.manager.domain.service.StockHolding
 import com.portfolio.manager.domain.service.StockMapper
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
@@ -341,14 +341,12 @@ class DashboardViewModel @Inject constructor(
                 val currentState = _uiState.value
                 val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
 
-                // Calculate constant cash value (doesn't change over time)
                 val totalCashValue = if (showInKrw) {
                     cashItems.sumOf { it.valueInKrw(currentExchangeRate) }
                 } else {
                     cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
                 }
 
-                // If only cash (no stocks), we can't show a sparkline (no price history)
                 if (stocks.isEmpty()) {
                     updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
                     return@launch
@@ -358,54 +356,22 @@ class DashboardViewModel @Inject constructor(
                 val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
                 val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
 
-                val totalStocksValue = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
-                if (totalStocksValue <= 0 && totalCashValue <= 0) return@launch
+                val result = PortfolioCalculationService.buildPortfolioValues(
+                    stocks, priceHistoryMap, exchangeRateData, currentExchangeRate, showInKrw
+                )
 
-                val stocksWithHistory = stocks.filter { stock ->
-                    val data = priceHistoryMap[stock.symbol]
-                    data != null && data.prices.size >= 2
-                }
-                if (stocksWithHistory.isEmpty()) {
-                    updatePortfolioSparkline(emptyList())
+                if (result == null) {
+                    updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
                     return@launch
                 }
 
-                val symbolsWithHistory = stocksWithHistory.map { it.symbol }
-                val stockDatePrices = PriceHistoryProcessor.buildSymbolDatePrices(symbolsWithHistory, priceHistoryMap)
-                val exchangeRateByDate = PriceHistoryProcessor.buildExchangeRateByDate(exchangeRateData)
-                val allDates = stockDatePrices.values.flatMap { it.keys }.toSet().sorted()
-
-                if (allDates.size < 2) {
-                    updatePortfolioSparkline(emptyList())
-                    return@launch
-                }
-
-                val filledStockPrices = PriceHistoryProcessor.forwardFillPrices(symbolsWithHistory, stockDatePrices, allDates)
-                val validDates = allDates.filter { date ->
-                    stocksWithHistory.all { stock ->
-                        filledStockPrices[stock.symbol]?.containsKey(date) == true
-                    }
-                }
-
-                val filledExchangeRates = PriceHistoryProcessor.forwardFillExchangeRates(
-                    exchangeRateByDate, validDates, currentExchangeRate
-                )
-                val holdings = stocksWithHistory.map { StockHolding(it.symbol, it.quantity, it.currency) }
-                val stockPortfolioValues = PriceHistoryProcessor.calculatePortfolioValues(
-                    validDates, holdings, filledStockPrices, filledExchangeRates, currentExchangeRate, showInKrw
-                )
-
-                // Add cash value to each portfolio value point
-                val portfolioValues = stockPortfolioValues.map { it + totalCashValue }
-
+                val portfolioValues = result.values.map { it + totalCashValue }
                 if (portfolioValues.size < 2) {
                     updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
                     return@launch
                 }
 
-                // Convert date strings to timestamps for chart interaction
-                val timestamps = validDates.mapNotNull { PriceHistoryProcessor.dateToTimestamp(it) }
-
+                val timestamps = result.validDates.mapNotNull { PriceHistoryProcessor.dateToTimestamp(it) }
                 val stats = PortfolioStatsCalculator.calculate(portfolioValues)
                 val normalizedPortfolio = PriceHistoryProcessor.normalizeValues(portfolioValues)
 
@@ -414,7 +380,6 @@ class DashboardViewModel @Inject constructor(
                     timestamps = timestamps,
                     stats = stats
                 )
-                // Period returns are calculated by loadAllPeriodReturns() which includes cash
             } catch (e: Exception) {
                 updatePortfolioSparkline(emptyList(), stats = PortfolioStats())
             }
@@ -428,13 +393,11 @@ class DashboardViewModel @Inject constructor(
             val currentState = _uiState.value
             val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
 
-            // Calculate total cash value in USD
             val totalCashValueUsd = cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
 
-            // If only cash, use cash returns directly
             if (stocks.isEmpty()) {
                 TimePeriod.entries.forEach { period ->
-                    val cashReturn = calculateWeightedCashReturn(cashItems, period)
+                    val cashReturn = PortfolioCalculationService.calculateWeightedCashReturn(cashItems, currentExchangeRate, period)
                     updatePeriodReturn(period, cashReturn)
                 }
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
@@ -452,52 +415,22 @@ class DashboardViewModel @Inject constructor(
             val stocksWeight = if (totalPortfolioValue > 0) totalStocksValueUsd / totalPortfolioValue else 1.0
             val cashWeight = if (totalPortfolioValue > 0) totalCashValueUsd / totalPortfolioValue else 0.0
 
-            // Load returns for all periods in parallel
             TimePeriod.entries.map { period ->
                 async {
                     try {
                         val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
                         val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
 
-                        val stocksWithHistory = stocksForCalc.filter { stock ->
-                            val data = priceHistoryMap[stock.symbol]
-                            data != null && data.prices.size >= 2
-                        }
-
-                        val stocksReturn = if (stocksWithHistory.isEmpty()) {
-                            0.0
+                        val result = PortfolioCalculationService.buildPortfolioValues(
+                            stocksForCalc, priceHistoryMap, exchangeRateData, currentExchangeRate, showInKrw
+                        )
+                        val stocksReturn = if (result != null) {
+                            PortfolioCalculationService.calculatePeriodReturn(result.values)
                         } else {
-                            val symbolsWithHistory = stocksWithHistory.map { it.symbol }
-                            val stockDatePrices = PriceHistoryProcessor.buildSymbolDatePrices(symbolsWithHistory, priceHistoryMap)
-                            val exchangeRateByDate = PriceHistoryProcessor.buildExchangeRateByDate(exchangeRateData)
-                            val allDates = stockDatePrices.values.flatMap { it.keys }.toSet().sorted()
-
-                            if (allDates.size < 2) {
-                                0.0
-                            } else {
-                                val filledStockPrices = PriceHistoryProcessor.forwardFillPrices(symbolsWithHistory, stockDatePrices, allDates)
-                                val validDates = allDates.filter { date ->
-                                    stocksWithHistory.all { stock ->
-                                        filledStockPrices[stock.symbol]?.containsKey(date) == true
-                                    }
-                                }
-
-                                val filledExchangeRates = PriceHistoryProcessor.forwardFillExchangeRates(
-                                    exchangeRateByDate, validDates, currentExchangeRate
-                                )
-                                val holdings = stocksWithHistory.map { StockHolding(it.symbol, it.quantity, it.currency) }
-                                val portfolioValues = PriceHistoryProcessor.calculatePortfolioValues(
-                                    validDates, holdings, filledStockPrices, filledExchangeRates, currentExchangeRate, showInKrw
-                                )
-
-                                calculatePeriodReturnPercent(portfolioValues)
-                            }
+                            0.0
                         }
 
-                        // Calculate weighted average of cash returns for this period
-                        val cashReturn = calculateWeightedCashReturn(cashItems, period)
-
-                        // Combined return = stocks weight * stocks return + cash weight * cash return
+                        val cashReturn = PortfolioCalculationService.calculateWeightedCashReturn(cashItems, currentExchangeRate, period)
                         val combinedReturn = (stocksWeight * stocksReturn) + (cashWeight * cashReturn)
                         period to combinedReturn
                     } catch (e: Exception) {
@@ -508,21 +441,9 @@ class DashboardViewModel @Inject constructor(
                 updatePeriodReturn(period, returnPercent)
             }
 
-            // Cache period returns for fast cold start (only for All Accounts view)
             if (selectedAccountId == ALL_ACCOUNTS_ID) {
                 savePeriodReturnsToCache()
             }
-        }
-    }
-
-    private fun calculateWeightedCashReturn(cashItems: List<CashItem>, period: TimePeriod): Double {
-        if (cashItems.isEmpty()) return 0.0
-        val totalCashValue = cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
-        if (totalCashValue <= 0) return 0.0
-
-        return cashItems.sumOf { cashItem ->
-            val weight = cashItem.valueInUsd(currentExchangeRate) / totalCashValue
-            weight * cashItem.periodReturnPercent(period)
         }
     }
 
@@ -531,13 +452,6 @@ class DashboardViewModel @Inject constructor(
         if (currentState.periodReturns.isEmpty()) return
         val stringKeyMap = currentState.periodReturns.mapKeys { (key, _) -> key.name }
         cacheManager.save(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS, stringKeyMap)
-    }
-
-    private fun calculatePeriodReturnPercent(portfolioValues: List<Double>): Double {
-        if (portfolioValues.size < 2) return 0.0
-        val startValue = portfolioValues.first()
-        val endValue = portfolioValues.last()
-        return if (startValue > 0) ((endValue - startValue) / startValue) * 100 else 0.0
     }
 
     private fun updatePortfolioSparkline(
