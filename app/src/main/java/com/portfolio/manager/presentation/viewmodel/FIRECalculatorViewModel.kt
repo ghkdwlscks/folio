@@ -54,7 +54,8 @@ class FIRECalculatorViewModel @Inject constructor(
 
     private var annualInflation by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION)
 
-    private var targetMonthlySpending by sharedPreferences.double(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
+    // Always stored in USD to avoid floating-point drift on currency toggles
+    private var targetMonthlySpendingUsd by sharedPreferences.double(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
 
     private var showInKrw by sharedPreferences.boolean(PreferenceKeys.FIRE_SHOW_IN_KRW, false)
 
@@ -121,10 +122,11 @@ class FIRECalculatorViewModel @Inject constructor(
 
     private fun updateState(totalPortfolioValueUsd: Double) {
         val displayValue = CurrencyConverter.toDisplayCurrency(totalPortfolioValueUsd, showInKrw, currentExchangeRate)
+        val displaySpending = CurrencyConverter.toDisplayCurrency(targetMonthlySpendingUsd, showInKrw, currentExchangeRate)
 
         val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
         val fireTargetCalculation = calculateFIRETarget(
-            targetMonthlySpending, displayValue, annualReturn, annualInflation
+            displaySpending, displayValue, annualReturn, annualInflation
         )
 
         _uiState.value = FIRECalculatorUiState.Success(
@@ -133,7 +135,7 @@ class FIRECalculatorViewModel @Inject constructor(
             exchangeRate = currentExchangeRate,
             annualReturn = annualReturn,
             annualInflation = annualInflation,
-            targetMonthlySpending = targetMonthlySpending,
+            targetMonthlySpending = displaySpending,
             fireCalculation = fireCalculation,
             fireTargetCalculation = fireTargetCalculation
         )
@@ -150,25 +152,13 @@ class FIRECalculatorViewModel @Inject constructor(
     }
 
     fun updateTargetMonthlySpending(value: Double) {
-        targetMonthlySpending = value
+        // Value comes in display currency, convert to USD for storage
+        targetMonthlySpendingUsd = CurrencyConverter.fromDisplayCurrency(value, showInKrw, currentExchangeRate)
         recalculate()
     }
 
     fun toggleCurrency() {
-        val wasInKrw = showInKrw
         showInKrw = !showInKrw
-
-        // Convert target monthly spending to new currency
-        targetMonthlySpending = if (wasInKrw && currentExchangeRate > 0) {
-            // Was KRW, now USD: divide by exchange rate
-            targetMonthlySpending / currentExchangeRate
-        } else if (!wasInKrw) {
-            // Was USD, now KRW: multiply by exchange rate
-            targetMonthlySpending * currentExchangeRate
-        } else {
-            targetMonthlySpending
-        }
-
         recalculate()
     }
 
@@ -181,10 +171,11 @@ class FIRECalculatorViewModel @Inject constructor(
         if (currentState is FIRECalculatorUiState.Success) {
             val baseValueUsd = CurrencyConverter.fromDisplayCurrency(currentState.totalPortfolioValue, currentState.showInKrw, currentExchangeRate)
             val displayValue = CurrencyConverter.toDisplayCurrency(baseValueUsd, showInKrw, currentExchangeRate)
+            val displaySpending = CurrencyConverter.toDisplayCurrency(targetMonthlySpendingUsd, showInKrw, currentExchangeRate)
 
             val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
             val fireTargetCalculation = calculateFIRETarget(
-                targetMonthlySpending, displayValue, annualReturn, annualInflation
+                displaySpending, displayValue, annualReturn, annualInflation
             )
 
             _uiState.value = currentState.copy(
@@ -192,7 +183,7 @@ class FIRECalculatorViewModel @Inject constructor(
                 showInKrw = showInKrw,
                 annualReturn = annualReturn,
                 annualInflation = annualInflation,
-                targetMonthlySpending = targetMonthlySpending,
+                targetMonthlySpending = displaySpending,
                 fireCalculation = fireCalculation,
                 fireTargetCalculation = fireTargetCalculation
             )
