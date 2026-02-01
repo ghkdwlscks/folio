@@ -50,30 +50,8 @@ object StockMapper {
         accounts: List<AccountEntity>,
         priceHistory: PriceHistoryData? = null
     ): Stock {
-        require(holdingGroup.isNotEmpty()) { "Holding group cannot be empty" }
-
-        val accountMap = accounts.associateBy { it.id }
-        val accountOrderMap = accounts.associate { it.id to it.orderIndex }
-
-        val symbol = holdingGroup.first().symbol
-        val totalQuantity = holdingGroup.sumOf { it.quantity }
-        val totalCost = holdingGroup.sumOf { it.quantity * it.averagePrice }
-        val weightedAvgPrice = if (totalQuantity > 0) totalCost / totalQuantity else 0.0
-
-        val accountDetails = holdingGroup.map { holding ->
-            val accountName = accountMap[holding.accountId]?.name ?: run {
-                Log.w(TAG, "Account ${holding.accountId} not found for holding ${holding.id}")
-                "Unknown"
-            }
-            StockAccountDetail(
-                holdingId = holding.id,
-                accountId = holding.accountId,
-                accountName = accountName,
-                quantity = holding.quantity,
-                averagePrice = holding.averagePrice
-            )
-        }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
-
+        val (symbol, totalQuantity, weightedAvgPrice, accountDetails) =
+            aggregateHoldingGroup(holdingGroup, accounts)
         val stockName = quote?.longName ?: quote?.shortName ?: symbol
 
         return Stock(
@@ -127,6 +105,38 @@ object StockMapper {
         existingStock: Stock?,
         accounts: List<AccountEntity>
     ): Stock {
+        val (symbol, totalQuantity, weightedAvgPrice, accountDetails) =
+            aggregateHoldingGroup(holdingGroup, accounts)
+
+        return Stock(
+            id = holdingGroup.first().id,
+            symbol = symbol,
+            name = existingStock?.name ?: symbol,
+            quantity = totalQuantity,
+            averagePrice = weightedAvgPrice,
+            currentPrice = existingStock?.currentPrice ?: weightedAvgPrice,
+            dayChange = existingStock?.dayChange,
+            dayChangePercent = existingStock?.dayChangePercent,
+            currency = holdingGroup.first().currency,
+            accountDetails = accountDetails,
+            priceHistory = existingStock?.priceHistory ?: emptyList(),
+            priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),
+            annualDividend = existingStock?.annualDividend,
+            dividendYield = existingStock?.dividendYield
+        )
+    }
+
+    private data class AggregatedHoldings(
+        val symbol: String,
+        val totalQuantity: Int,
+        val weightedAvgPrice: Double,
+        val accountDetails: List<StockAccountDetail>
+    )
+
+    private fun aggregateHoldingGroup(
+        holdingGroup: List<HoldingEntity>,
+        accounts: List<AccountEntity>
+    ): AggregatedHoldings {
         require(holdingGroup.isNotEmpty()) { "Holding group cannot be empty" }
 
         val accountMap = accounts.associateBy { it.id }
@@ -151,21 +161,6 @@ object StockMapper {
             )
         }.sortedBy { accountOrderMap[it.accountId] ?: Int.MAX_VALUE }
 
-        return Stock(
-            id = holdingGroup.first().id,
-            symbol = symbol,
-            name = existingStock?.name ?: symbol,
-            quantity = totalQuantity,
-            averagePrice = weightedAvgPrice,
-            currentPrice = existingStock?.currentPrice ?: weightedAvgPrice,
-            dayChange = existingStock?.dayChange,
-            dayChangePercent = existingStock?.dayChangePercent,
-            currency = holdingGroup.first().currency,
-            accountDetails = accountDetails,
-            priceHistory = existingStock?.priceHistory ?: emptyList(),
-            priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),
-            annualDividend = existingStock?.annualDividend,
-            dividendYield = existingStock?.dividendYield
-        )
+        return AggregatedHoldings(symbol, totalQuantity, weightedAvgPrice, accountDetails)
     }
 }
