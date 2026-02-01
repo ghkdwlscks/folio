@@ -545,7 +545,8 @@ private fun DashboardContent(
                     text = "Cash (${cashItems.size})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp)
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 8.dp)
                 )
             }
 
