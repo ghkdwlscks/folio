@@ -197,6 +197,7 @@ fun DashboardScreen(
         topBar = {
             DashboardTopBarWrapper(
                 viewModel = viewModel,
+                listState = listState,
                 onNavigateToFIRE = onNavigateToFIRE,
                 onManageAccounts = onManageAccounts
             )
@@ -597,14 +598,33 @@ private fun DashboardContent(
 @Composable
 private fun DashboardTopBarWrapper(
     viewModel: DashboardViewModel,
+    listState: LazyListState,
     onNavigateToFIRE: () -> Unit,
     onManageAccounts: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isRefreshing = (uiState as? DashboardUiState.Success)?.isRefreshing ?: false
+    val showCompactValue by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 }
+    }
+
+    val successState = uiState as? DashboardUiState.Success
+    val compactTitle = if (successState != null) {
+        val exchangeRate = successState.exchangeRate
+        val totalValueUsd = successState.stocks.sumOf { it.totalValueInUsd(exchangeRate) } +
+            successState.cashItems.sumOf { it.valueInUsd(exchangeRate) }
+        val totalValue = if (successState.showInKrw) {
+            successState.stocks.sumOf { it.totalValueInKrw(exchangeRate) } +
+                successState.cashItems.sumOf { it.valueInKrw(exchangeRate) }
+        } else totalValueUsd
+        val formatter = com.portfolio.manager.presentation.util.CurrencyFormatter.createFormatter(successState.showInKrw)
+        formatter(totalValue)
+    } else null
 
     DashboardTopBar(
         isRefreshing = isRefreshing,
+        showCompactValue = showCompactValue,
+        compactTitle = compactTitle,
         onNavigateToFIRE = onNavigateToFIRE,
         onManageAccounts = onManageAccounts,
         onRefresh = { viewModel.refresh() }
@@ -655,16 +675,35 @@ private fun AccountDropdownWrapper(
 @Composable
 private fun DashboardTopBar(
     isRefreshing: Boolean,
+    showCompactValue: Boolean = false,
+    compactTitle: String? = null,
     onNavigateToFIRE: () -> Unit,
     onManageAccounts: () -> Unit,
     onRefresh: () -> Unit
 ) {
     TopAppBar(
         title = {
-            Text(
-                text = "Portfolio Manager",
-                fontWeight = FontWeight.Bold
-            )
+            Column {
+                Text(
+                    text = "Portfolio Manager",
+                    fontWeight = FontWeight.Bold,
+                    style = if (showCompactValue && compactTitle != null) {
+                        MaterialTheme.typography.titleMedium
+                    } else {
+                        MaterialTheme.typography.titleLarge
+                    }
+                )
+                AnimatedVisibility(visible = showCompactValue && compactTitle != null) {
+                    compactTitle?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
         },
         actions = {
             IconButton(onClick = onNavigateToFIRE) {
