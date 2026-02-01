@@ -147,7 +147,7 @@ class TrendIndicatorTest {
 
         assertThat(indicator.isGain).isFalse()
         assertThat(indicator.color).isEqualTo(NeutralGray)
-        assertThat(indicator.backgroundColor).isEqualTo(NeutralGrayLight)
+        assertThat(indicator.backgroundColor).isEqualTo(NeutralGray.copy(alpha = 0.3f))
         assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingUp)
     }
 }

@@ -77,7 +77,11 @@ fun createTrendIndicator(value: Double, usePastel: Boolean = false): TrendIndica
         } else {
             LossRed to LossRedLight
         }
-        else -> NeutralGray to NeutralGrayLight
+        else -> if (usePastel) {
+            NeutralGray to NeutralGray.copy(alpha = 0.3f)
+        } else {
+            NeutralGray to NeutralGrayLight
+        }
     }
 
     return TrendIndicator(
