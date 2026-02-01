@@ -530,51 +530,16 @@ class DashboardViewModel @Inject constructor(
         allAccounts: List<AccountEntity>
     ) {
         if (holdings.isEmpty() && cashItems.isEmpty()) {
-            val showInKrw = getShowInKrwForCurrentAccount()
-            val currentSuccess = _uiState.value as? DashboardUiState.Success
-            _uiState.value = DashboardUiState.Success(
-                stocks = emptyList(),
-                cashItems = emptyList(),
-                accounts = accounts,
-                selectedAccountId = selectedAccountId,
-                periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
-                selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
-                exchangeRate = currentExchangeRate,
-                showInKrw = showInKrw,
-                sparklinePeriod = sparklinePeriod,
-                portfolioSparkline = currentSuccess?.portfolioSparkline ?: emptyList(),
-                portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
-                sortOption = currentSortOption
-            )
+            handleEmptyPortfolio(accounts)
             return
         }
 
-        // Handle case where we only have cash items (no holdings)
         if (holdings.isEmpty()) {
-            val showInKrw = getShowInKrwForCurrentAccount()
-            val currentSuccess = _uiState.value as? DashboardUiState.Success
-            val sortedCashItems = sortCashItems(cashItems, currentSortOption)
-            _uiState.value = DashboardUiState.Success(
-                stocks = emptyList(),
-                cashItems = sortedCashItems,
-                accounts = accounts,
-                selectedAccountId = selectedAccountId,
-                periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
-                selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
-                exchangeRate = currentExchangeRate,
-                showInKrw = showInKrw,
-                sparklinePeriod = sparklinePeriod,
-                portfolioSparkline = emptyList(),
-                portfolioStats = PortfolioStats(),
-                sortOption = currentSortOption
-            )
-            // Calculate period returns for cash-only portfolio
-            loadAllPeriodReturns(emptyList(), sortedCashItems)
+            handleCashOnlyPortfolio(cashItems, accounts)
             return
         }
 
-        val currentState = _uiState.value
-        val currentSuccess = currentState as? DashboardUiState.Success
+        val currentSuccess = _uiState.value as? DashboardUiState.Success
         val isRefreshing = currentSuccess?.isRefreshing == true
 
         // Update accounts immediately if we have cached state (for cold start)
@@ -584,30 +549,92 @@ class DashboardViewModel @Inject constructor(
 
         val symbols = holdings.map { it.symbol }.distinct()
         val existingStocks = currentSuccess?.stocks ?: emptyList()
-        val existingSymbols = existingStocks.map { it.symbol }.toSet()
-        val newSymbols = symbols.filter { it !in existingSymbols }
+        val newSymbols = symbols.filter { it !in existingStocks.map { s -> s.symbol }.toSet() }
 
-        // If we have existing data and no new symbols, just merge holdings with existing prices
         if (currentSuccess != null && newSymbols.isEmpty() && !isRefreshing) {
-            val updatedStocks = mergeHoldingsWithExistingStocks(holdings, existingStocks, allAccounts)
-            val sortedCashItems = sortCashItems(cashItems, currentSortOption)
-            _uiState.value = currentSuccess.copy(
-                stocks = updatedStocks,
-                cashItems = sortedCashItems,
-                accounts = accounts,
-                selectedAccountId = selectedAccountId
-            )
-            // Cache and update portfolio calculations
-            if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                saveStateToCache(updatedStocks, sortedCashItems, accounts, currentExchangeRate)
-            }
-            loadBenchmarkData(currentSuccess.selectedPeriod)
-            loadPortfolioSparkline(updatedStocks, sortedCashItems, currentSuccess.selectedPeriod)
-            loadAllPeriodReturns(updatedStocks, sortedCashItems)
+            handleIncrementalUpdate(holdings, cashItems, accounts, allAccounts, existingStocks, currentSuccess)
             return
         }
 
-        // Full refresh needed: new symbols, manual refresh, or no existing data
+        handleFullRefresh(holdings, cashItems, accounts, allAccounts, symbols, currentSuccess, isRefreshing)
+    }
+
+    private suspend fun handleEmptyPortfolio(accounts: List<AccountWithCount>) {
+        val showInKrw = getShowInKrwForCurrentAccount()
+        val currentSuccess = _uiState.value as? DashboardUiState.Success
+        _uiState.value = DashboardUiState.Success(
+            stocks = emptyList(),
+            cashItems = emptyList(),
+            accounts = accounts,
+            selectedAccountId = selectedAccountId,
+            periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
+            selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
+            exchangeRate = currentExchangeRate,
+            showInKrw = showInKrw,
+            sparklinePeriod = sparklinePeriod,
+            portfolioSparkline = currentSuccess?.portfolioSparkline ?: emptyList(),
+            portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
+            sortOption = currentSortOption
+        )
+    }
+
+    private suspend fun handleCashOnlyPortfolio(
+        cashItems: List<CashItem>,
+        accounts: List<AccountWithCount>
+    ) {
+        val showInKrw = getShowInKrwForCurrentAccount()
+        val currentSuccess = _uiState.value as? DashboardUiState.Success
+        val sortedCashItems = sortCashItems(cashItems, currentSortOption)
+        _uiState.value = DashboardUiState.Success(
+            stocks = emptyList(),
+            cashItems = sortedCashItems,
+            accounts = accounts,
+            selectedAccountId = selectedAccountId,
+            periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
+            selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
+            exchangeRate = currentExchangeRate,
+            showInKrw = showInKrw,
+            sparklinePeriod = sparklinePeriod,
+            portfolioSparkline = emptyList(),
+            portfolioStats = PortfolioStats(),
+            sortOption = currentSortOption
+        )
+        loadAllPeriodReturns(emptyList(), sortedCashItems)
+    }
+
+    private suspend fun handleIncrementalUpdate(
+        holdings: List<HoldingEntity>,
+        cashItems: List<CashItem>,
+        accounts: List<AccountWithCount>,
+        allAccounts: List<AccountEntity>,
+        existingStocks: List<Stock>,
+        currentSuccess: DashboardUiState.Success
+    ) {
+        val updatedStocks = mergeHoldingsWithExistingStocks(holdings, existingStocks, allAccounts)
+        val sortedCashItems = sortCashItems(cashItems, currentSortOption)
+        _uiState.value = currentSuccess.copy(
+            stocks = updatedStocks,
+            cashItems = sortedCashItems,
+            accounts = accounts,
+            selectedAccountId = selectedAccountId
+        )
+        if (selectedAccountId == ALL_ACCOUNTS_ID) {
+            saveStateToCache(updatedStocks, sortedCashItems, accounts, currentExchangeRate)
+        }
+        loadBenchmarkData(currentSuccess.selectedPeriod)
+        loadPortfolioSparkline(updatedStocks, sortedCashItems, currentSuccess.selectedPeriod)
+        loadAllPeriodReturns(updatedStocks, sortedCashItems)
+    }
+
+    private suspend fun handleFullRefresh(
+        holdings: List<HoldingEntity>,
+        cashItems: List<CashItem>,
+        accounts: List<AccountWithCount>,
+        allAccounts: List<AccountEntity>,
+        symbols: List<String>,
+        currentSuccess: DashboardUiState.Success?,
+        isRefreshing: Boolean
+    ) {
         if (!isRefreshing && currentSuccess == null) {
             _uiState.value = DashboardUiState.Loading
         }
@@ -616,14 +643,11 @@ class DashboardViewModel @Inject constructor(
 
         result.fold(
             onSuccess = { quotes ->
-                // Fetch price history for sparklines (non-blocking, failures return empty)
                 val priceHistoryMap = stockRepository.getPriceHistory(symbols, sparklinePeriod.range)
 
                 val stocks = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                    // Aggregate holdings by symbol when viewing all accounts
                     aggregateHoldings(holdings, quotes, allAccounts, priceHistoryMap)
                 } else {
-                    // Normal view for single account
                     holdings.map { holding ->
                         val quote = quotes.find { it.symbol == holding.symbol }
                         StockMapper.createStock(holding, quote, priceHistoryMap[holding.symbol])
@@ -649,11 +673,9 @@ class DashboardViewModel @Inject constructor(
                     portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
                     sortOption = currentSortOption
                 )
-                // Cache state for fast cold start (only for All Accounts view)
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
                     saveStateToCache(sortedStocks, sortedCashItems, accounts, currentExchangeRate)
                 }
-                // Load period returns for all periods and portfolio sparkline for selected period
                 loadAllPeriodReturns(stocks, sortedCashItems)
                 loadBenchmarkData(selectedPeriod)
                 loadPortfolioSparkline(stocks, sortedCashItems, selectedPeriod)
