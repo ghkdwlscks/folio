@@ -820,7 +820,8 @@ class DashboardViewModel @Inject constructor(
                 currentValue = value,
                 currentPrice = price,
                 currentPercentage = holding.targetPercentage ?: 0,
-                currency = stock.currency
+                currency = stock.currency,
+                quantity = stock.quantity
             )
         }
     }
@@ -866,5 +867,6 @@ data class RebalanceItemData(
     val currentValue: Double,
     val currentPrice: Double,
     val currentPercentage: Int,
-    val currency: String
+    val currency: String,
+    val quantity: Int
 )

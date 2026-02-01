@@ -44,7 +44,8 @@ data class RebalanceItem(
     val currentValue: Double,
     val currentPrice: Double,
     val currentPercentage: Int,
-    val currency: String
+    val currency: String,
+    val quantity: Int
 )
 
 data class RebalanceRecommendation(
@@ -55,7 +56,9 @@ data class RebalanceRecommendation(
     val diffPercent: Double,
     val diffAmount: Double,
     val currentPrice: Double,
-    val currency: String
+    val currency: String,
+    val currentShares: Int,
+    val idealShares: Double
 )
 
 @Composable
@@ -268,7 +271,7 @@ private fun RecommendationRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "${CurrencyFormatter.formatPercent(recommendation.currentPercent)}% → ${CurrencyFormatter.formatPercent(recommendation.targetPercent)}%",
+                text = "${CurrencyFormatter.formatPercent(recommendation.currentPercent)}% → ${CurrencyFormatter.formatPercent(recommendation.targetPercent)}% (${recommendation.currentShares} → ${"%.2f".format(recommendation.idealShares)} shares)",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -323,6 +326,10 @@ private fun calculateRecommendations(
         val targetValue = totalPortfolioValue * (targetPercent / 100)
         val diffAmount = targetValue - item.currentValue
 
+        val idealShares = if (item.currentPrice > 0) {
+            targetValue / item.currentPrice
+        } else 0.0
+
         RebalanceRecommendation(
             holdingId = item.holdingId,
             name = item.name,
@@ -331,7 +338,9 @@ private fun calculateRecommendations(
             diffPercent = diffPercent,
             diffAmount = diffAmount,
             currentPrice = item.currentPrice,
-            currency = item.currency
+            currency = item.currency,
+            currentShares = item.quantity,
+            idealShares = idealShares
         )
     }.sortedByDescending { abs(it.diffAmount) }
 }

@@ -211,19 +211,24 @@ fun DashboardScreen(
                         FloatingActionButton(
                             onClick = {
                                 coroutineScope.launch {
-                                    val items = viewModel.getRebalanceItems()
-                                    rebalanceItems = items.map { item ->
-                                        RebalanceItem(
-                                            holdingId = item.holdingId,
-                                            symbol = item.symbol,
-                                            name = item.name,
-                                            currentValue = item.currentValue,
-                                            currentPrice = item.currentPrice,
-                                            currentPercentage = item.currentPercentage,
-                                            currency = item.currency
-                                        )
+                                    try {
+                                        val items = viewModel.getRebalanceItems()
+                                        rebalanceItems = items.map { item ->
+                                            RebalanceItem(
+                                                holdingId = item.holdingId,
+                                                symbol = item.symbol,
+                                                name = item.name,
+                                                currentValue = item.currentValue,
+                                                currentPrice = item.currentPrice,
+                                                currentPercentage = item.currentPercentage,
+                                                currency = item.currency,
+                                                quantity = item.quantity
+                                            )
+                                        }
+                                        showRebalanceDialog = true
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("DashboardScreen", "Failed to open rebalance dialog", e)
                                     }
-                                    showRebalanceDialog = true
                                 }
                             },
                             containerColor = MaterialTheme.colorScheme.secondaryContainer
