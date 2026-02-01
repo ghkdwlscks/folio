@@ -116,6 +116,7 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── SortOption.kt, PortfolioStats.kt
 │   │   └── FIRECalculation.kt
 │   ├── service/            # Domain services
+│   │   ├── PortfolioCalculationService.kt # Portfolio values, period returns, cash returns
 │   │   ├── PortfolioStatsCalculator.kt  # MDD, Sharpe, Volatility calculations
 │   │   ├── PriceHistoryProcessor.kt     # Date alignment, forward-fill logic
 │   │   ├── PortfolioSorter.kt           # Stock/cash sorting by various criteria
@@ -169,7 +170,7 @@ app/src/main/java/com/portfolio/manager/
 
 ## Key Screens
 
-1. **Dashboard**: Portfolio summary with sparkline and statistics, benchmark comparison (S&P 500, KOSPI), period selector (1W-1Y), full-screen interactive chart, allocation pie chart, sortable holdings list with individual sparklines, cash items list, account dropdown filter, expandable multi-account details
+1. **Dashboard**: Portfolio summary with sparkline and statistics, benchmark comparison (S&P 500, KOSPI), period selector (1W-1Y), full-screen interactive chart, allocation pie chart, sortable holdings list with individual sparklines, cash items list, account dropdown filter, expandable multi-account details, rebalance dialog with ideal shares display
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation, account chips (add mode), symbol lock (edit mode)
 3. **Add/Edit Cash**: Form for name, value, annual yield rate, currency selection (USD/KRW)
 4. **Accounts**: Manage accounts with add, edit, delete, reorder (up/down buttons), and error snackbar
@@ -195,7 +196,7 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Error handling with try-catch in ViewModel operations
 - Batch queries to avoid N+1 problems (e.g., `getHoldingsCountByAccountFlow`)
 - Room `@Transaction` for atomic operations
-- Domain services for complex calculations (PortfolioStatsCalculator, PriceHistoryProcessor)
+- Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor)
 - SharedPreferences delegates for clean preference access
 - CacheManager for JSON-based caching with type safety
 
@@ -278,7 +279,7 @@ app/src/test/java/com/portfolio/manager/
 │   └── repository/           # Repository tests (Holdings, Account, Cash, Stock)
 ├── domain/
 │   ├── model/                # Model tests (Stock, CashItem, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns)
-│   └── service/              # Service tests (PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CacheManager)
+│   └── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CacheManager)
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)
 │   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, TrendIndicator)
@@ -325,6 +326,17 @@ Use backticks: `` `subject - scenario - expected result` ``
 
 - Commit after every change without asking
 - Always use `git commit -s` (sign-off) for all commits
-- Commit message format: `scope: description` (e.g., `app: add period returns display`)
 - Before every commit: run `./gradlew test koverVerify` to ensure all tests pass and coverage is 100%
 - When user requests additional changes to a previous task, use `git commit --amend` instead of creating a new commit
+
+### Commit Message Convention
+
+Format: `scope: description`
+
+Scope rules (test files are excluded when determining scope):
+- **Single file changed**: Use the file name without extension (e.g., `TrendIndicator: fix zero value color`)
+- **Few files in one package**: Use the package/directory name (e.g., `component: extract reusable UI parts`, `data: cache price history locally`)
+- **Many files across packages**: Use `app:` (e.g., `app: add sparkline charts to stock cards`)
+- **Only CLAUDE.md**: Use `CLAUDE:` (e.g., `CLAUDE: document recent improvements`)
+- **Only README.md**: Use `README:` (e.g., `README: add project documentation`)
+- **Both CLAUDE.md and README.md**: Use `docs:` (e.g., `docs: update CLAUDE.md and README.md with recent changes`)

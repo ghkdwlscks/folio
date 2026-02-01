@@ -36,7 +36,7 @@ A personal Android app for tracking your stock portfolio and cash savings with r
 - **Skeleton Loading** - Shimmer placeholders during data loading
 
 ### Additional Features
-- **Rebalancing** - Set target percentages and calculate adjustments needed
+- **Rebalancing** - Set target percentages, view ideal shares, and calculate adjustments needed
 - **Aggregated View** - View all accounts combined or filter by account
 - **Fast Cold Start** - Cached dashboard for instant display
 - **Offline Support** - View cached data when offline
