@@ -1,5 +1,6 @@
 package com.portfolio.manager.presentation.component
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,7 +31,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -194,7 +197,8 @@ fun FullScreenChartDialog(
                         if (data.benchmarkSparklines.containsKey("^GSPC")) {
                             LegendItem(
                                 color = Color(0xFF2196F3),
-                                label = "S&P 500"
+                                label = "S&P 500",
+                                dashed = true
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                         }
@@ -202,7 +206,8 @@ fun FullScreenChartDialog(
                         if (data.benchmarkSparklines.containsKey("^KS11")) {
                             LegendItem(
                                 color = Color(0xFFFF9800),
-                                label = "KOSPI"
+                                label = "KOSPI",
+                                dashed = true
                             )
                         }
                     }
@@ -354,17 +359,30 @@ private fun StatItem(
 @Composable
 private fun LegendItem(
     color: Color,
-    label: String
+    label: String,
+    dashed: Boolean = false
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .background(color, RoundedCornerShape(2.dp))
-        )
+        if (dashed) {
+            Canvas(modifier = Modifier.size(width = 20.dp, height = 12.dp)) {
+                drawLine(
+                    color = color,
+                    start = Offset(0f, size.height / 2),
+                    end = Offset(size.width, size.height / 2),
+                    strokeWidth = 2f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .background(color, RoundedCornerShape(2.dp))
+            )
+        }
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,

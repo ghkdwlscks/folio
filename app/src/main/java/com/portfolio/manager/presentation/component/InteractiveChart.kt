@@ -238,7 +238,8 @@ fun InteractiveChart(
                             style = Stroke(
                                 width = 1.5f,
                                 cap = StrokeCap.Round,
-                                join = StrokeJoin.Round
+                                join = StrokeJoin.Round,
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 6f))
                             )
                         )
                     }
@@ -268,6 +269,17 @@ fun InteractiveChart(
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
                     )
 
+                    // Outer glow
+                    drawCircle(
+                        color = color.copy(alpha = 0.2f),
+                        radius = 16f,
+                        center = Offset(point.x, point.y)
+                    )
+                    drawCircle(
+                        color = color.copy(alpha = 0.1f),
+                        radius = 24f,
+                        center = Offset(point.x, point.y)
+                    )
                     // Highlight circle
                     drawCircle(
                         color = Color.White,
