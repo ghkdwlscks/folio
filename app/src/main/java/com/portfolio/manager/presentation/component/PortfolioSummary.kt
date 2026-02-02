@@ -214,23 +214,21 @@ fun PortfolioSummary(
                     valueColor = trend.color,
                     modifier = Modifier.weight(1f)
                 )
-                // Invested card
+                // Today's change card
                 InfoCard(
-                    label = "Invested",
-                    value = formatValue(totalInvested),
-                    valueColor = Color.White,
+                    label = "Today",
+                    value = "${if (dayTrend.isGain) "+" else ""}${formatValue(dayChange)}",
+                    valueColor = dayTrend.color,
+                    icon = dayTrend.icon,
                     modifier = Modifier.weight(1f)
                 )
-                // Today's change card
-                if (dayChange != 0.0) {
-                    InfoCard(
-                        label = "Today",
-                        value = "${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%",
-                        valueColor = dayTrend.color,
-                        icon = dayTrend.icon,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                // Today's change % card
+                InfoCard(
+                    label = "Today %",
+                    value = "${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%",
+                    valueColor = dayTrend.color,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             // Portfolio sparkline
