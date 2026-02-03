@@ -1,5 +1,6 @@
 package com.portfolio.manager.domain.model
 
+import com.portfolio.manager.presentation.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants
 import kotlinx.serialization.Serializable
 
@@ -46,15 +47,15 @@ data class Stock(
     val annualDividendIncome: Double
         get() = (annualDividend ?: 0.0) * quantity
 
-    fun totalValueInUsd(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
-        if (currency == "KRW") totalValue / krwToUsdRate else totalValue
+    fun totalValueInUsd(exchangeRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        CurrencyConverter.toUsd(totalValue, currency, exchangeRate)
 
-    fun totalCostInUsd(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
-        if (currency == "KRW") totalCost / krwToUsdRate else totalCost
+    fun totalCostInUsd(exchangeRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        CurrencyConverter.toUsd(totalCost, currency, exchangeRate)
 
-    fun totalValueInKrw(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
-        if (currency == "KRW") totalValue else totalValue * krwToUsdRate
+    fun totalValueInKrw(exchangeRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        CurrencyConverter.toKrw(totalValue, currency, exchangeRate)
 
-    fun totalCostInKrw(krwToUsdRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
-        if (currency == "KRW") totalCost else totalCost * krwToUsdRate
+    fun totalCostInKrw(exchangeRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
+        CurrencyConverter.toKrw(totalCost, currency, exchangeRate)
 }

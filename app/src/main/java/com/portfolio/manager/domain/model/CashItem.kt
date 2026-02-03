@@ -1,6 +1,6 @@
 package com.portfolio.manager.domain.model
 
-import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import com.portfolio.manager.presentation.util.CurrencyConverter
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -16,16 +16,14 @@ data class CashItem(
     /**
      * Get the value in USD.
      */
-    fun valueInUsd(exchangeRate: Double): Double {
-        return if (currency == "KRW") originalValue / exchangeRate else originalValue
-    }
+    fun valueInUsd(exchangeRate: Double): Double =
+        CurrencyConverter.toUsd(originalValue, currency, exchangeRate)
 
     /**
      * Get the value in KRW.
      */
-    fun valueInKrw(exchangeRate: Double): Double {
-        return if (currency == "USD") originalValue * exchangeRate else originalValue
-    }
+    fun valueInKrw(exchangeRate: Double): Double =
+        CurrencyConverter.toKrw(originalValue, currency, exchangeRate)
 
     /**
      * Calculate period return based on the annual yield rate.

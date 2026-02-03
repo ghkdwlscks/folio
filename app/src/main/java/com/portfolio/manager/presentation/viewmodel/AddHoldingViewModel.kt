@@ -7,6 +7,7 @@ import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
+import com.portfolio.manager.presentation.util.InputUtils
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.AppConstants.MAX_PRICE
 import com.portfolio.manager.util.AppConstants.MAX_QUANTITY
@@ -69,12 +70,7 @@ class AddHoldingViewModel @Inject constructor(
             if (holdingId != null) {
                 repository.getHoldingById(holdingId)?.let { holding ->
                     existingTargetPercentage = holding.targetPercentage
-                    // Format price as integer for KRW, with decimals for USD
-                    val priceStr = if (holding.currency == "KRW") {
-                        holding.averagePrice.toLong().toString()
-                    } else {
-                        holding.averagePrice.toString()
-                    }
+                    val priceStr = InputUtils.formatValueForCurrency(holding.averagePrice, holding.currency)
                     _uiState.update { it.copy(
                         symbol = holding.symbol,
                         quantity = holding.quantity.toString(),
@@ -94,11 +90,11 @@ class AddHoldingViewModel @Inject constructor(
     }
 
     fun updateQuantity(value: String) {
-        _uiState.update { it.copy(quantity = value.filter { c -> c.isDigit() }) }
+        _uiState.update { it.copy(quantity = InputUtils.filterDigitsOnly(value)) }
     }
 
     fun updateAveragePrice(value: String) {
-        _uiState.update { it.copy(averagePrice = value.filter { c -> c.isDigit() || c == '.' }) }
+        _uiState.update { it.copy(averagePrice = InputUtils.filterNumeric(value)) }
     }
 
     fun updateCurrency(value: String) {

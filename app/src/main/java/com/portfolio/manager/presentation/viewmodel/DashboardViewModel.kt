@@ -180,34 +180,8 @@ class DashboardViewModel @Inject constructor(
     private fun renderFromCacheThenRefresh() {
         holdingsJob?.cancel()
         holdingsJob = viewModelScope.launch {
-            val holdingsFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                holdingsRepository.getAllHoldings()
-            } else {
-                holdingsRepository.getHoldingsByAccount(selectedAccountId)
-            }
-
-            val cashFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                cashRepository.getAllCashItems()
-            } else {
-                cashRepository.getCashItemsByAccount(selectedAccountId)
-            }
-
-            combine(
-                holdingsFlow,
-                cashFlow,
-                accountRepository.getAllAccounts(),
-                holdingsRepository.getHoldingsCountByAccountFlow(),
-                cashRepository.getAllCashItems()
-            ) { holdings, cashEntities, accounts, holdingsCountMap, allCashEntities ->
-                val cashItems = cashEntities.map { CashItem.fromEntity(it) }
-                val cashCountMap = allCashEntities.groupBy { it.accountId }.mapValues { it.value.size }
-                HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
-            }.collectLatest { data ->
-                val accountsWithCount = data.accounts.map { account ->
-                    val holdingsCount = data.holdingsCountMap[account.id] ?: 0
-                    val cashCount = data.cashCountMap[account.id] ?: 0
-                    AccountWithCount(account = account, holdingsCount = holdingsCount + cashCount)
-                }
+            observeHoldingsData().collectLatest { data ->
+                val accountsWithCount = data.toAccountsWithCount()
 
                 // First: render immediately from in-memory cache (contains all stocks)
                 val cachedStocks = if (allStocksCache.isNotEmpty() && data.holdings.isNotEmpty()) {
@@ -632,39 +606,8 @@ class DashboardViewModel @Inject constructor(
     private fun loadAndObserveHoldings() {
         holdingsJob?.cancel()
         holdingsJob = viewModelScope.launch {
-            val holdingsFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                holdingsRepository.getAllHoldings()
-            } else {
-                holdingsRepository.getHoldingsByAccount(selectedAccountId)
-            }
-
-            val cashFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                cashRepository.getAllCashItems()
-            } else {
-                cashRepository.getCashItemsByAccount(selectedAccountId)
-            }
-
-            combine(
-                holdingsFlow,
-                cashFlow,
-                accountRepository.getAllAccounts(),
-                holdingsRepository.getHoldingsCountByAccountFlow(),
-                cashRepository.getAllCashItems() // For counting cash items per account
-            ) { holdings, cashEntities, accounts, holdingsCountMap, allCashEntities ->
-                val cashItems = cashEntities.map { CashItem.fromEntity(it) }
-                // Calculate cash items count per account
-                val cashCountMap = allCashEntities.groupBy { it.accountId }.mapValues { it.value.size }
-                HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
-            }.collectLatest { data ->
-                val accountsWithCount = data.accounts.map { account ->
-                    val holdingsCount = data.holdingsCountMap[account.id] ?: 0
-                    val cashCount = data.cashCountMap[account.id] ?: 0
-                    AccountWithCount(
-                        account = account,
-                        holdingsCount = holdingsCount + cashCount
-                    )
-                }
-                loadPricesForHoldings(data.holdings, data.cashItems, accountsWithCount, data.accounts)
+            observeHoldingsData().collectLatest { data ->
+                loadPricesForHoldings(data.holdings, data.cashItems, data.toAccountsWithCount(), data.accounts)
             }
         }
     }
@@ -675,7 +618,27 @@ class DashboardViewModel @Inject constructor(
         val accounts: List<AccountEntity>,
         val holdingsCountMap: Map<Long, Int>,
         val cashCountMap: Map<Long, Int>
-    )
+    ) {
+        fun toAccountsWithCount(): List<AccountWithCount> = accounts.map { account ->
+            val holdingsCount = holdingsCountMap[account.id] ?: 0
+            val cashCount = cashCountMap[account.id] ?: 0
+            AccountWithCount(account = account, holdingsCount = holdingsCount + cashCount)
+        }
+    }
+
+    private fun observeHoldingsData() = combine(
+        if (selectedAccountId == ALL_ACCOUNTS_ID) holdingsRepository.getAllHoldings()
+        else holdingsRepository.getHoldingsByAccount(selectedAccountId),
+        if (selectedAccountId == ALL_ACCOUNTS_ID) cashRepository.getAllCashItems()
+        else cashRepository.getCashItemsByAccount(selectedAccountId),
+        accountRepository.getAllAccounts(),
+        holdingsRepository.getHoldingsCountByAccountFlow(),
+        cashRepository.getAllCashItems()
+    ) { holdings, cashEntities, accounts, holdingsCountMap, allCashEntities ->
+        val cashItems = cashEntities.map { CashItem.fromEntity(it) }
+        val cashCountMap = allCashEntities.groupBy { it.accountId }.mapValues { it.value.size }
+        HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
+    }
 
     private suspend fun loadPricesForHoldings(
         holdings: List<HoldingEntity>,

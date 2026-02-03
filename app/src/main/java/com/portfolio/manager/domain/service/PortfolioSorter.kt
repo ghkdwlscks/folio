@@ -43,9 +43,8 @@ object PortfolioSorter {
         exchangeRate: Double
     ): List<CashItem> = when (option) {
         SortOption.WEIGHT -> cashItems.sortedByDescending { it.valueInUsd(exchangeRate) }
-        SortOption.NAME -> cashItems.sortedBy { it.name.lowercase() }
-        SortOption.SYMBOL -> cashItems.sortedBy { it.name.lowercase() } // Same as name for cash
-        SortOption.GAIN_LOSS_PERCENT -> cashItems.sortedByDescending { it.annualYieldRate }
-        SortOption.DAY_CHANGE_PERCENT -> cashItems.sortedByDescending { it.annualYieldRate } // Use yield for cash
+        SortOption.NAME, SortOption.SYMBOL -> cashItems.sortedBy { it.name.lowercase() }
+        SortOption.GAIN_LOSS_PERCENT, SortOption.DAY_CHANGE_PERCENT ->
+            cashItems.sortedByDescending { it.annualYieldRate }
     }
 }

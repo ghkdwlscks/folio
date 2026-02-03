@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
+import com.portfolio.manager.presentation.util.InputUtils
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,12 +63,7 @@ class AddCashViewModel @Inject constructor(
             // Load existing cash item for edit mode
             if (cashItemId != null) {
                 cashRepository.getCashItemById(cashItemId)?.let { cashItem ->
-                    // Format value as integer for KRW, with decimals for USD
-                    val valueStr = if (cashItem.currency == "KRW") {
-                        cashItem.originalValue.toLong().toString()
-                    } else {
-                        cashItem.originalValue.toString()
-                    }
+                    val valueStr = InputUtils.formatValueForCurrency(cashItem.originalValue, cashItem.currency)
                     _uiState.update { it.copy(
                         name = cashItem.name,
                         value = valueStr,
@@ -85,11 +81,11 @@ class AddCashViewModel @Inject constructor(
     }
 
     fun updateValue(value: String) {
-        _uiState.update { it.copy(value = value.filter { c -> c.isDigit() || c == '.' }) }
+        _uiState.update { it.copy(value = InputUtils.filterNumeric(value)) }
     }
 
     fun updateYieldRate(value: String) {
-        _uiState.update { it.copy(yieldRate = value.filter { c -> c.isDigit() || c == '.' }) }
+        _uiState.update { it.copy(yieldRate = InputUtils.filterNumeric(value)) }
     }
 
     fun updateCurrency(value: String) {

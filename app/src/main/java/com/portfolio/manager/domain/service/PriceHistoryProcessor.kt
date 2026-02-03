@@ -78,6 +78,33 @@ object PriceHistoryProcessor {
     }
 
     /**
+     * Core forward-fill logic for a single time series.
+     * @param originalData Map of date to value
+     * @param allDates Sorted list of dates to fill
+     * @param defaultValue Value to use before first data point (null = skip those dates)
+     * @return Map with forward-filled values
+     */
+    private fun forwardFillSeries(
+        originalData: Map<String, Double>,
+        allDates: List<String>,
+        defaultValue: Double? = null
+    ): Map<String, Double> {
+        val filled = mutableMapOf<String, Double>()
+        var lastValue = defaultValue
+
+        for (date in allDates) {
+            val value = originalData[date]
+            if (value != null) {
+                lastValue = value
+            }
+            if (lastValue != null) {
+                filled[date] = lastValue
+            }
+        }
+        return filled
+    }
+
+    /**
      * Forward-fills prices for each symbol across all dates.
      * Missing dates use the last known price.
      */
@@ -88,19 +115,7 @@ object PriceHistoryProcessor {
     ): Map<String, Map<String, Double>> {
         return symbols.associate { symbol ->
             val originalPrices = symbolDatePrices[symbol] ?: emptyMap()
-            val filledPrices = mutableMapOf<String, Double>()
-            var lastPrice: Double? = null
-
-            for (date in allDates) {
-                val price = originalPrices[date]
-                if (price != null) {
-                    lastPrice = price
-                    filledPrices[date] = price
-                } else if (lastPrice != null) {
-                    filledPrices[date] = lastPrice
-                }
-            }
-            symbol to filledPrices
+            symbol to forwardFillSeries(originalPrices, allDates)
         }
     }
 
@@ -130,6 +145,13 @@ object PriceHistoryProcessor {
     }
 
     /**
+     * Calculates compound return from asset return and currency return.
+     * Formula: (1 + r_asset) * (1 + r_fx) - 1 = r_asset + r_fx + r_asset * r_fx
+     */
+    private fun compoundReturn(assetReturnPercent: Double, currencyReturnPercent: Double): Double =
+        assetReturnPercent + currencyReturnPercent + (assetReturnPercent * currencyReturnPercent / 100)
+
+    /**
      * Adjusts stock return for exchange rate changes based on currency and display preference.
      *
      * When viewing USD stocks in KRW, the return needs to account for exchange rate changes.
@@ -142,22 +164,19 @@ object PriceHistoryProcessor {
         startExchangeRate: Double,
         endExchangeRate: Double
     ): Double {
-        // Validate exchange rates to prevent division by zero
         if (startExchangeRate <= 0 || endExchangeRate <= 0) return stockReturn
 
-        return when {
-            showInKrw && currency == "USD" -> {
-                // USD stock viewed in KRW: factor in exchange rate change
-                val exchangeRateReturn = (endExchangeRate - startExchangeRate) / startExchangeRate * 100
-                stockReturn + exchangeRateReturn + (stockReturn * exchangeRateReturn / 100)
-            }
-            !showInKrw && currency == "KRW" -> {
-                // KRW stock viewed in USD: factor in inverse exchange rate change
-                val exchangeRateReturn = (startExchangeRate - endExchangeRate) / endExchangeRate * 100
-                stockReturn + exchangeRateReturn + (stockReturn * exchangeRateReturn / 100)
-            }
-            else -> stockReturn
+        val needsAdjustment = (currency == "USD" && showInKrw) || (currency == "KRW" && !showInKrw)
+        if (!needsAdjustment) return stockReturn
+
+        val fxReturn = if (currency == "USD") {
+            // USD→KRW: positive when USD strengthens
+            (endExchangeRate - startExchangeRate) / startExchangeRate * 100
+        } else {
+            // KRW→USD: positive when KRW strengthens (USD weakens)
+            (startExchangeRate - endExchangeRate) / endExchangeRate * 100
         }
+        return compoundReturn(stockReturn, fxReturn)
     }
 
     /**
@@ -168,19 +187,7 @@ object PriceHistoryProcessor {
         exchangeRateByDate: Map<String, Double>,
         allDates: List<String>,
         defaultRate: Double
-    ): Map<String, Double> {
-        val filled = mutableMapOf<String, Double>()
-        var lastRate = defaultRate
-
-        for (date in allDates) {
-            val rate = exchangeRateByDate[date]
-            if (rate != null) {
-                lastRate = rate
-            }
-            filled[date] = lastRate
-        }
-        return filled
-    }
+    ): Map<String, Double> = forwardFillSeries(exchangeRateByDate, allDates, defaultRate)
 
     /**
      * Normalizes portfolio values to start at 100 for percentage comparison.
