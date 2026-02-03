@@ -34,8 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.portfolio.manager.presentation.theme.GainGreen
@@ -56,6 +56,7 @@ data class RebalanceItem(
 
 data class RebalanceRecommendation(
     val holdingId: Long,
+    val symbol: String,
     val name: String,
     val currentPercent: Double,
     val targetPercent: Double,
@@ -134,6 +135,7 @@ fun RebalanceDialog(
                 ) {
                     items(items) { item ->
                         PercentageInputRow(
+                            symbol = item.symbol,
                             name = item.name,
                             percentage = percentages[item.holdingId] ?: 0,
                             isOverBudget = totalPercentage > 100,
@@ -226,6 +228,7 @@ fun RebalanceDialog(
 
 @Composable
 private fun PercentageInputRow(
+    symbol: String,
     name: String,
     percentage: Int,
     isOverBudget: Boolean,
@@ -236,13 +239,18 @@ private fun PercentageInputRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = symbol,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 18.sp
+            )
+        }
         OutlinedTextField(
             value = percentage.toString(),
             onValueChange = { newValue ->
@@ -292,11 +300,15 @@ private fun RecommendationRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
+                    text = recommendation.symbol,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
                     text = recommendation.name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    lineHeight = 18.sp
                 )
                 Text(
                     text = "${CurrencyFormatter.formatPercent(recommendation.currentPercent)}% → ${CurrencyFormatter.formatPercent(recommendation.targetPercent)}% (${recommendation.currentShares} → ${"%.2f".format(recommendation.idealShares)} shares)",
@@ -372,6 +384,7 @@ private fun calculateRecommendations(
 
         RebalanceRecommendation(
             holdingId = item.holdingId,
+            symbol = item.symbol,
             name = item.name,
             currentPercent = currentPercent,
             targetPercent = targetPercent,
