@@ -134,11 +134,13 @@ fun PortfolioSummary(
                     )
                 )
             )
-            .padding(start = 24.dp, end = 14.dp, top = 14.dp, bottom = 24.dp)
+            .padding(horizontal = 24.dp, vertical = 24.dp)
     ) {
         // Currency toggle and exchange rate
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 10.dp),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -155,9 +157,7 @@ fun PortfolioSummary(
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 10.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Total Value with return badge inline
