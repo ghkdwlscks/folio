@@ -23,7 +23,7 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 - **Period Returns**: All time periods (1W, 1M, 3M, 6M, 1Y) show returns simultaneously, loaded in parallel on startup
 - **Allocation Pie Chart**: Animated donut chart showing all stocks and cash items individually (no "Others" grouping)
 - **Currency Toggle**: View totals in USD or KRW with animated sliding indicator (default: KRW)
-- **Holdings List**: Stock cards with customizable sorting (weight, name, symbol, gain/loss %, day change %)
+- **Holdings List**: Stock cards showing ticker above name, with customizable sorting (weight, name, symbol, gain/loss %, day change %)
 - **Cash List**: Cash cards showing name, value, yield rate with edit/delete buttons
 - **Stock Sparklines**: Each card shows price history chart with configurable period
 - **Weight Display**: Each stock shows its percentage of total portfolio, with target if set
