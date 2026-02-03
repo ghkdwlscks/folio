@@ -219,7 +219,6 @@ fun PortfolioSummary(
                     label = "Today",
                     value = "${if (dayTrend.isGain) "+" else ""}${formatValue(dayChange)}",
                     valueColor = dayTrend.color,
-                    icon = dayTrend.icon,
                     modifier = Modifier.weight(1f)
                 )
                 // Today's change % card
