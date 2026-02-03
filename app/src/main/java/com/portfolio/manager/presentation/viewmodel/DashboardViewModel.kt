@@ -288,13 +288,16 @@ class DashboardViewModel @Inject constructor(
                     accountRepository.updatePreferredCurrency(selectedAccountId, newCurrency)
                 }
 
-                _uiState.value = currentState.copy(showInKrw = newShowInKrw)
+                // Clear cached period returns for this account (will be recalculated with new currency)
+                periodReturnsCache.remove(selectedAccountId)
+                _uiState.value = currentState.copy(showInKrw = newShowInKrw, periodReturns = emptyMap())
 
-                // Reload sparkline and period returns with new currency
+                // Reload sparkline, benchmark, and period returns with new currency
                 if (currentState.stocks.isNotEmpty()) {
                     loadBenchmarkData(currentState.selectedPeriod)
                 }
                 loadPortfolioSparkline(currentState.stocks, currentState.cashItems, currentState.selectedPeriod)
+                loadAllPeriodReturns(currentState.stocks, currentState.cashItems)
             }
         }
     }
