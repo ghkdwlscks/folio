@@ -155,6 +155,7 @@ app/src/main/java/com/portfolio/manager/
 │   └── util/               # Presentation utilities
 │       ├── CurrencyFormatter.kt    # Format currency values
 │       ├── CurrencyConverter.kt    # USD/KRW conversion
+│       ├── InputUtils.kt           # Input filtering and formatting
 │       ├── TrendIndicator.kt       # Up/down/neutral indicators
 │       └── PresentationConstants.kt
 ├── di/                     # Hilt modules
@@ -282,7 +283,7 @@ app/src/test/java/com/portfolio/manager/
 │   └── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CacheManager)
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)
-│   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, TrendIndicator)
+│   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, InputUtils, TrendIndicator)
 └── util/                     # Extension tests (StockExtensions, AppConstants, SharedPreferencesDelegate)
 ```
 
