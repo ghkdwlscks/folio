@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
@@ -140,15 +141,21 @@ fun StockCard(
                     Column(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        // Row 1: Stock name (can wrap to 2 lines if needed)
+                        // Row 1: Ticker symbol (small font)
+                        Text(
+                            text = stock.symbol,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        // Row 2: Stock name
                         Text(
                             text = stock.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2
+                            lineHeight = 18.sp
                         )
-                        // Row 2: shares info + dividend
+                        // Row 3: shares info + dividend
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -171,7 +178,7 @@ fun StockCard(
                                 )
                             }
                         }
-                        // Row 3: weight
+                        // Row 4: weight
                         if (weightPercent != null) {
                             val weightText = if (targetWeight != null) {
                                 "Weight ${CurrencyFormatter.formatPercent(weightPercent)}% / $targetWeight%"
