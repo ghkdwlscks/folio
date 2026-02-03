@@ -1241,23 +1241,20 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `cold start - loads cached period returns when no holdings`() = runTest {
-        // Test that cached period returns are loaded properly when there are no holdings
-        // (fresh data won't overwrite cached values in this case)
+    fun `cold start - empty portfolio clears period returns`() = runTest {
+        // Test that empty portfolio shows empty returns (not stale cached data)
         val cachedStocksJson = """[{"id":1,"symbol":"AAPL","name":"Apple","quantity":10,"averagePrice":100.0,"currentPrice":150.0,"currency":"USD","accountDetails":[],"priceHistory":[],"priceHistoryTimestamps":[]}]"""
         val cachedPeriodReturnsJson = """{"ONE_WEEK":1.5,"ONE_MONTH":3.2,"ONE_YEAR":15.0}"""
         every { sharedPreferences.getString("dashboard_cached_stocks_json", null) } returns cachedStocksJson
         every { sharedPreferences.getString("dashboard_cached_period_returns", null) } returns cachedPeriodReturnsJson
-        // Empty holdings means loadAllPeriodReturns won't overwrite cached values
+        // Empty holdings = empty portfolio, should not show cached returns
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences)
         val state = viewModel.uiState.value as DashboardUiState.Success
 
-        // Cached period returns should be loaded and persist when no fresh data
-        assertThat(state.periodReturns[TimePeriod.ONE_WEEK]).isWithin(0.01).of(1.5)
-        assertThat(state.periodReturns[TimePeriod.ONE_MONTH]).isWithin(0.01).of(3.2)
-        assertThat(state.periodReturns[TimePeriod.ONE_YEAR]).isWithin(0.01).of(15.0)
+        // Empty portfolio should have empty period returns (showing cached data would be misleading)
+        assertThat(state.periodReturns).isEmpty()
     }
 
     @Test

@@ -63,6 +63,14 @@ class DashboardViewModel @Inject constructor(
     private var holdingsJob: Job? = null
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
+    // In-memory cache of all stocks (loaded from SharedPreferences, updated on API fetch)
+    private var allStocksCache: List<Stock> = emptyList()
+
+    // Per-account cache for portfolio data (avoids showing wrong account's data during switch)
+    private val portfolioSparklineCache = mutableMapOf<Long, List<Double>>()
+    private val periodReturnsCache = mutableMapOf<Long, Map<TimePeriod, Double>>()
+    private val portfolioStatsCache = mutableMapOf<Long, PortfolioStats>()
+
     private var allAccountsCurrencyKrw by sharedPreferences.boolean(PreferenceKeys.DASHBOARD_SHOW_IN_KRW, true)
 
     private var sparklinePeriod by sharedPreferences.enum(PreferenceKeys.STOCK_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR)
@@ -93,6 +101,8 @@ class DashboardViewModel @Inject constructor(
         return try {
             val stocks = cacheManager.load<List<Stock>>(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON)
                 ?: return DashboardUiState.Loading
+            // Load into memory cache for fast account switching
+            allStocksCache = stocks
             val cachedRate = cacheManager.loadFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
             currentExchangeRate = cachedRate
 
@@ -103,6 +113,15 @@ class DashboardViewModel @Inject constructor(
             val periodReturns = cacheManager.load<Map<String, Double>>(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS)
                 ?.mapKeys { (key, _) -> TimePeriod.valueOf(key) }
                 ?: emptyMap()
+
+            // Load into per-account caches for ALL_ACCOUNTS_ID (default view on cold start)
+            if (portfolioSparkline.isNotEmpty()) {
+                portfolioSparklineCache[ALL_ACCOUNTS_ID] = portfolioSparkline
+                portfolioStatsCache[ALL_ACCOUNTS_ID] = portfolioStats
+            }
+            if (periodReturns.isNotEmpty()) {
+                periodReturnsCache[ALL_ACCOUNTS_ID] = periodReturns
+            }
 
             DashboardUiState.Success(
                 stocks = stocks,
@@ -143,6 +162,7 @@ class DashboardViewModel @Inject constructor(
     }
 
     private fun saveStateToCache(stocks: List<Stock>, cashItems: List<CashItem>, accounts: List<AccountWithCount>, exchangeRate: Double) {
+        // Persist to SharedPreferences (in-memory cache already updated in handleFullRefresh)
         cacheManager.saveMultiple {
             put(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, stocks)
             put(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, cashItems)
@@ -153,7 +173,106 @@ class DashboardViewModel @Inject constructor(
 
     fun selectAccount(accountId: Long) {
         selectedAccountId = accountId
-        loadAndObserveHoldings()
+        // Render immediately from cache, then refresh in background
+        renderFromCacheThenRefresh()
+    }
+
+    private fun renderFromCacheThenRefresh() {
+        holdingsJob?.cancel()
+        holdingsJob = viewModelScope.launch {
+            val holdingsFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                holdingsRepository.getAllHoldings()
+            } else {
+                holdingsRepository.getHoldingsByAccount(selectedAccountId)
+            }
+
+            val cashFlow = if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                cashRepository.getAllCashItems()
+            } else {
+                cashRepository.getCashItemsByAccount(selectedAccountId)
+            }
+
+            combine(
+                holdingsFlow,
+                cashFlow,
+                accountRepository.getAllAccounts(),
+                holdingsRepository.getHoldingsCountByAccountFlow(),
+                cashRepository.getAllCashItems()
+            ) { holdings, cashEntities, accounts, holdingsCountMap, allCashEntities ->
+                val cashItems = cashEntities.map { CashItem.fromEntity(it) }
+                val cashCountMap = allCashEntities.groupBy { it.accountId }.mapValues { it.value.size }
+                HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
+            }.collectLatest { data ->
+                val accountsWithCount = data.accounts.map { account ->
+                    val holdingsCount = data.holdingsCountMap[account.id] ?: 0
+                    val cashCount = data.cashCountMap[account.id] ?: 0
+                    AccountWithCount(account = account, holdingsCount = holdingsCount + cashCount)
+                }
+
+                // First: render immediately from in-memory cache (contains all stocks)
+                val cachedStocks = if (allStocksCache.isNotEmpty() && data.holdings.isNotEmpty()) {
+                    renderFromCachedStocks(data.holdings, data.cashItems, accountsWithCount, data.accounts, allStocksCache)
+                } else null
+
+                // Load portfolio sparkline and period returns from cached stocks (don't wait for API)
+                if (cachedStocks != null) {
+                    loadPortfolioSparkline(cachedStocks, data.cashItems, summaryPeriod)
+                    loadAllPeriodReturns(cachedStocks, data.cashItems)
+                }
+
+                // Then: refresh from API in background
+                loadPricesForHoldings(data.holdings, data.cashItems, accountsWithCount, data.accounts)
+            }
+        }
+    }
+
+    private suspend fun renderFromCachedStocks(
+        holdings: List<HoldingEntity>,
+        cashItems: List<CashItem>,
+        accounts: List<AccountWithCount>,
+        allAccounts: List<AccountEntity>,
+        cachedStocks: List<Stock>
+    ): List<Stock>? {
+        val symbols = holdings.map { it.symbol }.distinct()
+        val cachedStockMap = cachedStocks.associateBy { it.symbol }
+
+        // Only render if we have cached data for all symbols
+        if (symbols.any { it !in cachedStockMap }) return null
+
+        val showInKrw = getShowInKrwForCurrentAccount()
+
+        // Build stocks using cached prices (reuse existing merge methods)
+        val stocks = if (selectedAccountId == ALL_ACCOUNTS_ID) {
+            holdings.groupBy { it.symbol }.map { (symbol, holdingGroup) ->
+                StockMapper.mergeAggregatedWithExisting(holdingGroup, cachedStockMap[symbol], allAccounts)
+            }
+        } else {
+            holdings.map { holding ->
+                StockMapper.mergeWithExisting(holding, cachedStockMap[holding.symbol])
+            }
+        }
+
+        val sortedStocks = sortStocks(stocks, currentSortOption)
+        val sortedCashItems = sortCashItems(cashItems, currentSortOption)
+
+        // Use per-account cached data (avoids showing wrong account's data)
+        _uiState.value = DashboardUiState.Success(
+            stocks = sortedStocks,
+            cashItems = sortedCashItems,
+            accounts = accounts,
+            selectedAccountId = selectedAccountId,
+            periodReturns = periodReturnsCache[selectedAccountId] ?: emptyMap(),
+            selectedPeriod = summaryPeriod,
+            isRefreshing = true,
+            exchangeRate = currentExchangeRate,
+            showInKrw = showInKrw,
+            sparklinePeriod = sparklinePeriod,
+            portfolioSparkline = portfolioSparklineCache[selectedAccountId] ?: emptyList(),
+            portfolioStats = portfolioStatsCache[selectedAccountId] ?: PortfolioStats(),
+            sortOption = currentSortOption
+        )
+
+        return sortedStocks
     }
 
     fun toggleCurrency() {
@@ -243,6 +362,11 @@ class DashboardViewModel @Inject constructor(
                 )
             }
 
+            // Update in-memory cache with new sparklines
+            val cacheMap = allStocksCache.associateBy { it.symbol }.toMutableMap()
+            updatedStocks.forEach { stock -> cacheMap[stock.symbol] = stock }
+            allStocksCache = cacheMap.values.toList()
+
             val currentState = _uiState.value
             if (currentState is DashboardUiState.Success) {
                 _uiState.value = currentState.copy(
@@ -318,7 +442,16 @@ class DashboardViewModel @Inject constructor(
     }
 
     private fun updatePeriodReturn(period: TimePeriod, returnPercent: Double) {
+        // Save to per-account cache for fast account switching
+        val accountCache = periodReturnsCache.getOrPut(selectedAccountId) { mutableMapOf() }.toMutableMap()
+        accountCache[period] = returnPercent
+        periodReturnsCache[selectedAccountId] = accountCache
+
         updateSuccessState { state ->
+            // Skip if value hasn't changed (avoids unnecessary re-render)
+            if (state.periodReturns[period] == returnPercent) {
+                return@updateSuccessState state
+            }
             val updatedReturns = state.periodReturns.toMutableMap()
             updatedReturns[period] = returnPercent
             state.copy(periodReturns = updatedReturns, isLoadingPeriodReturns = false)
@@ -327,6 +460,10 @@ class DashboardViewModel @Inject constructor(
 
     private fun updateBenchmarkData(period: TimePeriod, benchmarks: BenchmarkReturns, sparklines: Map<String, List<Double>>) {
         updateSuccessState { state ->
+            // Skip if data is the same (avoids unnecessary re-render)
+            if (state.benchmarkReturns[period] == benchmarks && state.benchmarkSparklines == sparklines) {
+                return@updateSuccessState state
+            }
             val updatedBenchmarks = state.benchmarkReturns.toMutableMap()
             updatedBenchmarks[period] = benchmarks
             state.copy(benchmarkReturns = updatedBenchmarks, benchmarkSparklines = sparklines)
@@ -459,7 +596,21 @@ class DashboardViewModel @Inject constructor(
         timestamps: List<Long> = emptyList(),
         stats: PortfolioStats = PortfolioStats()
     ) {
+        // Save to per-account cache for fast account switching
+        if (sparkline.isNotEmpty()) {
+            portfolioSparklineCache[selectedAccountId] = sparkline
+            portfolioStatsCache[selectedAccountId] = stats
+        }
+
         updateSuccessState { state ->
+            // Don't replace valid data with empty data (avoids blink)
+            if (sparkline.isEmpty() && state.portfolioSparkline.isNotEmpty()) {
+                return@updateSuccessState state
+            }
+            // Skip if data is the same (avoids unnecessary re-render)
+            if (sparkline == state.portfolioSparkline && stats == state.portfolioStats) {
+                return@updateSuccessState state
+            }
             state.copy(
                 portfolioSparkline = sparkline,
                 portfolioSparklineTimestamps = timestamps,
@@ -562,18 +713,19 @@ class DashboardViewModel @Inject constructor(
     private suspend fun handleEmptyPortfolio(accounts: List<AccountWithCount>) {
         val showInKrw = getShowInKrwForCurrentAccount()
         val currentSuccess = _uiState.value as? DashboardUiState.Success
+        // Empty portfolio = no sparkline, no returns (showing cached data would be misleading)
         _uiState.value = DashboardUiState.Success(
             stocks = emptyList(),
             cashItems = emptyList(),
             accounts = accounts,
             selectedAccountId = selectedAccountId,
-            periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
+            periodReturns = emptyMap(),
             selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
             exchangeRate = currentExchangeRate,
             showInKrw = showInKrw,
             sparklinePeriod = sparklinePeriod,
-            portfolioSparkline = currentSuccess?.portfolioSparkline ?: emptyList(),
-            portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
+            portfolioSparkline = emptyList(),
+            portfolioStats = PortfolioStats(),
             sortOption = currentSortOption
         )
     }
@@ -612,6 +764,16 @@ class DashboardViewModel @Inject constructor(
     ) {
         val updatedStocks = mergeHoldingsWithExistingStocks(holdings, existingStocks, allAccounts)
         val sortedCashItems = sortCashItems(cashItems, currentSortOption)
+
+        // Update in-memory cache
+        if (selectedAccountId == ALL_ACCOUNTS_ID) {
+            allStocksCache = updatedStocks
+        } else {
+            val cacheMap = allStocksCache.associateBy { it.symbol }.toMutableMap()
+            updatedStocks.forEach { stock -> cacheMap[stock.symbol] = stock }
+            allStocksCache = cacheMap.values.toList()
+        }
+
         _uiState.value = currentSuccess.copy(
             stocks = updatedStocks,
             cashItems = sortedCashItems,
@@ -655,6 +817,28 @@ class DashboardViewModel @Inject constructor(
                 }
                 val sortedStocks = sortStocks(stocks, currentSortOption)
                 val sortedCashItems = sortCashItems(cashItems, currentSortOption)
+
+                // Update in-memory cache with fresh stock data
+                if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                    // Replace entire cache when viewing all accounts
+                    allStocksCache = stocks
+                } else {
+                    // Merge when viewing specific account (preserves stocks from other accounts)
+                    val cacheMap = allStocksCache.associateBy { it.symbol }.toMutableMap()
+                    stocks.forEach { stock -> cacheMap[stock.symbol] = stock }
+                    allStocksCache = cacheMap.values.toList()
+                }
+
+                // Skip UI update if data is same as current state (avoids blink)
+                if (currentSuccess != null && stocksAreEqual(sortedStocks, currentSuccess.stocks)) {
+                    // Just mark refresh as done, don't replace state
+                    updateSuccessState { it.copy(isRefreshing = false) }
+                    if (selectedAccountId == ALL_ACCOUNTS_ID) {
+                        saveStateToCache(sortedStocks, sortedCashItems, accounts, currentExchangeRate)
+                    }
+                    return@fold
+                }
+
                 val previousReturns = currentSuccess?.periodReturns ?: emptyMap()
                 val selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod
                 val showInKrw = getShowInKrwForCurrentAccount()
@@ -686,6 +870,23 @@ class DashboardViewModel @Inject constructor(
                 )
             }
         )
+    }
+
+    /**
+     * Checks if two stock lists have the same essential data (avoids unnecessary re-renders).
+     */
+    private fun stocksAreEqual(stocks1: List<Stock>, stocks2: List<Stock>): Boolean {
+        if (stocks1.size != stocks2.size) return false
+        val map1 = stocks1.associateBy { it.symbol }
+        val map2 = stocks2.associateBy { it.symbol }
+        if (map1.keys != map2.keys) return false
+        return map1.all { (symbol, stock1) ->
+            val stock2 = map2[symbol] ?: return false
+            stock1.currentPrice == stock2.currentPrice &&
+                stock1.quantity == stock2.quantity &&
+                stock1.averagePrice == stock2.averagePrice &&
+                stock1.dayChange == stock2.dayChange
+        }
     }
 
     private fun mergeHoldingsWithExistingStocks(
