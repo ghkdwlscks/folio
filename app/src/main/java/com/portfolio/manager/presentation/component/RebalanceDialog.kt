@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -99,6 +100,7 @@ fun RebalanceDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.85f)
                 .padding(16.dp),
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -130,7 +132,7 @@ fun RebalanceDialog(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f, fill = false),
+                        .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(items) { item ->
