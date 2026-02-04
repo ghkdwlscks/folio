@@ -66,6 +66,16 @@ class AddHoldingViewModelTest {
     }
 
     @Test
+    fun `isInitialLoading - false after accounts loaded`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        // With UnconfinedTestDispatcher, init completes immediately
+        assertThat(viewModel.uiState.value.isInitialLoading).isFalse()
+        assertThat(viewModel.uiState.value.accounts).isNotEmpty()
+    }
+
+    @Test
     fun `saveHolding - valid input - saves and returns success`() = runTest {
         coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
         coEvery { repository.addHolding(any()) } returns 1L

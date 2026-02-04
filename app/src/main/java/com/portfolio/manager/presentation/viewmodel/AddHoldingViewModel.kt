@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class AddHoldingUiState(
+    val isInitialLoading: Boolean = true,
     val symbol: String = "",
     val quantity: String = "",
     val averagePrice: String = "",
@@ -80,6 +81,8 @@ class AddHoldingViewModel @Inject constructor(
                     )}
                 }
             }
+
+            _uiState.update { it.copy(isInitialLoading = false) }
         }
     }
 

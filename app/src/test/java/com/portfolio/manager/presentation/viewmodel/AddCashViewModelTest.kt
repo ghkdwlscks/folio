@@ -60,6 +60,17 @@ class AddCashViewModelTest {
     }
 
     @Test
+    fun `isInitialLoading - false after accounts loaded`() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
+
+        val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
+
+        // With UnconfinedTestDispatcher, init completes immediately
+        assertThat(viewModel.uiState.value.isInitialLoading).isFalse()
+        assertThat(viewModel.uiState.value.accounts).isNotEmpty()
+    }
+
+    @Test
     fun `init - specific account mode - sets needsAccountSelection false`() = runTest {
         val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
 

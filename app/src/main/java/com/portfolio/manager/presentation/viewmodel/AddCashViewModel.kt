@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class AddCashUiState(
+    val isInitialLoading: Boolean = true,
     val name: String = "",
     val value: String = "",
     val yieldRate: String = "",
@@ -73,6 +74,8 @@ class AddCashViewModel @Inject constructor(
                     )}
                 }
             }
+
+            _uiState.update { it.copy(isInitialLoading = false) }
         }
     }
 
