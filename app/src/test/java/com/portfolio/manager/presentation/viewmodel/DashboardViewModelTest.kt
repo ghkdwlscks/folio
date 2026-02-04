@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
+import com.portfolio.manager.data.local.CashItemEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.BenchmarkReturns
@@ -1370,11 +1371,19 @@ class DashboardViewModelTest {
     @Test
     fun `addCashItem - calls repository with correct parameters`() = runTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
-        coEvery { cashRepository.addCashItem(any(), any(), any(), any(), any()) } returns 1L
+        coEvery { cashRepository.addCashItem(any()) } returns 1L
 
         val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
         viewModel.addCashItem(1L, "Emergency Fund", 10000.0, 4.5, "USD")
 
-        coVerify { cashRepository.addCashItem(1L, "Emergency Fund", 10000.0, 4.5, "USD") }
+        coVerify {
+            cashRepository.addCashItem(match { entity ->
+                entity.accountId == 1L &&
+                entity.name == "Emergency Fund" &&
+                entity.originalValue == 10000.0 &&
+                entity.annualYieldRate == 4.5 &&
+                entity.currency == "USD"
+            })
+        }
     }
 }

@@ -22,38 +22,12 @@ class CashRepositoryImpl @Inject constructor(
         return cashItemDao.getCashItemById(id)
     }
 
-    override suspend fun addCashItem(
-        accountId: Long,
-        name: String,
-        value: Double,
-        yieldRate: Double,
-        currency: String
-    ): Long {
-        val cashItem = CashItemEntity(
-            accountId = accountId,
-            name = name,
-            originalValue = value,
-            annualYieldRate = yieldRate,
-            currency = currency
-        )
+    override suspend fun addCashItem(cashItem: CashItemEntity): Long {
         return cashItemDao.insert(cashItem)
     }
 
-    override suspend fun updateCashItem(
-        id: Long,
-        name: String,
-        value: Double,
-        yieldRate: Double,
-        currency: String
-    ) {
-        val existing = cashItemDao.getCashItemById(id) ?: return
-        val updated = existing.copy(
-            name = name,
-            originalValue = value,
-            annualYieldRate = yieldRate,
-            currency = currency
-        )
-        cashItemDao.update(updated)
+    override suspend fun updateCashItem(cashItem: CashItemEntity) {
+        cashItemDao.update(cashItem)
     }
 
     override suspend fun deleteCashItem(id: Long) {

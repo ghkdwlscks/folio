@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.SharedPreferences
 import com.portfolio.manager.data.local.AccountEntity
+import com.portfolio.manager.data.local.CashItemEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.PortfolioStats
@@ -320,7 +321,14 @@ class DashboardViewModel @Inject constructor(
 
     fun addCashItem(accountId: Long, name: String, value: Double, yieldRate: Double, currency: String) {
         viewModelScope.launch {
-            cashRepository.addCashItem(accountId, name, value, yieldRate, currency)
+            val entity = CashItemEntity(
+                accountId = accountId,
+                name = name,
+                originalValue = value,
+                annualYieldRate = yieldRate,
+                currency = currency
+            )
+            cashRepository.addCashItem(entity)
         }
     }
 

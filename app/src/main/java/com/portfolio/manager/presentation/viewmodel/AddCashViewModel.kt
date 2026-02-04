@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.portfolio.manager.data.local.AccountEntity
+import com.portfolio.manager.data.local.CashItemEntity
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.presentation.util.InputUtils
@@ -130,9 +131,25 @@ class AddCashViewModel @Inject constructor(
             }
 
             if (state.isEditMode && cashItemId != null) {
-                cashRepository.updateCashItem(cashItemId, nameValue, valueAmount, yieldRateValue, state.currency)
+                val existingItem = cashRepository.getCashItemById(cashItemId)
+                if (existingItem != null) {
+                    val updatedItem = existingItem.copy(
+                        name = nameValue,
+                        originalValue = valueAmount,
+                        annualYieldRate = yieldRateValue,
+                        currency = state.currency
+                    )
+                    cashRepository.updateCashItem(updatedItem)
+                }
             } else {
-                cashRepository.addCashItem(targetAccountId, nameValue, valueAmount, yieldRateValue, state.currency)
+                val newItem = CashItemEntity(
+                    accountId = targetAccountId,
+                    name = nameValue,
+                    originalValue = valueAmount,
+                    annualYieldRate = yieldRateValue,
+                    currency = state.currency
+                )
+                cashRepository.addCashItem(newItem)
             }
             return true
         } finally {

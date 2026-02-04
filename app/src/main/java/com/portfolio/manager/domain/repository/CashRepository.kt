@@ -7,7 +7,7 @@ interface CashRepository {
     fun getCashItemsByAccount(accountId: Long): Flow<List<CashItemEntity>>
     fun getAllCashItems(): Flow<List<CashItemEntity>>
     suspend fun getCashItemById(id: Long): CashItemEntity?
-    suspend fun addCashItem(accountId: Long, name: String, value: Double, yieldRate: Double, currency: String): Long
-    suspend fun updateCashItem(id: Long, name: String, value: Double, yieldRate: Double, currency: String)
+    suspend fun addCashItem(cashItem: CashItemEntity): Long
+    suspend fun updateCashItem(cashItem: CashItemEntity)
     suspend fun deleteCashItem(id: Long)
 }

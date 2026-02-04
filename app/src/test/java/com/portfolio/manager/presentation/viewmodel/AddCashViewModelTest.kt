@@ -213,7 +213,7 @@ class AddCashViewModelTest {
 
     @Test
     fun `saveCashItem - valid data add mode - calls repository and returns true`() = runTest {
-        coEvery { cashRepository.addCashItem(any(), any(), any(), any(), any()) } returns 1L
+        coEvery { cashRepository.addCashItem(any()) } returns 1L
         val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
         val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
         viewModel.updateName("Emergency Fund")
@@ -224,7 +224,15 @@ class AddCashViewModelTest {
         val result = viewModel.saveCashItem()
 
         assertThat(result).isTrue()
-        coVerify { cashRepository.addCashItem(1L, "Emergency Fund", 10000.0, 4.5, "USD") }
+        coVerify {
+            cashRepository.addCashItem(match { entity ->
+                entity.accountId == 1L &&
+                entity.name == "Emergency Fund" &&
+                entity.originalValue == 10000.0 &&
+                entity.annualYieldRate == 4.5 &&
+                entity.currency == "USD"
+            })
+        }
     }
 
     @Test
@@ -238,7 +246,7 @@ class AddCashViewModelTest {
             currency = "USD"
         )
         coEvery { cashRepository.getCashItemById(1L) } returns cashItem
-        coEvery { cashRepository.updateCashItem(any(), any(), any(), any(), any()) } returns Unit
+        coEvery { cashRepository.updateCashItem(any()) } returns Unit
         val savedStateHandle = SavedStateHandle(mapOf("cashItemId" to 1L, "accountId" to ALL_ACCOUNTS_ID))
         val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
         viewModel.updateName("Updated Name")
@@ -248,7 +256,15 @@ class AddCashViewModelTest {
         val result = viewModel.saveCashItem()
 
         assertThat(result).isTrue()
-        coVerify { cashRepository.updateCashItem(1L, "Updated Name", 15000.0, 5.0, "USD") }
+        coVerify {
+            cashRepository.updateCashItem(match { entity ->
+                entity.id == 1L &&
+                entity.name == "Updated Name" &&
+                entity.originalValue == 15000.0 &&
+                entity.annualYieldRate == 5.0 &&
+                entity.currency == "USD"
+            })
+        }
     }
 
     @Test
@@ -278,7 +294,7 @@ class AddCashViewModelTest {
 
     @Test
     fun `saveCashItem - zero yield rate - returns true`() = runTest {
-        coEvery { cashRepository.addCashItem(any(), any(), any(), any(), any()) } returns 1L
+        coEvery { cashRepository.addCashItem(any()) } returns 1L
         val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
         val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
         viewModel.updateName("Cash")
@@ -288,7 +304,15 @@ class AddCashViewModelTest {
         val result = viewModel.saveCashItem()
 
         assertThat(result).isTrue()
-        coVerify { cashRepository.addCashItem(1L, "Cash", 10000.0, 0.0, "KRW") }
+        coVerify {
+            cashRepository.addCashItem(match { entity ->
+                entity.accountId == 1L &&
+                entity.name == "Cash" &&
+                entity.originalValue == 10000.0 &&
+                entity.annualYieldRate == 0.0 &&
+                entity.currency == "KRW"
+            })
+        }
     }
 
     @Test
@@ -308,7 +332,7 @@ class AddCashViewModelTest {
 
     @Test
     fun `saveCashItem - isSaving resets after successful save`() = runTest {
-        coEvery { cashRepository.addCashItem(any(), any(), any(), any(), any()) } returns 1L
+        coEvery { cashRepository.addCashItem(any()) } returns 1L
         val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
         val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
 
