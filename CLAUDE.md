@@ -339,8 +339,11 @@ Format: `scope: description`
 
 Scope rules (test files are excluded when determining scope):
 - **Single file changed**: Use the file name without extension (e.g., `TrendIndicator: fix zero value color`)
-- **Few files in one package**: Use the package/directory name (e.g., `component: extract reusable UI parts`, `data: cache price history locally`)
+- **Few files in one package**: Use the package/directory name (e.g., `component: extract reusable UI parts`)
 - **Many files across packages**: Use `app:` (e.g., `app: add sparkline charts to stock cards`)
+- **Main file introduced/changed**: Use the main file name even if other files are touched (e.g., `PortfolioCache: share data` when introducing PortfolioCache.kt with related changes in other files)
 - **Only CLAUDE.md**: Use `CLAUDE:` (e.g., `CLAUDE: document recent improvements`)
 - **Only README.md**: Use `README:` (e.g., `README: add project documentation`)
 - **Both CLAUDE.md and README.md**: Use `docs:` (e.g., `docs: update CLAUDE.md and README.md with recent changes`)
+
+Note: If changes touch multiple top-level packages (e.g., `data/` + `di/`, or `presentation/` + `util/`), use `app:` unless there's a clear main file being introduced.
