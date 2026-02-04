@@ -13,6 +13,7 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.service.CacheManager
+import com.portfolio.manager.domain.service.CashItemMapper
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.service.PortfolioSorter
 import com.portfolio.manager.domain.service.PortfolioCalculationService
@@ -669,7 +670,7 @@ class DashboardViewModel @Inject constructor(
         holdingsRepository.getHoldingsCountByAccountFlow(),
         cashRepository.getAllCashItems()
     ) { holdings, cashEntities, accounts, holdingsCountMap, allCashEntities ->
-        val cashItems = cashEntities.map { CashItem.fromEntity(it) }
+        val cashItems = CashItemMapper.fromEntities(cashEntities)
         val cashCountMap = allCashEntities.groupBy { it.accountId }.mapValues { it.value.size }
         HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
     }

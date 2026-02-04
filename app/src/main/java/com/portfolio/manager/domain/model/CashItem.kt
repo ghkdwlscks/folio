@@ -38,18 +38,4 @@ data class CashItem(
             TimePeriod.ONE_YEAR -> annualYieldRate
         }
     }
-
-    companion object {
-        fun fromEntity(entity: com.portfolio.manager.data.local.CashItemEntity): CashItem {
-            return CashItem(
-                id = entity.id,
-                accountId = entity.accountId,
-                name = entity.name,
-                originalValue = entity.originalValue,
-                annualYieldRate = entity.annualYieldRate,
-                currency = entity.currency,
-                createdAt = entity.createdAt
-            )
-        }
-    }
 }

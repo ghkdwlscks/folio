@@ -147,29 +147,6 @@ class CashItemTest {
     }
 
     @Test
-    fun `fromEntity - converts entity to domain model`() {
-        val entity = com.portfolio.manager.data.local.CashItemEntity(
-            id = 1,
-            accountId = 2,
-            name = "Emergency Fund",
-            originalValue = 10000.0,
-            annualYieldRate = 4.5,
-            currency = "USD",
-            createdAt = 1000L
-        )
-
-        val cashItem = CashItem.fromEntity(entity)
-
-        assertThat(cashItem.id).isEqualTo(1)
-        assertThat(cashItem.accountId).isEqualTo(2)
-        assertThat(cashItem.name).isEqualTo("Emergency Fund")
-        assertThat(cashItem.originalValue).isEqualTo(10000.0)
-        assertThat(cashItem.annualYieldRate).isEqualTo(4.5)
-        assertThat(cashItem.currency).isEqualTo("USD")
-        assertThat(cashItem.createdAt).isEqualTo(1000L)
-    }
-
-    @Test
     fun `implements PortfolioItem interface`() {
         val cashItem: PortfolioItem = CashItem(
             id = 1,
