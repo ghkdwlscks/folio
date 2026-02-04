@@ -1,4 +1,4 @@
-package com.portfolio.manager.presentation.util
+package com.portfolio.manager.domain.util
 
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.util.AppConstants

@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
 import com.portfolio.manager.domain.service.PortfolioCache
-import com.portfolio.manager.presentation.util.CurrencyConverter
+import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean

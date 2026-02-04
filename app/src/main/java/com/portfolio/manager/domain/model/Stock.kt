@@ -1,6 +1,6 @@
 package com.portfolio.manager.domain.model
 
-import com.portfolio.manager.presentation.util.CurrencyConverter
+import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants
 import kotlinx.serialization.Serializable
 

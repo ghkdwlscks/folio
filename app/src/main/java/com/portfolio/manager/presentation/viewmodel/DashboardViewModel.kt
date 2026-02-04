@@ -24,7 +24,7 @@ import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
-import com.portfolio.manager.presentation.util.CurrencyConverter
+import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.AppConstants.BENCHMARK_KOSPI
 import com.portfolio.manager.util.AppConstants.BENCHMARK_SP500

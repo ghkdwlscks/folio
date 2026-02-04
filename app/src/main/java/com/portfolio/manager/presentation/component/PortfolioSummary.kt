@@ -51,7 +51,7 @@ import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRedPastel
-import com.portfolio.manager.presentation.util.CurrencyConverter
+import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
 

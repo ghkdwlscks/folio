@@ -1,7 +1,7 @@
 package com.portfolio.manager.domain.service
 
 import com.portfolio.manager.domain.repository.PriceHistoryData
-import com.portfolio.manager.presentation.util.CurrencyConverter
+import com.portfolio.manager.domain.util.CurrencyConverter
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
