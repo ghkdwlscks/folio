@@ -23,14 +23,14 @@ data class Stock(
     val currentPrice: Double,
     val dayChange: Double? = null,
     val dayChangePercent: Double? = null,
-    val currency: String = "USD",
+    override val currency: String = "USD",
     val accountDetails: List<StockAccountDetail> = emptyList(),
     val priceHistory: List<Double> = emptyList(),
     val priceHistoryTimestamps: List<Long> = emptyList(),
     val annualDividend: Double? = null,
     val dividendYield: Double? = null,
     val targetPercentage: Int? = null
-) {
+) : PortfolioItem {
 
     val totalValue: Double
         get() = quantity * currentPrice
@@ -58,4 +58,8 @@ data class Stock(
 
     fun totalCostInKrw(exchangeRate: Double = AppConstants.KRW_TO_USD_RATE): Double =
         CurrencyConverter.toKrw(totalCost, currency, exchangeRate)
+
+    // PortfolioItem interface implementation
+    override fun valueInUsd(exchangeRate: Double): Double = totalValueInUsd(exchangeRate)
+    override fun valueInKrw(exchangeRate: Double): Double = totalValueInKrw(exchangeRate)
 }

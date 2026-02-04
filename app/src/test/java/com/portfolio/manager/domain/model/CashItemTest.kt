@@ -168,4 +168,19 @@ class CashItemTest {
         assertThat(cashItem.currency).isEqualTo("USD")
         assertThat(cashItem.createdAt).isEqualTo(1000L)
     }
+
+    @Test
+    fun `implements PortfolioItem interface`() {
+        val cashItem: PortfolioItem = CashItem(
+            id = 1,
+            accountId = 1,
+            name = "Test",
+            originalValue = 10000.0,
+            annualYieldRate = 5.0,
+            currency = "USD",
+            createdAt = System.currentTimeMillis()
+        )
+
+        assertThat(cashItem.currency).isEqualTo("USD")
+    }
 }

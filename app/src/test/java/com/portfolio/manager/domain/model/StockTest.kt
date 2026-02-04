@@ -496,4 +496,49 @@ class StockTest {
         assertThat(stock.priceHistory).hasSize(3)
         assertThat(stock.priceHistoryTimestamps).hasSize(3)
     }
+
+    @Test
+    fun `implements PortfolioItem interface`() {
+        val stock: PortfolioItem = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        assertThat(stock.currency).isEqualTo("USD")
+    }
+
+    @Test
+    fun `valueInUsd - delegates to totalValueInUsd`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        assertThat(stock.valueInUsd(1400.0)).isEqualTo(stock.totalValueInUsd(1400.0))
+    }
+
+    @Test
+    fun `valueInKrw - delegates to totalValueInKrw`() {
+        val stock = Stock(
+            id = 1,
+            symbol = "AAPL",
+            name = "Apple Inc.",
+            quantity = 10,
+            averagePrice = 150.0,
+            currentPrice = 175.0,
+            currency = "USD"
+        )
+
+        assertThat(stock.valueInKrw(1400.0)).isEqualTo(stock.totalValueInKrw(1400.0))
+    }
 }

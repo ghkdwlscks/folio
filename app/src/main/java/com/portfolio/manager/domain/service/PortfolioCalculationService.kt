@@ -2,6 +2,7 @@ package com.portfolio.manager.domain.service
 
 import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.model.StockHolding
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.PriceHistoryData
 

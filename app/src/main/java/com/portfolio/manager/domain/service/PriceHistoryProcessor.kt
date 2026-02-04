@@ -1,19 +1,11 @@
 package com.portfolio.manager.domain.service
 
+import com.portfolio.manager.domain.model.StockHolding
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.util.CurrencyConverter
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-
-/**
- * Holds stock information needed for portfolio value calculation.
- */
-data class StockHolding(
-    val symbol: String,
-    val quantity: Int,
-    val currency: String
-)
 
 /**
  * Service for processing price history data for portfolio calculations.

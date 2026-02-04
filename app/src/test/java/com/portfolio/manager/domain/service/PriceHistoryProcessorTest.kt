@@ -1,6 +1,7 @@
 package com.portfolio.manager.domain.service
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.domain.model.StockHolding
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import org.junit.Test
 

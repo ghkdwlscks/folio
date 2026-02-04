@@ -10,19 +10,19 @@ data class CashItem(
     val name: String,
     val originalValue: Double,
     val annualYieldRate: Double,
-    val currency: String,
+    override val currency: String,
     val createdAt: Long
-) {
+) : PortfolioItem {
     /**
      * Get the value in USD.
      */
-    fun valueInUsd(exchangeRate: Double): Double =
+    override fun valueInUsd(exchangeRate: Double): Double =
         CurrencyConverter.toUsd(originalValue, currency, exchangeRate)
 
     /**
      * Get the value in KRW.
      */
-    fun valueInKrw(exchangeRate: Double): Double =
+    override fun valueInKrw(exchangeRate: Double): Double =
         CurrencyConverter.toKrw(originalValue, currency, exchangeRate)
 
     /**
