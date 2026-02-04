@@ -1213,6 +1213,45 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `resetTargetPercentages - clears target percentages for specific account`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD", 60),
+            HoldingEntity(2, 1L, "GOOGL", "Alphabet Inc.", 5, 200.0, "USD", 40)
+        )
+        every { holdingsRepository.getHoldingsByAccount(1L) } returns flowOf(holdings)
+        coEvery { holdingsRepository.getHoldingsByAccountSync(1L) } returns holdings
+        coEvery { holdingsRepository.updateTargetPercentage(any(), any()) } returns Unit
+        coEvery { accountRepository.getAccountById(1L) } returns AccountEntity(id = 1L, name = "Test", orderIndex = 0, preferredCurrency = "USD")
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", regularMarketPrice = 150.0),
+                QuoteResult(symbol = "GOOGL", regularMarketPrice = 250.0)
+            )
+        )
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences)
+        viewModel.selectAccount(1L)
+
+        viewModel.resetTargetPercentages()
+
+        coVerify { holdingsRepository.updateTargetPercentage(1L, null) }
+        coVerify { holdingsRepository.updateTargetPercentage(2L, null) }
+    }
+
+    @Test
+    fun `resetTargetPercentages - does nothing for all accounts view`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences)
+        // Default is ALL_ACCOUNTS_ID
+
+        viewModel.resetTargetPercentages()
+
+        coVerify(exactly = 0) { holdingsRepository.getHoldingsByAccountSync(any()) }
+        coVerify(exactly = 0) { holdingsRepository.updateTargetPercentage(any(), any()) }
+    }
+
+    @Test
     fun `getStocksValue - returns sum of stock values`() = runTest {
         val holdings = listOf(
             HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")

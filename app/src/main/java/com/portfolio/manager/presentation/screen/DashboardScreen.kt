@@ -310,6 +310,10 @@ fun DashboardScreen(
             onSave = { percentages ->
                 viewModel.saveTargetPercentages(percentages)
                 showRebalanceDialog = false
+            },
+            onReset = {
+                viewModel.resetTargetPercentages()
+                showRebalanceDialog = false
             }
         )
     }

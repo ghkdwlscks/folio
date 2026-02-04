@@ -928,6 +928,16 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun resetTargetPercentages() {
+        viewModelScope.launch {
+            if (selectedAccountId == ALL_ACCOUNTS_ID) return@launch
+            val holdings = holdingsRepository.getHoldingsByAccountSync(selectedAccountId)
+            holdings.forEach { holding ->
+                holdingsRepository.updateTargetPercentage(holding.id, null)
+            }
+        }
+    }
+
     fun getStocksValue(): Double {
         val state = _uiState.value as? DashboardUiState.Success ?: return 0.0
         return if (state.showInKrw) {

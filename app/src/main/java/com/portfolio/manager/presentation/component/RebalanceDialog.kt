@@ -75,7 +75,8 @@ fun RebalanceDialog(
     totalPortfolioValue: Double,
     showInKrw: Boolean,
     onDismiss: () -> Unit,
-    onSave: (Map<Long, Int>) -> Unit
+    onSave: (Map<Long, Int>) -> Unit,
+    onReset: () -> Unit
 ) {
     if (items.isEmpty()) {
         onDismiss()
@@ -210,17 +211,25 @@ fun RebalanceDialog(
                 // Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    OutlinedButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSave(percentages) },
-                        enabled = totalPercentage == 100
+                    OutlinedButton(
+                        onClick = onReset,
+                        enabled = items.any { it.currentPercentage > 0 }
                     ) {
-                        Text("Save")
+                        Text("Reset")
+                    }
+                    Row {
+                        OutlinedButton(onClick = onDismiss) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onSave(percentages) },
+                            enabled = totalPercentage == 100
+                        ) {
+                            Text("Save")
+                        }
                     }
                 }
             }
