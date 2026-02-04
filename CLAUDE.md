@@ -112,6 +112,7 @@ app/src/main/java/com/portfolio/manager/
 ├── domain/
 │   ├── model/              # Domain models
 │   │   ├── Stock.kt, CashItem.kt, StockAccountDetail.kt
+│   │   ├── PortfolioItem.kt, StockHolding.kt  # Common interface and holding model
 │   │   ├── PeriodReturn.kt, BenchmarkReturns.kt, TimePeriod.kt
 │   │   ├── SortOption.kt, PortfolioStats.kt
 │   │   └── FIRECalculation.kt
@@ -120,8 +121,11 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── PortfolioStatsCalculator.kt  # MDD, Sharpe, Volatility calculations
 │   │   ├── PriceHistoryProcessor.kt     # Date alignment, forward-fill logic
 │   │   ├── PortfolioSorter.kt           # Stock/cash sorting by various criteria
-│   │   ├── StockMapper.kt               # Entity to domain model mapping
+│   │   ├── StockMapper.kt, CashItemMapper.kt  # Entity to domain model mapping
 │   │   └── CacheManager.kt              # JSON-based SharedPreferences caching
+│   ├── util/               # Domain utilities
+│   │   ├── CurrencyConverter.kt         # USD/KRW conversion
+│   │   └── ReturnCalculator.kt          # Return percentage calculations
 │   └── repository/         # Repository interfaces
 ├── presentation/
 │   ├── screen/             # Screen composables
@@ -154,7 +158,6 @@ app/src/main/java/com/portfolio/manager/
 │   ├── theme/              # Color, Theme, Type
 │   └── util/               # Presentation utilities
 │       ├── CurrencyFormatter.kt    # Format currency values
-│       ├── CurrencyConverter.kt    # USD/KRW conversion
 │       ├── InputUtils.kt           # Input filtering and formatting
 │       ├── TrendIndicator.kt       # Up/down/neutral indicators
 │       └── PresentationConstants.kt
