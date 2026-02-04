@@ -10,6 +10,7 @@ import com.portfolio.manager.domain.model.PeriodReturn
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.domain.util.ReturnCalculator
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -165,9 +166,7 @@ class StockRepositoryImpl(
                 result.meta.chartPreviousClose
             }
 
-            val returnPercent = if (startPrice > 0) {
-                ((currentPrice - startPrice) / startPrice) * 100
-            } else 0.0
+            val returnPercent = ReturnCalculator.calculate(startPrice, currentPrice)
 
             Result.success(PeriodReturn(symbol, period, returnPercent))
         } catch (e: Exception) {

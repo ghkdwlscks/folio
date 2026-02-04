@@ -3,6 +3,7 @@ package com.portfolio.manager.domain.service
 import com.portfolio.manager.domain.model.StockHolding
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.util.CurrencyConverter
+import com.portfolio.manager.domain.util.ReturnCalculator
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -210,8 +211,7 @@ object PriceHistoryProcessor {
         startExchangeRate: Double,
         endExchangeRate: Double
     ): Double? {
-        if (prices.size < 2) return null
-        val rawReturn = ((prices.last() - prices.first()) / prices.first()) * 100
+        val rawReturn = ReturnCalculator.calculateFromList(prices) ?: return null
         val needsAdjustment = (currency == "USD" && showInKrw) || (currency == "KRW" && !showInKrw)
         return if (needsAdjustment) {
             adjustReturnForExchangeRate(rawReturn, currency, showInKrw, startExchangeRate, endExchangeRate)

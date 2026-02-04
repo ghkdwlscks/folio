@@ -5,6 +5,7 @@ import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.StockHolding
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.PriceHistoryData
+import com.portfolio.manager.domain.util.ReturnCalculator
 
 data class PortfolioValuesResult(
     val values: List<Double>,
@@ -51,12 +52,8 @@ object PortfolioCalculationService {
         return PortfolioValuesResult(values, validDates)
     }
 
-    fun calculatePeriodReturn(portfolioValues: List<Double>): Double {
-        if (portfolioValues.size < 2) return 0.0
-        val startValue = portfolioValues.first()
-        val endValue = portfolioValues.last()
-        return if (startValue > 0) ((endValue - startValue) / startValue) * 100 else 0.0
-    }
+    fun calculatePeriodReturn(portfolioValues: List<Double>): Double =
+        ReturnCalculator.calculateFromListOrZero(portfolioValues)
 
     fun calculateWeightedCashReturn(cashItems: List<CashItem>, exchangeRate: Double, period: TimePeriod): Double {
         if (cashItems.isEmpty()) return 0.0
