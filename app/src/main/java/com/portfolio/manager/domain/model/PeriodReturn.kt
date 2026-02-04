@@ -14,6 +14,7 @@ data class PeriodReturn(
     val returnPercent: Double
 )
 
+@kotlinx.serialization.Serializable
 data class BenchmarkReturns(
     val sp500: Double?,
     val kospi: Double?

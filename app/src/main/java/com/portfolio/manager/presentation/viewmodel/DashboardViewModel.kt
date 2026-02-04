@@ -109,10 +109,17 @@ class DashboardViewModel @Inject constructor(
             val cashItems = cacheManager.loadOrDefault<List<CashItem>>(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, emptyList())
             val accounts = cacheManager.loadOrDefault<List<AccountWithCount>>(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, emptyList())
             val portfolioSparkline = cacheManager.loadOrDefault<List<Double>>(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, emptyList())
+            val portfolioSparklineTimestamps = cacheManager.loadOrDefault<List<Long>>(PreferenceKeys.DASHBOARD_CACHED_SPARKLINE_TIMESTAMPS, emptyList())
             val portfolioStats = cacheManager.loadOrDefault<PortfolioStats>(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, PortfolioStats())
             val periodReturns = cacheManager.load<Map<String, Double>>(PreferenceKeys.DASHBOARD_CACHED_PERIOD_RETURNS)
                 ?.mapKeys { (key, _) -> TimePeriod.valueOf(key) }
                 ?: emptyMap()
+            val benchmarkSparklines = cacheManager.loadOrDefault<Map<String, List<Double>>>(
+                PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_SPARKLINES, emptyMap()
+            )
+            val benchmarkReturns = cacheManager.load<Map<String, BenchmarkReturns>>(
+                PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_RETURNS
+            )?.mapKeys { (key, _) -> TimePeriod.valueOf(key) } ?: emptyMap()
 
             // Load into per-account caches for ALL_ACCOUNTS_ID (default view on cold start)
             if (portfolioSparkline.isNotEmpty()) {
@@ -129,13 +136,16 @@ class DashboardViewModel @Inject constructor(
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
                 periodReturns = periodReturns,
+                benchmarkReturns = benchmarkReturns,
                 selectedPeriod = summaryPeriod,
                 exchangeRate = cachedRate,
                 showInKrw = allAccountsCurrencyKrw,
                 isRefreshing = true,
                 sparklinePeriod = sparklinePeriod,
                 portfolioSparkline = portfolioSparkline,
+                portfolioSparklineTimestamps = portfolioSparklineTimestamps,
                 portfolioStats = portfolioStats,
+                benchmarkSparklines = benchmarkSparklines,
                 sortOption = currentSortOption
             )
         } catch (e: Exception) {
@@ -188,9 +198,10 @@ class DashboardViewModel @Inject constructor(
                     renderFromCachedStocks(data.holdings, data.cashItems, accountsWithCount, data.accounts, allStocksCache)
                 } else null
 
-                // Load portfolio sparkline and period returns from cached stocks (don't wait for API)
+                // Load portfolio sparkline, benchmark, and period returns from cached stocks (don't wait for API)
                 if (cachedStocks != null) {
                     loadPortfolioSparkline(cachedStocks, data.cashItems, summaryPeriod)
+                    loadBenchmarkData(summaryPeriod)
                     loadAllPeriodReturns(cachedStocks, data.cashItems)
                 }
 
@@ -445,6 +456,14 @@ class DashboardViewModel @Inject constructor(
             updatedBenchmarks[period] = benchmarks
             state.copy(benchmarkReturns = updatedBenchmarks, benchmarkSparklines = sparklines)
         }
+        // Cache benchmark data for fast cold start (only for All Accounts)
+        if (selectedAccountId == ALL_ACCOUNTS_ID && sparklines.isNotEmpty()) {
+            val benchmarkReturnsMap = mapOf(period.name to benchmarks)
+            cacheManager.saveMultiple {
+                put(PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_SPARKLINES, sparklines)
+                put(PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_RETURNS, benchmarkReturnsMap)
+            }
+        }
     }
 
     private fun loadPortfolioSparkline(stocks: List<Stock>, cashItems: List<CashItem>, period: TimePeriod) {
@@ -585,7 +604,7 @@ class DashboardViewModel @Inject constructor(
                 return@updateSuccessState state
             }
             // Skip if data is the same (avoids unnecessary re-render)
-            if (sparkline == state.portfolioSparkline && stats == state.portfolioStats) {
+            if (sparkline == state.portfolioSparkline && timestamps == state.portfolioSparklineTimestamps && stats == state.portfolioStats) {
                 return@updateSuccessState state
             }
             state.copy(
@@ -598,6 +617,7 @@ class DashboardViewModel @Inject constructor(
         if (selectedAccountId == ALL_ACCOUNTS_ID && sparkline.isNotEmpty()) {
             cacheManager.saveMultiple {
                 put(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, sparkline)
+                put(PreferenceKeys.DASHBOARD_CACHED_SPARKLINE_TIMESTAMPS, timestamps)
                 put(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_STATS, stats)
             }
         }
@@ -802,6 +822,14 @@ class DashboardViewModel @Inject constructor(
                     if (selectedAccountId == ALL_ACCOUNTS_ID) {
                         saveStateToCache(sortedStocks, sortedCashItems, accounts, currentExchangeRate)
                     }
+                    // Still need to load sparkline/benchmark if timestamps are missing
+                    val selectedPeriod = currentSuccess.selectedPeriod
+                    if (currentSuccess.portfolioSparklineTimestamps.size < 2) {
+                        loadPortfolioSparkline(stocks, sortedCashItems, selectedPeriod)
+                    }
+                    if (currentSuccess.benchmarkSparklines.isEmpty()) {
+                        loadBenchmarkData(selectedPeriod)
+                    }
                     return@fold
                 }
 
@@ -814,12 +842,15 @@ class DashboardViewModel @Inject constructor(
                     accounts = accounts,
                     selectedAccountId = selectedAccountId,
                     periodReturns = previousReturns,
+                    benchmarkReturns = currentSuccess?.benchmarkReturns ?: emptyMap(),
                     selectedPeriod = selectedPeriod,
                     isRefreshing = false,
                     exchangeRate = currentExchangeRate,
                     showInKrw = showInKrw,
                     sparklinePeriod = sparklinePeriod,
                     portfolioSparkline = currentSuccess?.portfolioSparkline ?: emptyList(),
+                    portfolioSparklineTimestamps = currentSuccess?.portfolioSparklineTimestamps ?: emptyList(),
+                    benchmarkSparklines = currentSuccess?.benchmarkSparklines ?: emptyMap(),
                     portfolioStats = currentSuccess?.portfolioStats ?: PortfolioStats(),
                     sortOption = currentSortOption
                 )
