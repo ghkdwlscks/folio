@@ -2,19 +2,14 @@ package com.portfolio.manager.presentation.viewmodel
 
 import android.content.SharedPreferences
 import com.google.common.truth.Truth.assertThat
-import com.portfolio.manager.data.local.CashItemEntity
-import com.portfolio.manager.data.local.HoldingEntity
-import com.portfolio.manager.data.remote.dto.QuoteResult
-import com.portfolio.manager.domain.repository.CashRepository
-import com.portfolio.manager.domain.repository.HoldingsRepository
-import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -26,9 +21,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class FIRECalculatorViewModelTest {
 
-    private lateinit var stockRepository: StockRepository
-    private lateinit var holdingsRepository: HoldingsRepository
-    private lateinit var cashRepository: CashRepository
+    private lateinit var portfolioCache: PortfolioCache
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var editor: SharedPreferences.Editor
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -44,14 +37,9 @@ class FIRECalculatorViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        stockRepository = mockk()
-        holdingsRepository = mockk()
-        cashRepository = mockk()
+        portfolioCache = PortfolioCache()
         sharedPreferences = mockk()
         editor = mockk(relaxed = true)
-
-        // Default: no cash items
-        every { cashRepository.getAllCashItems() } returns flowOf(emptyList())
 
         every { sharedPreferences.edit() } returns editor
         every { editor.putString(any(), any()) } answers {
@@ -83,14 +71,64 @@ class FIRECalculatorViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun createStock(
+        symbol: String,
+        name: String,
+        quantity: Int,
+        averagePrice: Double,
+        currentPrice: Double,
+        currency: String = "USD"
+    ) = Stock(
+        id = 1L,
+        symbol = symbol,
+        name = name,
+        quantity = quantity,
+        averagePrice = averagePrice,
+        currentPrice = currentPrice,
+        dayChange = 0.0,
+        dayChangePercent = 0.0,
+        currency = currency,
+        priceHistory = emptyList(),
+        priceHistoryTimestamps = emptyList(),
+        accountDetails = emptyList(),
+        annualDividend = 0.0,
+        dividendYield = 0.0,
+        targetPercentage = null
+    )
+
+    private fun createCashItem(
+        id: Long,
+        name: String,
+        value: Double,
+        yieldRate: Double,
+        currency: String
+    ) = CashItem(
+        id = id,
+        accountId = 1L,
+        name = name,
+        originalValue = value,
+        annualYieldRate = yieldRate,
+        currency = currency,
+        createdAt = 0L
+    )
+
     private fun createViewModel(): FIRECalculatorViewModel {
-        return FIRECalculatorViewModel(stockRepository, holdingsRepository, cashRepository, sharedPreferences)
+        return FIRECalculatorViewModel(portfolioCache, sharedPreferences)
     }
 
     @Test
-    fun `initial state - empty holdings returns zero portfolio value`() = runTest {
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+    fun `initial state - empty cache returns error`() = runTest {
+        // Don't populate cache - it's empty
+        val viewModel = createViewModel()
+
+        assertThat(viewModel.uiState.value).isInstanceOf(FIRECalculatorUiState.Error::class.java)
+        val state = viewModel.uiState.value as FIRECalculatorUiState.Error
+        assertThat(state.message).contains("No portfolio data")
+    }
+
+    @Test
+    fun `initial state - empty stocks returns zero portfolio value`() = runTest {
+        portfolioCache.update(emptyList(), emptyList(), KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -100,15 +138,11 @@ class FIRECalculatorViewModelTest {
     }
 
     @Test
-    fun `initial state - calculates portfolio value from holdings`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 150.0, "USD")
+    fun `initial state - calculates portfolio value from stocks`() = runTest {
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 10, 150.0, 200.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 200.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -119,14 +153,10 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `calculateFIRE - with positive real return`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 100, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         // 7% return - 2% inflation = 5% real return
         val viewModel = createViewModel()
@@ -145,14 +175,10 @@ class FIRECalculatorViewModelTest {
         prefValues["fire_annual_return"] = "3.0"
         prefValues["fire_annual_inflation"] = "3.0"
 
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 100, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -164,14 +190,10 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `calculateFIRETarget - calculates required portfolio`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 100, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         // Target monthly = $3000 -> annual = $36000
         // Real return = 5%
@@ -188,14 +210,10 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `updateAnnualReturn - recalculates FIRE values`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 100, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -210,14 +228,10 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `updateAnnualInflation - recalculates FIRE values`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 100, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -232,14 +246,10 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `updateTargetMonthlySpending - recalculates target values`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 100, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -254,14 +264,10 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `toggleCurrency - switches between USD and KRW`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 10, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), 1400.0)
 
         val viewModel = createViewModel()
 
@@ -281,15 +287,11 @@ class FIRECalculatorViewModelTest {
     }
 
     @Test
-    fun `KRW holdings - converted correctly to USD`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "005930.KS", "Samsung", 10, 70000.0, "KRW")
+    fun `KRW stocks - converted correctly to USD`() = runTest {
+        val stocks = listOf(
+            createStock("005930.KS", "Samsung", 10, 70000.0, 70000.0, "KRW")
         )
-        val quotes = listOf(QuoteResult(symbol = "005930.KS", regularMarketPrice = 70000.0, longName = "Samsung"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), 1400.0)
 
         val viewModel = createViewModel()
 
@@ -300,33 +302,14 @@ class FIRECalculatorViewModelTest {
     }
 
     @Test
-    fun `error state - when stock prices fail to load`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD")
-        )
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.failure(Exception("Network error"))
-
-        val viewModel = createViewModel()
-
-        assertThat(viewModel.uiState.value).isInstanceOf(FIRECalculatorUiState.Error::class.java)
-    }
-
-    @Test
     fun `calculateFIRETarget - with negative real return returns infinity`() = runTest {
         prefValues["fire_annual_return"] = "2.0"
         prefValues["fire_annual_inflation"] = "5.0"
 
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 100, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 100, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -339,18 +322,13 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `portfolio value - includes cash items in USD`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 10, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
         val cashItems = listOf(
-            CashItemEntity(1, 1L, "Emergency Fund", 5000.0, 4.0, "USD", 0L)
+            createCashItem(1L, "Emergency Fund", 5000.0, 4.0, "USD")
         )
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        every { cashRepository.getAllCashItems() } returns flowOf(cashItems)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, cashItems, KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
@@ -363,18 +341,13 @@ class FIRECalculatorViewModelTest {
 
     @Test
     fun `portfolio value - includes cash items in KRW converted to USD`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple", 10, 100.0, "USD")
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 10, 100.0, 100.0)
         )
-        val quotes = listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 100.0, longName = "Apple"))
         val cashItems = listOf(
-            CashItemEntity(1, 1L, "Korean Savings", 1400000.0, 3.5, "KRW", 0L)
+            createCashItem(1L, "Korean Savings", 1400000.0, 3.5, "KRW")
         )
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        every { cashRepository.getAllCashItems() } returns flowOf(cashItems)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(quotes)
+        portfolioCache.update(stocks, cashItems, 1400.0)
 
         val viewModel = createViewModel()
 
@@ -386,18 +359,40 @@ class FIRECalculatorViewModelTest {
     }
 
     @Test
-    fun `portfolio value - cash only with no holdings`() = runTest {
+    fun `portfolio value - cash only with no stocks`() = runTest {
         val cashItems = listOf(
-            CashItemEntity(1, 1L, "Savings", 10000.0, 5.0, "USD", 0L)
+            createCashItem(1L, "Savings", 10000.0, 5.0, "USD")
         )
-
-        coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(KRW_TO_USD_RATE)
-        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
-        every { cashRepository.getAllCashItems() } returns flowOf(cashItems)
+        portfolioCache.update(emptyList(), cashItems, KRW_TO_USD_RATE)
 
         val viewModel = createViewModel()
 
         val state = viewModel.uiState.value as FIRECalculatorUiState.Success
         assertThat(state.totalPortfolioValue).isEqualTo(10000.0)
+    }
+
+    @Test
+    fun `refresh - reloads data from cache`() = runTest {
+        val stocks = listOf(
+            createStock("AAPL", "Apple", 10, 100.0, 100.0)
+        )
+        portfolioCache.update(stocks, emptyList(), KRW_TO_USD_RATE)
+
+        val viewModel = createViewModel()
+
+        var state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        assertThat(state.totalPortfolioValue).isEqualTo(1000.0)
+
+        // Update cache with new data
+        val updatedStocks = listOf(
+            createStock("AAPL", "Apple", 10, 100.0, 150.0) // Price increased
+        )
+        portfolioCache.update(updatedStocks, emptyList(), KRW_TO_USD_RATE)
+
+        // Refresh should pick up new data
+        viewModel.refresh()
+
+        state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        assertThat(state.totalPortfolioValue).isEqualTo(1500.0) // 10 * 150
     }
 }

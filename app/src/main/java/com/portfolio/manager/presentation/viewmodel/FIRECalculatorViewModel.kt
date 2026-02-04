@@ -2,13 +2,9 @@ package com.portfolio.manager.presentation.viewmodel
 
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
-import com.portfolio.manager.domain.repository.CashRepository
-import com.portfolio.manager.domain.repository.HoldingsRepository
-import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.presentation.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 import com.portfolio.manager.util.PreferenceKeys
@@ -18,8 +14,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface FIRECalculatorUiState {
@@ -39,9 +33,7 @@ sealed interface FIRECalculatorUiState {
 
 @HiltViewModel
 class FIRECalculatorViewModel @Inject constructor(
-    private val stockRepository: StockRepository,
-    private val holdingsRepository: HoldingsRepository,
-    private val cashRepository: CashRepository,
+    private val portfolioCache: PortfolioCache,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -70,54 +62,27 @@ class FIRECalculatorViewModel @Inject constructor(
     }
 
     private fun loadData() {
-        viewModelScope.launch {
-            try {
-                _uiState.value = FIRECalculatorUiState.Loading
-
-                // Fetch exchange rate
-                currentExchangeRate = stockRepository.getExchangeRate("USD", "KRW")
-                    .getOrDefault(KRW_TO_USD_RATE)
-
-                // Get all holdings and cash items
-                val holdings = holdingsRepository.getAllHoldings().first()
-                val cashItems = cashRepository.getAllCashItems().first()
-                    .map { CashItem.fromEntity(it) }
-
-                // Calculate cash value in USD
-                val cashValueUsd = cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
-
-                if (holdings.isEmpty()) {
-                    // Even with no holdings, we may have cash
-                    updateState(cashValueUsd)
-                    return@launch
-                }
-
-                // Fetch current prices for all holdings
-                val symbols = holdings.map { it.symbol }.distinct()
-                val quotesResult = stockRepository.getQuotes(symbols)
-
-                val quotes = quotesResult.getOrElse {
-                    _uiState.value = FIRECalculatorUiState.Error("Failed to fetch stock prices")
-                    return@launch
-                }
-                val pricesBySymbol = quotes.associateBy { it.symbol }
-
-                // Calculate stocks value in USD
-                val stocksValueUsd = holdings.sumOf { holding ->
-                    val quote = pricesBySymbol[holding.symbol]
-                    val currentPrice = quote?.regularMarketPrice ?: holding.averagePrice
-                    val value = holding.quantity * currentPrice
-                    CurrencyConverter.toUsd(value, holding.currency, currentExchangeRate)
-                }
-
-                // Total portfolio value = stocks + cash
-                val totalValueUsd = stocksValueUsd + cashValueUsd
-
-                updateState(totalValueUsd)
-            } catch (e: Exception) {
-                _uiState.value = FIRECalculatorUiState.Error(e.message ?: "Unknown error")
-            }
+        // Read from shared cache (populated by DashboardViewModel)
+        if (!portfolioCache.hasData()) {
+            _uiState.value = FIRECalculatorUiState.Error("No portfolio data. Please refresh the dashboard first.")
+            return
         }
+
+        currentExchangeRate = portfolioCache.exchangeRate
+
+        val stocks = portfolioCache.stocks
+        val cashItems = portfolioCache.cashItems
+
+        // Calculate stocks value in USD
+        val stocksValueUsd = stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
+
+        // Calculate cash value in USD
+        val cashValueUsd = cashItems.sumOf { it.valueInUsd(currentExchangeRate) }
+
+        // Total portfolio value = stocks + cash
+        val totalValueUsd = stocksValueUsd + cashValueUsd
+
+        updateState(totalValueUsd)
     }
 
     private fun updateState(totalPortfolioValueUsd: Double) {

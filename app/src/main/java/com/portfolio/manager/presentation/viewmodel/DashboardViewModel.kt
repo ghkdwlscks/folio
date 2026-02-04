@@ -13,6 +13,7 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.service.CacheManager
+import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.service.PortfolioSorter
 import com.portfolio.manager.domain.service.PortfolioCalculationService
 import com.portfolio.manager.domain.service.PortfolioStatsCalculator
@@ -52,7 +53,8 @@ class DashboardViewModel @Inject constructor(
     private val holdingsRepository: HoldingsRepository,
     private val accountRepository: AccountRepository,
     private val cashRepository: CashRepository,
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    private val portfolioCache: PortfolioCache
 ) : ViewModel() {
 
     companion object {
@@ -108,6 +110,10 @@ class DashboardViewModel @Inject constructor(
             currentExchangeRate = cachedRate
 
             val cashItems = cacheManager.loadOrDefault<List<CashItem>>(PreferenceKeys.DASHBOARD_CACHED_CASH_ITEMS_JSON, emptyList())
+
+            // Update shared portfolio cache for FIRE calculator (same data shown in Dashboard)
+            portfolioCache.update(stocks, cashItems, cachedRate)
+
             val accounts = cacheManager.loadOrDefault<List<AccountWithCount>>(PreferenceKeys.DASHBOARD_CACHED_ACCOUNTS_JSON, emptyList())
             val portfolioSparkline = cacheManager.loadOrDefault<List<Double>>(PreferenceKeys.DASHBOARD_CACHED_PORTFOLIO_SPARKLINE, emptyList())
             val portfolioSparklineTimestamps = cacheManager.loadOrDefault<List<Long>>(PreferenceKeys.DASHBOARD_CACHED_SPARKLINE_TIMESTAMPS, emptyList())
@@ -173,6 +179,9 @@ class DashboardViewModel @Inject constructor(
     }
 
     private fun saveStateToCache(stocks: List<Stock>, cashItems: List<CashItem>, accounts: List<AccountWithCount>, exchangeRate: Double) {
+        // Update shared portfolio cache for FIRE calculator
+        portfolioCache.update(stocks, cashItems, exchangeRate)
+
         // Persist to SharedPreferences (in-memory cache already updated in handleFullRefresh)
         cacheManager.saveMultiple {
             put(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON, stocks)
@@ -181,6 +190,7 @@ class DashboardViewModel @Inject constructor(
             putFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, exchangeRate.toFloat())
         }
     }
+
 
     fun selectAccount(accountId: Long) {
         selectedAccountId = accountId
