@@ -29,6 +29,7 @@ import com.portfolio.manager.util.AppConstants.BENCHMARK_KOSPI
 import com.portfolio.manager.util.AppConstants.BENCHMARK_SP500
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import kotlin.math.abs
 import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
 import com.portfolio.manager.util.enum
@@ -240,11 +241,14 @@ class DashboardViewModel @Inject constructor(
         val sortedStocks = sortStocks(stocks, currentSortOption)
         val sortedCashItems = sortCashItems(cashItems, currentSortOption)
 
+        // Calculate rebalance status for accounts
+        val accountsWithRebalance = calculateAccountsWithRebalanceStatus(accounts, showInKrw)
+
         // Use per-account cached data (avoids showing wrong account's data)
         _uiState.value = DashboardUiState.Success(
             stocks = sortedStocks,
             cashItems = sortedCashItems,
-            accounts = accounts,
+            accounts = accountsWithRebalance,
             selectedAccountId = selectedAccountId,
             periodReturns = periodReturnsCache[selectedAccountId] ?: emptyMap(),
             selectedPeriod = summaryPeriod,
@@ -760,14 +764,15 @@ class DashboardViewModel @Inject constructor(
             allStocksCache = cacheMap.values.toList()
         }
 
+        val accountsWithRebalance = calculateAccountsWithRebalanceStatus(accounts, currentSuccess.showInKrw)
         _uiState.value = currentSuccess.copy(
             stocks = updatedStocks,
             cashItems = sortedCashItems,
-            accounts = accounts,
+            accounts = accountsWithRebalance,
             selectedAccountId = selectedAccountId
         )
         if (selectedAccountId == ALL_ACCOUNTS_ID) {
-            saveStateToCache(updatedStocks, sortedCashItems, accounts, currentExchangeRate)
+            saveStateToCache(updatedStocks, sortedCashItems, accountsWithRebalance, currentExchangeRate)
         }
         loadBenchmarkData(currentSuccess.selectedPeriod)
         loadPortfolioSparkline(updatedStocks, sortedCashItems, currentSuccess.selectedPeriod)
@@ -817,10 +822,12 @@ class DashboardViewModel @Inject constructor(
 
                 // Skip UI update if data is same as current state (avoids blink)
                 if (currentSuccess != null && stocksAreEqual(sortedStocks, currentSuccess.stocks)) {
-                    // Just mark refresh as done, don't replace state
-                    updateSuccessState { it.copy(isRefreshing = false) }
+                    // Just mark refresh as done, but update accounts with rebalance status
+                    val showInKrw = currentSuccess.showInKrw
+                    val accountsWithRebalance = calculateAccountsWithRebalanceStatus(accounts, showInKrw)
+                    updateSuccessState { it.copy(isRefreshing = false, accounts = accountsWithRebalance) }
                     if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                        saveStateToCache(sortedStocks, sortedCashItems, accounts, currentExchangeRate)
+                        saveStateToCache(sortedStocks, sortedCashItems, accountsWithRebalance, currentExchangeRate)
                     }
                     // Still need to load sparkline/benchmark if timestamps are missing
                     val selectedPeriod = currentSuccess.selectedPeriod
@@ -836,10 +843,11 @@ class DashboardViewModel @Inject constructor(
                 val previousReturns = currentSuccess?.periodReturns ?: emptyMap()
                 val selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod
                 val showInKrw = getShowInKrwForCurrentAccount()
+                val accountsWithRebalance = calculateAccountsWithRebalanceStatus(accounts, showInKrw)
                 _uiState.value = DashboardUiState.Success(
                     stocks = sortedStocks,
                     cashItems = sortedCashItems,
-                    accounts = accounts,
+                    accounts = accountsWithRebalance,
                     selectedAccountId = selectedAccountId,
                     periodReturns = previousReturns,
                     benchmarkReturns = currentSuccess?.benchmarkReturns ?: emptyMap(),
@@ -855,7 +863,7 @@ class DashboardViewModel @Inject constructor(
                     sortOption = currentSortOption
                 )
                 if (selectedAccountId == ALL_ACCOUNTS_ID) {
-                    saveStateToCache(sortedStocks, sortedCashItems, accounts, currentExchangeRate)
+                    saveStateToCache(sortedStocks, sortedCashItems, accountsWithRebalance, currentExchangeRate)
                 }
                 loadAllPeriodReturns(stocks, sortedCashItems)
                 loadBenchmarkData(selectedPeriod)
@@ -986,6 +994,70 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             cashRepository.deleteCashItem(cashItemId)
         }
+    }
+
+    /**
+     * Calculates rebalance status for each account.
+     * An account needs rebalancing if any holding has diffAmount >= currentPrice.
+     */
+    private suspend fun calculateAccountsWithRebalanceStatus(
+        accounts: List<AccountWithCount>,
+        showInKrw: Boolean
+    ): List<AccountWithCount> {
+        // Use allStocksCache which contains stocks from all accounts
+        val stockMap = allStocksCache.associateBy { it.symbol }
+
+        return accounts.map { accountWithCount ->
+            val needsRebalance = accountNeedsRebalance(
+                accountWithCount.account.id, stockMap, showInKrw
+            )
+            accountWithCount.copy(needsRebalance = needsRebalance)
+        }
+    }
+
+    /**
+     * Checks if an account needs rebalancing.
+     * Returns true if any holding has diffAmount >= currentPrice.
+     */
+    private suspend fun accountNeedsRebalance(
+        accountId: Long,
+        stockMap: Map<String, Stock>,
+        showInKrw: Boolean
+    ): Boolean {
+        val holdings = holdingsRepository.getHoldingsByAccountSync(accountId)
+        if (holdings.isEmpty()) return false
+
+        // Calculate total portfolio value for this account
+        val totalValue = holdings.sumOf { holding ->
+            val stock = stockMap[holding.symbol] ?: return@sumOf 0.0
+            val value = stock.currentPrice * holding.quantity
+            CurrencyConverter.convert(value, stock.currency, showInKrw, currentExchangeRate)
+        }
+
+        if (totalValue <= 0) return false
+
+        // Check each holding
+        for (holding in holdings) {
+            val targetPercent = holding.targetPercentage ?: continue
+            val stock = stockMap[holding.symbol] ?: continue
+
+            val currentValue = CurrencyConverter.convert(
+                stock.currentPrice * holding.quantity,
+                stock.currency,
+                showInKrw,
+                currentExchangeRate
+            )
+            val targetValue = totalValue * (targetPercent / 100.0)
+            val diffAmount = abs(targetValue - currentValue)
+            val price = CurrencyConverter.convert(
+                stock.currentPrice, stock.currency, showInKrw, currentExchangeRate
+            )
+
+            if (diffAmount >= price && price > 0) {
+                return true
+            }
+        }
+        return false
     }
 }
 

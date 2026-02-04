@@ -81,6 +81,8 @@ class DashboardViewModelTest {
         every { accountRepository.getAllAccounts() } returns flowOf(listOf(defaultAccount))
         every { holdingsRepository.getHoldingsCountByAccountFlow() } returns flowOf(emptyMap())
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        // Default holdings by account sync (for rebalance calculation)
+        coEvery { holdingsRepository.getHoldingsByAccountSync(any()) } returns emptyList()
         // Default cash repository mock
         every { cashRepository.getAllCashItems() } returns flowOf(emptyList())
         every { cashRepository.getCashItemsByAccount(any()) } returns flowOf(emptyList())

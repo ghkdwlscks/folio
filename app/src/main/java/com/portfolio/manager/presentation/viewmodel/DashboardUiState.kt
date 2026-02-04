@@ -15,7 +15,8 @@ import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 @kotlinx.serialization.Serializable
 data class AccountWithCount(
     val account: AccountEntity,
-    val holdingsCount: Int
+    val holdingsCount: Int,
+    val needsRebalance: Boolean = false
 )
 
 /**
