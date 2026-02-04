@@ -46,8 +46,9 @@ class FIRECalculatorViewModel @Inject constructor(
 
     private var annualInflation by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION)
 
-    // Always stored in USD to avoid floating-point drift on currency toggles
-    private var targetMonthlySpendingUsd by sharedPreferences.double(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
+    // Target spending stored in the currency user entered it
+    private var targetMonthlySpending by sharedPreferences.double(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
+    private var targetSpendingInKrw by sharedPreferences.boolean(PreferenceKeys.FIRE_TARGET_SPENDING_IN_KRW, false)
 
     private var showInKrw by sharedPreferences.boolean(PreferenceKeys.FIRE_SHOW_IN_KRW, false)
 
@@ -87,7 +88,7 @@ class FIRECalculatorViewModel @Inject constructor(
 
     private fun updateState(totalPortfolioValueUsd: Double) {
         val displayValue = CurrencyConverter.toDisplayCurrency(totalPortfolioValueUsd, showInKrw, currentExchangeRate)
-        val displaySpending = CurrencyConverter.toDisplayCurrency(targetMonthlySpendingUsd, showInKrw, currentExchangeRate)
+        val displaySpending = convertSpendingToDisplayCurrency()
 
         val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
         val fireTargetCalculation = calculateFIRETarget(
@@ -106,6 +107,17 @@ class FIRECalculatorViewModel @Inject constructor(
         )
     }
 
+    /**
+     * Converts stored target spending to current display currency.
+     */
+    private fun convertSpendingToDisplayCurrency(): Double {
+        return when {
+            targetSpendingInKrw == showInKrw -> targetMonthlySpending // Same currency, no conversion
+            targetSpendingInKrw -> targetMonthlySpending / currentExchangeRate // KRW to USD
+            else -> targetMonthlySpending * currentExchangeRate // USD to KRW
+        }
+    }
+
     fun updateAnnualReturn(value: Double) {
         annualReturn = value
         recalculate()
@@ -117,8 +129,9 @@ class FIRECalculatorViewModel @Inject constructor(
     }
 
     fun updateTargetMonthlySpending(value: Double) {
-        // Value comes in display currency, convert to USD for storage
-        targetMonthlySpendingUsd = CurrencyConverter.fromDisplayCurrency(value, showInKrw, currentExchangeRate)
+        // Store in the currency user entered it
+        targetMonthlySpending = value
+        targetSpendingInKrw = showInKrw
         recalculate()
     }
 
@@ -136,7 +149,7 @@ class FIRECalculatorViewModel @Inject constructor(
         if (currentState is FIRECalculatorUiState.Success) {
             val baseValueUsd = CurrencyConverter.fromDisplayCurrency(currentState.totalPortfolioValue, currentState.showInKrw, currentExchangeRate)
             val displayValue = CurrencyConverter.toDisplayCurrency(baseValueUsd, showInKrw, currentExchangeRate)
-            val displaySpending = CurrencyConverter.toDisplayCurrency(targetMonthlySpendingUsd, showInKrw, currentExchangeRate)
+            val displaySpending = convertSpendingToDisplayCurrency()
 
             val fireCalculation = calculateFIRE(displayValue, annualReturn, annualInflation)
             val fireTargetCalculation = calculateFIRETarget(

@@ -31,6 +31,7 @@ class FIRECalculatorViewModelTest {
         "fire_annual_return" to "7.0",
         "fire_annual_inflation" to "2.0",
         "fire_target_monthly_spending" to "3000.0",
+        "fire_target_spending_in_krw" to false,
         "fire_show_in_krw" to false
     )
 
@@ -63,6 +64,9 @@ class FIRECalculatorViewModelTest {
         }
         every { sharedPreferences.getBoolean("fire_show_in_krw", any()) } answers {
             prefValues["fire_show_in_krw"] as Boolean
+        }
+        every { sharedPreferences.getBoolean("fire_target_spending_in_krw", any()) } answers {
+            prefValues["fire_target_spending_in_krw"] as Boolean
         }
     }
 

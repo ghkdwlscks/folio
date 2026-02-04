@@ -41,5 +41,6 @@ object PreferenceKeys {
     const val FIRE_ANNUAL_RETURN = "fire_annual_return"
     const val FIRE_ANNUAL_INFLATION = "fire_annual_inflation"
     const val FIRE_TARGET_MONTHLY_SPENDING = "fire_target_monthly_spending"
+    const val FIRE_TARGET_SPENDING_IN_KRW = "fire_target_spending_in_krw"
     const val FIRE_SHOW_IN_KRW = "fire_show_in_krw"
 }
