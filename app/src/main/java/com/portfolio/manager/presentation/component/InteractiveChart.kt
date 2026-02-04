@@ -55,6 +55,7 @@ private data class ChartPoint(val x: Float, val y: Float, val index: Int)
 
 data class OverlayLine(
     val prices: List<Double>,
+    val timestamps: List<Long>,
     val color: Color,
     val label: String = ""
 )
@@ -307,10 +308,13 @@ fun InteractiveChart(
 
                 val formattedPrice = CurrencyFormatter.format(price, currency)
 
-                // Get benchmark values at this index
+                // Get benchmark values by matching timestamp
                 val benchmarkValues = overlayLines.mapNotNull { overlay ->
-                    if (index < overlay.prices.size) {
-                        Triple(overlay.label, overlay.prices[index], overlay.color)
+                    if (overlay.prices.size >= 2 && overlay.timestamps.isNotEmpty()) {
+                        // Find the benchmark index with matching or nearest timestamp
+                        val benchmarkIndex = overlay.timestamps.indexOfFirst { it >= timestamp }
+                            .takeIf { it >= 0 } ?: (overlay.timestamps.size - 1)
+                        Triple(overlay.label, overlay.prices[benchmarkIndex], overlay.color)
                     } else null
                 }
 

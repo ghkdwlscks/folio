@@ -47,6 +47,7 @@ sealed interface DashboardUiState {
         val portfolioSparkline: List<Double> = emptyList(),
         val portfolioSparklineTimestamps: List<Long> = emptyList(),
         val benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
+        val benchmarkTimestamps: Map<String, List<Long>> = emptyMap(),
         val portfolioStats: PortfolioStats = PortfolioStats(),
         val sortOption: SortOption = SortOption.WEIGHT
     ) : DashboardUiState

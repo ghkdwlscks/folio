@@ -70,6 +70,7 @@ fun PortfolioSummary(
     portfolioSparkline: List<Double> = emptyList(),
     portfolioSparklineTimestamps: List<Long> = emptyList(),
     benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
+    benchmarkTimestamps: Map<String, List<Long>> = emptyMap(),
     portfolioStats: PortfolioStats = PortfolioStats(),
     modifier: Modifier = Modifier
 ) {
@@ -302,6 +303,7 @@ fun PortfolioSummary(
                 priceHistory = actualPriceHistory,
                 priceHistoryTimestamps = portfolioSparklineTimestamps,
                 benchmarkSparklines = scaledBenchmarks,
+                benchmarkTimestamps = benchmarkTimestamps,
                 periodReturn = periodReturns[selectedPeriod]
             ),
             onDismiss = { showFullScreenChart = false },

@@ -126,6 +126,9 @@ class DashboardViewModel @Inject constructor(
             val benchmarkSparklines = cacheManager.loadOrDefault<Map<String, List<Double>>>(
                 PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_SPARKLINES, emptyMap()
             )
+            val benchmarkTimestamps = cacheManager.loadOrDefault<Map<String, List<Long>>>(
+                PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_TIMESTAMPS, emptyMap()
+            )
             val benchmarkReturns = cacheManager.load<Map<String, BenchmarkReturns>>(
                 PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_RETURNS
             )?.mapKeys { (key, _) -> TimePeriod.valueOf(key) } ?: emptyMap()
@@ -155,6 +158,7 @@ class DashboardViewModel @Inject constructor(
                 portfolioSparklineTimestamps = portfolioSparklineTimestamps,
                 portfolioStats = portfolioStats,
                 benchmarkSparklines = benchmarkSparklines,
+                benchmarkTimestamps = benchmarkTimestamps,
                 sortOption = currentSortOption
             )
         } catch (e: Exception) {
@@ -437,7 +441,7 @@ class DashboardViewModel @Inject constructor(
                 )
             }
 
-            // Build benchmark sparklines from same data
+            // Build benchmark sparklines and timestamps from same data
             val sparklines = buildMap {
                 sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
                     put(BENCHMARK_SP500, PriceHistoryProcessor.normalizeValues(prices))
@@ -446,9 +450,13 @@ class DashboardViewModel @Inject constructor(
                     put(BENCHMARK_KOSPI, PriceHistoryProcessor.normalizeValues(prices))
                 }
             }
+            val timestamps = buildMap {
+                sp500History?.timestamps?.takeIf { it.size >= 2 }?.let { put(BENCHMARK_SP500, it) }
+                kospiHistory?.timestamps?.takeIf { it.size >= 2 }?.let { put(BENCHMARK_KOSPI, it) }
+            }
 
             val benchmarks = BenchmarkReturns(sp500 = sp500Return, kospi = kospiReturn)
-            updateBenchmarkData(period, benchmarks, sparklines)
+            updateBenchmarkData(period, benchmarks, sparklines, timestamps)
         }
     }
 
@@ -469,21 +477,34 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun updateBenchmarkData(period: TimePeriod, benchmarks: BenchmarkReturns, sparklines: Map<String, List<Double>>) {
+    private fun updateBenchmarkData(
+        period: TimePeriod,
+        benchmarks: BenchmarkReturns,
+        sparklines: Map<String, List<Double>>,
+        timestamps: Map<String, List<Long>>
+    ) {
         updateSuccessState { state ->
             // Skip if data is the same (avoids unnecessary re-render)
-            if (state.benchmarkReturns[period] == benchmarks && state.benchmarkSparklines == sparklines) {
+            if (state.benchmarkReturns[period] == benchmarks &&
+                state.benchmarkSparklines == sparklines &&
+                state.benchmarkTimestamps == timestamps
+            ) {
                 return@updateSuccessState state
             }
             val updatedBenchmarks = state.benchmarkReturns.toMutableMap()
             updatedBenchmarks[period] = benchmarks
-            state.copy(benchmarkReturns = updatedBenchmarks, benchmarkSparklines = sparklines)
+            state.copy(
+                benchmarkReturns = updatedBenchmarks,
+                benchmarkSparklines = sparklines,
+                benchmarkTimestamps = timestamps
+            )
         }
         // Cache benchmark data for fast cold start (only for All Accounts)
         if (selectedAccountId == ALL_ACCOUNTS_ID && sparklines.isNotEmpty()) {
             val benchmarkReturnsMap = mapOf(period.name to benchmarks)
             cacheManager.saveMultiple {
                 put(PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_SPARKLINES, sparklines)
+                put(PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_TIMESTAMPS, timestamps)
                 put(PreferenceKeys.DASHBOARD_CACHED_BENCHMARK_RETURNS, benchmarkReturnsMap)
             }
         }

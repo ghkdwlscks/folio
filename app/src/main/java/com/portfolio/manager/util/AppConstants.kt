@@ -31,6 +31,7 @@ object PreferenceKeys {
     const val DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
     const val DASHBOARD_CACHED_PERIOD_RETURNS = "dashboard_cached_period_returns"
     const val DASHBOARD_CACHED_BENCHMARK_SPARKLINES = "dashboard_cached_benchmark_sparklines"
+    const val DASHBOARD_CACHED_BENCHMARK_TIMESTAMPS = "dashboard_cached_benchmark_timestamps"
     const val DASHBOARD_CACHED_BENCHMARK_RETURNS = "dashboard_cached_benchmark_returns"
     const val DASHBOARD_CACHED_SPARKLINE_TIMESTAMPS = "dashboard_cached_sparkline_timestamps"
     const val STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"

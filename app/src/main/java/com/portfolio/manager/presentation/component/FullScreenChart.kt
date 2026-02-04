@@ -53,6 +53,7 @@ data class FullScreenChartData(
     val priceHistory: List<Double>,
     val priceHistoryTimestamps: List<Long>,
     val benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
+    val benchmarkTimestamps: Map<String, List<Long>> = emptyMap(),
     val periodReturn: Double? = null
 )
 
@@ -150,12 +151,15 @@ fun FullScreenChartDialog(
                     if (data.priceHistory.size >= 2 && data.priceHistoryTimestamps.size >= 2) {
                         // Create colored overlay lines for benchmarks
                         val overlays = data.benchmarkSparklines.mapNotNull { (symbol, prices) ->
+                            val timestamps = data.benchmarkTimestamps[symbol] ?: emptyList()
                             val color = when (symbol) {
                                 "^GSPC" -> Color(0xFF2196F3) // Blue for S&P 500
                                 "^KS11" -> Color(0xFFFF9800) // Orange for KOSPI
                                 else -> Color.Gray
                             }
-                            if (prices.size >= 2) OverlayLine(prices, color.copy(alpha = 0.6f), symbol) else null
+                            if (prices.size >= 2 && timestamps.size >= 2) {
+                                OverlayLine(prices, timestamps, color.copy(alpha = 0.6f), symbol)
+                            } else null
                         }
                         InteractiveChart(
                             prices = data.priceHistory,
