@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.Currency
+import com.portfolio.manager.presentation.theme.GainGreen
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.getTrendColor
 
@@ -38,7 +39,12 @@ fun CashCard(
         cashItem.valueInUsd(exchangeRate)
     }
 
-    GlassSurface(modifier = modifier.fillMaxWidth()) {
+    // Cash always has positive yield, so use green shadow
+    GlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        elevation = GlassElevation.Low,
+        shadowColor = GainGreen
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

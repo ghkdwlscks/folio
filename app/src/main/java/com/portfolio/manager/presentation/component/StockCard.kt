@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +48,8 @@ import androidx.compose.ui.unit.sp
 import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.presentation.theme.AppAnimations
+import com.portfolio.manager.presentation.theme.GainGreen
+import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
 import com.portfolio.manager.presentation.util.getTrendColor
@@ -86,13 +89,25 @@ fun StockCard(
     val heatmapIntensity = min(abs(stock.gainLossPercent) / 50.0, 1.0).toFloat()
     val heatmapColor = getTrendColor(stock.gainLoss)
 
+    // Shadow color based on gain/loss (subtle tint)
+    val shadowColor = when {
+        stock.gainLoss > 0 -> GainGreen
+        stock.gainLoss < 0 -> LossRed
+        else -> Color.Black
+    }
+
+    // Elevation changes on press
+    val elevation = if (isPressed) GlassElevation.None else GlassElevation.Low
+
     GlassSurface(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            }
+            },
+        elevation = elevation,
+        shadowColor = shadowColor
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Heatmap indicator bar
