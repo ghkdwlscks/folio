@@ -1,9 +1,7 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -48,9 +46,11 @@ import androidx.compose.ui.unit.sp
 
 import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
 import com.portfolio.manager.presentation.util.getTrendColor
+import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
 import kotlin.math.abs
 import kotlin.math.min
@@ -71,16 +71,14 @@ fun StockCard(
     var showFullScreenChart by remember { mutableStateOf(false) }
     val hasAccountDetails = stock.accountDetails.isNotEmpty()
     val canExpand = hasAccountDetails || onDelete != null || onEdit != null
+    val haptic = rememberHapticFeedback()
 
     // Scale animation on press with spring bounce
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        targetValue = if (isPressed) AppAnimations.Scale.PRESSED else AppAnimations.Scale.NORMAL,
+        animationSpec = AppAnimations.Springs.Press,
         label = "cardScale"
     )
 
@@ -114,7 +112,10 @@ fun StockCard(
                             Modifier.clickable(
                                 interactionSource = interactionSource,
                                 indication = null
-                            ) { expanded = !expanded }
+                            ) {
+                                haptic.tick()
+                                expanded = !expanded
+                            }
                         } else {
                             Modifier
                         }

@@ -1,9 +1,7 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -52,10 +50,12 @@ import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.util.CurrencyConverter
+import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LossRedPastel
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
+import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
 @Composable
 fun PortfolioSummary(
@@ -485,6 +485,8 @@ private fun PeriodSelector(
     isLoading: Boolean,
     onPeriodSelected: (TimePeriod) -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
@@ -510,10 +512,7 @@ private fun PeriodSelector(
             val isPressed by interactionSource.collectIsPressedAsState()
             val scale by animateFloatAsState(
                 targetValue = if (isPressed) 0.92f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                ),
+                animationSpec = AppAnimations.Springs.Toggle,
                 label = "periodScale"
             )
 
@@ -529,7 +528,10 @@ private fun PeriodSelector(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null
-                    ) { onPeriodSelected(period) }
+                    ) {
+                        haptic.tick()
+                        onPeriodSelected(period)
+                    }
             ) {
                 Column(
                     modifier = Modifier

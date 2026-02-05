@@ -1,8 +1,6 @@
 package com.portfolio.manager.presentation.component
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -20,18 +18,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 
+import com.portfolio.manager.presentation.theme.AppAnimations
+import com.portfolio.manager.presentation.util.rememberHapticFeedback
+
 @Composable
 fun CurrencyToggle(
     showInKrw: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = rememberHapticFeedback()
     val indicatorOffset by animateFloatAsState(
         targetValue = if (showInKrw) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
+        animationSpec = AppAnimations.Springs.Toggle,
         label = "currencyToggleIndicator"
     )
 
@@ -65,7 +64,10 @@ fun CurrencyToggle(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
             .background(Color.White.copy(alpha = 0.15f))
-            .clickable(onClick = onToggle)
+            .clickable {
+                haptic.tick()
+                onToggle()
+            }
     ) { measurables, constraints ->
         val usdPlaceable = measurables[1].measure(constraints)
         val krwPlaceable = measurables[2].measure(constraints)
