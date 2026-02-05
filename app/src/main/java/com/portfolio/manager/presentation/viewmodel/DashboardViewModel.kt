@@ -627,7 +627,6 @@ class DashboardViewModel @Inject constructor(
 
     private suspend fun handleEmptyPortfolio(accounts: List<AccountWithCount>) {
         val showInKrw = getShowInKrwForCurrentAccount()
-        val currentSuccess = _uiState.value as? DashboardUiState.Success
         // Empty portfolio = no sparkline, no returns (showing cached data would be misleading)
         _uiState.value = DashboardUiState.Success(
             stocks = emptyList(),
@@ -635,7 +634,7 @@ class DashboardViewModel @Inject constructor(
             accounts = accounts,
             selectedAccountId = selectedAccountId,
             periodReturns = emptyMap(),
-            selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
+            selectedPeriod = summaryPeriod,
             exchangeRate = currentExchangeRate,
             showInKrw = showInKrw,
             sparklinePeriod = sparklinePeriod,
@@ -658,7 +657,7 @@ class DashboardViewModel @Inject constructor(
             accounts = accounts,
             selectedAccountId = selectedAccountId,
             periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
-            selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod,
+            selectedPeriod = summaryPeriod,
             exchangeRate = currentExchangeRate,
             showInKrw = showInKrw,
             sparklinePeriod = sparklinePeriod,
@@ -766,7 +765,9 @@ class DashboardViewModel @Inject constructor(
                 }
 
                 val previousReturns = currentSuccess?.periodReturns ?: emptyMap()
-                val selectedPeriod = currentSuccess?.selectedPeriod ?: summaryPeriod
+                // Always use summaryPeriod (source of truth) to avoid race condition
+                // when user changes period while refresh is in progress
+                val selectedPeriod = summaryPeriod
                 val showInKrw = getShowInKrwForCurrentAccount()
                 val accountsWithRebalance = calculateAccountsWithRebalanceStatus(accounts, showInKrw)
                 _uiState.value = DashboardUiState.Success(
