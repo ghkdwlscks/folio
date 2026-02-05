@@ -124,7 +124,11 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── PortfolioSorter.kt           # Stock/cash sorting by various criteria
 │   │   ├── StockMapper.kt, CashItemMapper.kt  # Entity to domain model mapping
 │   │   ├── CacheManager.kt              # JSON-based SharedPreferences caching
-│   │   └── PortfolioCache.kt            # In-memory cache for Dashboard/FIRE data sharing
+│   │   ├── PortfolioCache.kt            # In-memory cache for Dashboard/FIRE data sharing
+│   │   ├── BenchmarkDataService.kt      # Benchmark data loading and calculation
+│   │   ├── SparklineService.kt          # Portfolio sparkline computation
+│   │   ├── PeriodReturnsService.kt      # Period returns calculation (parallel loading)
+│   │   └── RebalanceCalculator.kt       # Rebalance detection and item calculation
 │   ├── util/               # Domain utilities
 │   │   ├── CurrencyConverter.kt         # USD/KRW conversion
 │   │   └── ReturnCalculator.kt          # Return percentage calculations
@@ -150,12 +154,18 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── ConfirmationDialog.kt             # Reusable confirmation dialogs
 │   │   ├── RebalanceDialog.kt                # Portfolio rebalancing UI
 │   │   ├── Skeleton.kt                       # Loading placeholders
-│   │   └── ErrorContent.kt                   # Error state display
+│   │   ├── ErrorContent.kt                   # Error state display
+│   │   └── form/                             # Form-specific reusable components
+│   │       ├── AccountSelectionSection.kt    # Account chips for add forms
+│   │       ├── CurrencySegmentedButton.kt    # USD/KRW segmented button
+│   │       └── FormScaffold.kt               # Common form scaffold with back navigation
 │   ├── viewmodel/          # ViewModels and UI states
 │   │   ├── DashboardViewModel.kt, DashboardUiState.kt
 │   │   ├── AddHoldingViewModel.kt, AddCashViewModel.kt
 │   │   ├── AccountsViewModel.kt
-│   │   └── FIRECalculatorViewModel.kt
+│   │   ├── FIRECalculatorViewModel.kt
+│   │   └── base/                          # Base classes and interfaces
+│   │       └── FormUiState.kt             # Common interface for form states
 │   ├── navigation/         # NavGraph, Routes
 │   ├── theme/              # Color, Theme, Type
 │   └── util/               # Presentation utilities
@@ -205,7 +215,7 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Error handling with try-catch in ViewModel operations
 - Batch queries to avoid N+1 problems (e.g., `getHoldingsCountByAccountFlow`)
 - Room `@Transaction` for atomic operations
-- Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor)
+- Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
 - SharedPreferences delegates for clean preference access
 - CacheManager for JSON-based caching with type safety
 - Currency enum for type-safe currency handling (never use "USD"/"KRW" strings in domain/presentation)
@@ -447,7 +457,7 @@ app/src/test/java/com/portfolio/manager/
 │   └── repository/           # Repository tests (Holdings, Account, Cash, Stock)
 ├── domain/
 │   ├── model/                # Model tests (Stock, CashItem, StockHolding, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns)
-│   ├── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CashItemMapper, CacheManager, PortfolioCache)
+│   ├── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CashItemMapper, CacheManager, PortfolioCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
 │   └── util/                 # Domain utility tests (CurrencyConverter, ReturnCalculator)
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)
