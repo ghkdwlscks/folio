@@ -1,9 +1,10 @@
 package com.portfolio.manager.data.repository
 
+import kotlinx.coroutines.flow.Flow
+
 import com.portfolio.manager.data.local.AccountDao
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.domain.repository.AccountRepository
-import kotlinx.coroutines.flow.Flow
 
 class AccountRepositoryImpl(
     private val dao: AccountDao

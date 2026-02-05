@@ -1,7 +1,8 @@
 package com.portfolio.manager.domain.repository
 
-import com.portfolio.manager.data.local.AccountEntity
 import kotlinx.coroutines.flow.Flow
+
+import com.portfolio.manager.data.local.AccountEntity
 
 interface AccountRepository {
     fun getAllAccounts(): Flow<List<AccountEntity>>

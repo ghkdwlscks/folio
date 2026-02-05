@@ -1,7 +1,8 @@
 package com.portfolio.manager.domain.model
 
-import com.portfolio.manager.domain.util.CurrencyConverter
 import kotlinx.serialization.Serializable
+
+import com.portfolio.manager.domain.util.CurrencyConverter
 
 @Serializable
 data class CashItem(

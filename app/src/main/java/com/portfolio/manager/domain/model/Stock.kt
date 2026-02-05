@@ -1,8 +1,9 @@
 package com.portfolio.manager.domain.model
 
+import kotlinx.serialization.Serializable
+
 import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants
-import kotlinx.serialization.Serializable
 
 @Serializable
 data class StockAccountDetail(

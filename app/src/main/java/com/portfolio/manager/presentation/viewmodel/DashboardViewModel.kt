@@ -1,42 +1,14 @@
 package com.portfolio.manager.presentation.viewmodel
 
+import android.content.SharedPreferences
 import android.util.Log
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import android.content.SharedPreferences
-import com.portfolio.manager.data.local.AccountEntity
-import com.portfolio.manager.data.local.CashItemEntity
-import com.portfolio.manager.data.local.HoldingEntity
-import com.portfolio.manager.domain.model.CashItem
-import com.portfolio.manager.domain.model.PortfolioStats
-import com.portfolio.manager.domain.model.Stock
-import com.portfolio.manager.domain.model.TimePeriod
-import com.portfolio.manager.domain.model.BenchmarkReturns
-import com.portfolio.manager.domain.model.SortOption
-import com.portfolio.manager.domain.service.CacheManager
-import com.portfolio.manager.domain.service.CashItemMapper
-import com.portfolio.manager.domain.service.PortfolioCache
-import com.portfolio.manager.domain.service.PortfolioSorter
-import com.portfolio.manager.domain.service.PortfolioCalculationService
-import com.portfolio.manager.domain.service.PortfolioStatsCalculator
-import com.portfolio.manager.domain.service.PriceHistoryProcessor
-import com.portfolio.manager.domain.service.StockMapper
-import com.portfolio.manager.domain.repository.AccountRepository
-import com.portfolio.manager.domain.repository.CashRepository
-import com.portfolio.manager.domain.repository.HoldingsRepository
-import com.portfolio.manager.domain.repository.PriceHistoryData
-import com.portfolio.manager.domain.repository.StockRepository
-import com.portfolio.manager.domain.util.CurrencyConverter
-import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
-import com.portfolio.manager.util.AppConstants.BENCHMARK_KOSPI
-import com.portfolio.manager.util.AppConstants.BENCHMARK_SP500
-import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
-import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
-import kotlin.math.abs
-import com.portfolio.manager.util.PreferenceKeys
-import com.portfolio.manager.util.boolean
-import com.portfolio.manager.util.enum
+
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -46,8 +18,41 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+
+import com.portfolio.manager.data.local.AccountEntity
+import com.portfolio.manager.data.local.CashItemEntity
+import com.portfolio.manager.data.local.HoldingEntity
+import com.portfolio.manager.domain.model.BenchmarkReturns
+import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.PortfolioStats
+import com.portfolio.manager.domain.model.SortOption
+import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.domain.repository.AccountRepository
+import com.portfolio.manager.domain.repository.CashRepository
+import com.portfolio.manager.domain.repository.HoldingsRepository
+import com.portfolio.manager.domain.repository.PriceHistoryData
+import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.domain.service.CacheManager
+import com.portfolio.manager.domain.service.CashItemMapper
+import com.portfolio.manager.domain.service.PortfolioCache
+import com.portfolio.manager.domain.service.PortfolioCalculationService
+import com.portfolio.manager.domain.service.PortfolioSorter
+import com.portfolio.manager.domain.service.PortfolioStatsCalculator
+import com.portfolio.manager.domain.service.PriceHistoryProcessor
+import com.portfolio.manager.domain.service.StockMapper
+import com.portfolio.manager.domain.util.CurrencyConverter
+import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
+import com.portfolio.manager.util.AppConstants.BENCHMARK_KOSPI
+import com.portfolio.manager.util.AppConstants.BENCHMARK_SP500
+import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
+import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 import com.portfolio.manager.util.JsonSerializer
-import javax.inject.Inject
+import com.portfolio.manager.util.PreferenceKeys
+import com.portfolio.manager.util.boolean
+import com.portfolio.manager.util.enum
+
+import kotlin.math.abs
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(

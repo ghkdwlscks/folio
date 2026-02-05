@@ -31,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
+
 import kotlinx.coroutines.launch
+
+import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

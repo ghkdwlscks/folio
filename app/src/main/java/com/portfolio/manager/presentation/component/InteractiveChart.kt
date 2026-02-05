@@ -36,11 +36,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.getTrendColor
+
+import kotlin.math.ln
+import kotlin.math.roundToInt
+
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlin.math.ln
-import kotlin.math.roundToInt
 
 private data class ChartData(
     val logPrices: List<Double>,

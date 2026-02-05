@@ -1,9 +1,10 @@
 package com.portfolio.manager.domain.service
 
-import com.portfolio.manager.domain.model.CashItem
-import com.portfolio.manager.domain.model.Stock
 import javax.inject.Inject
 import javax.inject.Singleton
+
+import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Stock
 
 /**
  * Shared in-memory cache for portfolio data.

@@ -47,11 +47,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.portfolio.manager.presentation.component.CurrencyToggle
-import com.portfolio.manager.presentation.component.ErrorContent
 import androidx.compose.ui.unit.sp
+
 import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
+import com.portfolio.manager.presentation.component.CurrencyToggle
+import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.theme.GainGreen
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.viewmodel.FIRECalculatorUiState

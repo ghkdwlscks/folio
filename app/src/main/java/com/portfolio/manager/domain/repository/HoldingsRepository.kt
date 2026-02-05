@@ -1,7 +1,8 @@
 package com.portfolio.manager.domain.repository
 
-import com.portfolio.manager.data.local.HoldingEntity
 import kotlinx.coroutines.flow.Flow
+
+import com.portfolio.manager.data.local.HoldingEntity
 
 interface HoldingsRepository {
     fun getHoldingsByAccount(accountId: Long): Flow<List<HoldingEntity>>

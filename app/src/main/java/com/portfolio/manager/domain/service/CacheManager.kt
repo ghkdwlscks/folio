@@ -2,8 +2,10 @@ package com.portfolio.manager.domain.service
 
 import android.content.SharedPreferences
 import android.util.Log
-import com.portfolio.manager.util.JsonSerializer
+
 import kotlinx.serialization.encodeToString
+
+import com.portfolio.manager.util.JsonSerializer
 
 /**
  * Service for managing JSON-based caching with SharedPreferences.

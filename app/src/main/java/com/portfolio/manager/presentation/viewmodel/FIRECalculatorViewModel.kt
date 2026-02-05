@@ -1,7 +1,16 @@
 package com.portfolio.manager.presentation.viewmodel
 
 import android.content.SharedPreferences
+
 import androidx.lifecycle.ViewModel
+
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
 import com.portfolio.manager.domain.service.PortfolioCache
@@ -10,11 +19,6 @@ import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
 import com.portfolio.manager.util.double
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
 
 sealed interface FIRECalculatorUiState {
     data object Loading : FIRECalculatorUiState

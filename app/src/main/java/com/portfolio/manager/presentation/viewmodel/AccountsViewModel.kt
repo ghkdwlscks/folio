@@ -2,15 +2,18 @@ package com.portfolio.manager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.portfolio.manager.data.local.AccountEntity
-import com.portfolio.manager.domain.repository.AccountRepository
+
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+
+import com.portfolio.manager.data.local.AccountEntity
+import com.portfolio.manager.domain.repository.AccountRepository
 
 sealed interface AccountsUiState {
     data object Loading : AccountsUiState

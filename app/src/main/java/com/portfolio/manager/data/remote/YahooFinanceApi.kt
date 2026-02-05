@@ -1,9 +1,10 @@
 package com.portfolio.manager.data.remote
 
-import com.portfolio.manager.data.remote.dto.YahooChartResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+
+import com.portfolio.manager.data.remote.dto.YahooChartResponse
 
 interface YahooFinanceApi {
 

@@ -45,10 +45,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
 import com.portfolio.manager.presentation.util.getTrendColor
+
 import kotlin.math.abs
 import kotlin.math.min
 

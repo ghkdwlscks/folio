@@ -3,6 +3,17 @@ package com.portfolio.manager.presentation.viewmodel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.repository.AccountRepository
@@ -13,14 +24,6 @@ import com.portfolio.manager.util.AppConstants.MAX_PRICE
 import com.portfolio.manager.util.AppConstants.MAX_QUANTITY
 import com.portfolio.manager.util.AppConstants.MIN_PRICE
 import com.portfolio.manager.util.AppConstants.MIN_QUANTITY
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class AddHoldingUiState(
     val isInitialLoading: Boolean = true,

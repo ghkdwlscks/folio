@@ -2,21 +2,24 @@ package com.portfolio.manager.di
 
 import android.content.Context
 import android.content.SharedPreferences
+
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.portfolio.manager.data.local.AccountDao
-import com.portfolio.manager.data.local.AppDatabase
-import com.portfolio.manager.data.local.CashItemDao
-import com.portfolio.manager.data.local.HoldingDao
-import com.portfolio.manager.data.local.PriceHistoryDao
-import com.portfolio.manager.data.local.StockNameDao
+
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+
+import com.portfolio.manager.data.local.AccountDao
+import com.portfolio.manager.data.local.AppDatabase
+import com.portfolio.manager.data.local.CashItemDao
+import com.portfolio.manager.data.local.HoldingDao
+import com.portfolio.manager.data.local.PriceHistoryDao
+import com.portfolio.manager.data.local.StockNameDao
 
 @Module
 @InstallIn(SingletonComponent::class)

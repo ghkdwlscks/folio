@@ -1,20 +1,23 @@
 package com.portfolio.manager.di
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import com.portfolio.manager.data.remote.YahooFinanceApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import com.portfolio.manager.util.JsonSerializer
-import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+
+import kotlinx.serialization.json.Json
+
+import com.portfolio.manager.data.remote.YahooFinanceApi
+import com.portfolio.manager.util.JsonSerializer
+
+import java.util.concurrent.TimeUnit
 
 @Module
 @InstallIn(SingletonComponent::class)

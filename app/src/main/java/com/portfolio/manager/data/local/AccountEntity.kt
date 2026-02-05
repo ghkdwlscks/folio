@@ -2,6 +2,7 @@ package com.portfolio.manager.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+
 import kotlinx.serialization.Serializable
 
 @Serializable

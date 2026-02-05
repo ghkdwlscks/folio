@@ -1,7 +1,8 @@
 package com.portfolio.manager.domain.repository
 
-import com.portfolio.manager.data.local.CashItemEntity
 import kotlinx.coroutines.flow.Flow
+
+import com.portfolio.manager.data.local.CashItemEntity
 
 interface CashRepository {
     fun getCashItemsByAccount(accountId: Long): Flow<List<CashItemEntity>>

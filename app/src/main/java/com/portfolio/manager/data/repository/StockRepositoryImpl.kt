@@ -1,5 +1,12 @@
 package com.portfolio.manager.data.repository
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.encodeToString
+
 import com.portfolio.manager.data.local.PriceHistoryDao
 import com.portfolio.manager.data.local.PriceHistoryEntity
 import com.portfolio.manager.data.local.StockNameDao
@@ -11,13 +18,8 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.domain.util.ReturnCalculator
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import com.portfolio.manager.util.JsonSerializer
-import kotlinx.serialization.encodeToString
+
 import java.time.LocalDate
 
 class StockRepositoryImpl(
