@@ -20,22 +20,23 @@ import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.presentation.util.InputUtils
+import com.portfolio.manager.presentation.viewmodel.base.FormUiState
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.ErrorMessages
 
 data class AddCashUiState(
-    val isInitialLoading: Boolean = true,
+    override val isInitialLoading: Boolean = true,
     val name: String = "",
     val value: String = "",
     val yieldRate: String = "",
-    val currency: Currency = Currency.KRW,
-    val errorMessage: String? = null,
-    val selectedAccountId: Long = ALL_ACCOUNTS_ID,
-    val accounts: List<AccountEntity> = emptyList(),
-    val needsAccountSelection: Boolean = false,
-    val isEditMode: Boolean = false,
-    val isSaving: Boolean = false
-)
+    override val currency: Currency = Currency.KRW,
+    override val errorMessage: String? = null,
+    override val selectedAccountId: Long = ALL_ACCOUNTS_ID,
+    override val accounts: List<AccountEntity> = emptyList(),
+    override val needsAccountSelection: Boolean = false,
+    override val isEditMode: Boolean = false,
+    override val isSaving: Boolean = false
+) : FormUiState
 
 @HiltViewModel
 class AddCashViewModel @Inject constructor(

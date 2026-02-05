@@ -20,6 +20,7 @@ import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.presentation.util.InputUtils
+import com.portfolio.manager.presentation.viewmodel.base.FormUiState
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.AppConstants.MAX_PRICE
 import com.portfolio.manager.util.AppConstants.MAX_QUANTITY
@@ -28,18 +29,18 @@ import com.portfolio.manager.util.AppConstants.MIN_QUANTITY
 import com.portfolio.manager.util.ErrorMessages
 
 data class AddHoldingUiState(
-    val isInitialLoading: Boolean = true,
+    override val isInitialLoading: Boolean = true,
     val symbol: String = "",
     val quantity: String = "",
     val averagePrice: String = "",
-    val currency: Currency = Currency.USD,
-    val errorMessage: String? = null,
-    val selectedAccountId: Long = ALL_ACCOUNTS_ID,
-    val accounts: List<AccountEntity> = emptyList(),
-    val needsAccountSelection: Boolean = false,
-    val isEditMode: Boolean = false,
-    val isSaving: Boolean = false
-)
+    override val currency: Currency = Currency.USD,
+    override val errorMessage: String? = null,
+    override val selectedAccountId: Long = ALL_ACCOUNTS_ID,
+    override val accounts: List<AccountEntity> = emptyList(),
+    override val needsAccountSelection: Boolean = false,
+    override val isEditMode: Boolean = false,
+    override val isSaving: Boolean = false
+) : FormUiState
 
 @HiltViewModel
 class AddHoldingViewModel @Inject constructor(
