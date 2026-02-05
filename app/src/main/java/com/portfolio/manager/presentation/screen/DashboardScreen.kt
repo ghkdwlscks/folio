@@ -24,7 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.LocalFireDepartment
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.ShowChart
@@ -734,7 +734,7 @@ private fun DashboardTopBar(
             }
             IconButton(onClick = onManageAccounts) {
                 Icon(
-                    imageVector = Icons.Filled.Settings,
+                    imageVector = Icons.Outlined.ManageAccounts,
                     contentDescription = "Manage Accounts"
                 )
             }
