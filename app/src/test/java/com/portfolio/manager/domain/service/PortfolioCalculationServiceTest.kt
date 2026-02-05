@@ -2,6 +2,7 @@ package com.portfolio.manager.domain.service
 
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.PriceHistoryData
@@ -53,7 +54,7 @@ class PortfolioCalculationServiceTest {
 
     @Test
     fun `calculateWeightedCashReturn - single USD cash item`() {
-        val cashItem = CashItem(1, 1L, "Savings", 10000.0, 5.0, "USD", 0L)
+        val cashItem = CashItem(1, 1L, "Savings", 10000.0, 5.0, Currency.USD, 0L)
         val result = PortfolioCalculationService.calculateWeightedCashReturn(listOf(cashItem), 1400.0, TimePeriod.ONE_YEAR)
         // One year return for 5% annual yield = 5.0%
         assertThat(result).isWithin(0.01).of(5.0)
@@ -61,8 +62,8 @@ class PortfolioCalculationServiceTest {
 
     @Test
     fun `calculateWeightedCashReturn - weighted average of multiple items`() {
-        val cash1 = CashItem(1, 1L, "High Yield", 10000.0, 5.0, "USD", 0L)
-        val cash2 = CashItem(2, 1L, "Low Yield", 10000.0, 3.0, "USD", 0L)
+        val cash1 = CashItem(1, 1L, "High Yield", 10000.0, 5.0, Currency.USD, 0L)
+        val cash2 = CashItem(2, 1L, "Low Yield", 10000.0, 3.0, Currency.USD, 0L)
         val result = PortfolioCalculationService.calculateWeightedCashReturn(listOf(cash1, cash2), 1400.0, TimePeriod.ONE_YEAR)
         // Equal weight: (0.5 * 5.0) + (0.5 * 3.0) = 4.0%
         assertThat(result).isWithin(0.01).of(4.0)
@@ -70,7 +71,7 @@ class PortfolioCalculationServiceTest {
 
     @Test
     fun `calculateWeightedCashReturn - zero value cash - returns zero`() {
-        val cashItem = CashItem(1, 1L, "Empty", 0.0, 5.0, "USD", 0L)
+        val cashItem = CashItem(1, 1L, "Empty", 0.0, 5.0, Currency.USD, 0L)
         assertThat(PortfolioCalculationService.calculateWeightedCashReturn(listOf(cashItem), 1400.0, TimePeriod.ONE_YEAR)).isEqualTo(0.0)
     }
 
@@ -92,7 +93,7 @@ class PortfolioCalculationServiceTest {
     fun `buildPortfolioValues - no price history - returns null`() {
         val stock = Stock(
             id = 1L, symbol = "AAPL", name = "Apple", currentPrice = 150.0, averagePrice = 100.0,
-            quantity = 10, currency = "USD", priceHistory = emptyList(),
+            quantity = 10, currency = Currency.USD, priceHistory = emptyList(),
             priceHistoryTimestamps = emptyList()
         )
         val result = PortfolioCalculationService.buildPortfolioValues(
@@ -109,7 +110,7 @@ class PortfolioCalculationServiceTest {
     fun `buildPortfolioValues - insufficient history - returns null`() {
         val stock = Stock(
             id = 1L, symbol = "AAPL", name = "Apple", currentPrice = 150.0, averagePrice = 100.0,
-            quantity = 10, currency = "USD", priceHistory = listOf(100.0),
+            quantity = 10, currency = Currency.USD, priceHistory = listOf(100.0),
             priceHistoryTimestamps = emptyList()
         )
         val result = PortfolioCalculationService.buildPortfolioValues(
@@ -126,7 +127,7 @@ class PortfolioCalculationServiceTest {
     fun `buildPortfolioValues - valid data - returns values and dates`() {
         val stock = Stock(
             id = 1L, symbol = "AAPL", name = "Apple", currentPrice = 150.0, averagePrice = 100.0,
-            quantity = 10, currency = "USD", priceHistory = listOf(100.0, 110.0, 120.0),
+            quantity = 10, currency = Currency.USD, priceHistory = listOf(100.0, 110.0, 120.0),
             priceHistoryTimestamps = emptyList()
         )
         val priceHistory = PriceHistoryData(

@@ -2,6 +2,7 @@ package com.portfolio.manager.domain.service
 
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.Stock
 import org.junit.Test
@@ -18,7 +19,7 @@ class PortfolioSorterTest {
         quantity: Int = 10,
         averagePrice: Double = 100.0,
         currentPrice: Double = 100.0,
-        currency: String = "USD",
+        currency: Currency = Currency.USD,
         dayChangePercent: Double? = null
     ) = Stock(
         id = stockIdCounter++,
@@ -36,7 +37,7 @@ class PortfolioSorterTest {
         name: String,
         originalValue: Double,
         annualYieldRate: Double,
-        currency: String = "USD"
+        currency: Currency = Currency.USD
     ) = CashItem(
         id = id,
         accountId = 1L,
@@ -218,8 +219,8 @@ class PortfolioSorterTest {
     @Test
     fun `sortCashItems - by WEIGHT with KRW currency - converts correctly`() {
         val cashItems = listOf(
-            createCashItem(1, "USD Fund", 1000.0, 3.0, "USD"),      // $1000
-            createCashItem(2, "KRW Fund", 2800000.0, 2.0, "KRW")   // ~$2000
+            createCashItem(1, "USD Fund", 1000.0, 3.0, Currency.USD),      // $1000
+            createCashItem(2, "KRW Fund", 2800000.0, 2.0, Currency.KRW)   // ~$2000
         )
 
         val sorted = PortfolioSorter.sortCashItems(cashItems, SortOption.WEIGHT, exchangeRate)

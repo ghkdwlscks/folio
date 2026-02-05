@@ -1,6 +1,7 @@
 package com.portfolio.manager.presentation.util
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.domain.model.Currency
 import org.junit.Test
 
 class InputUtilsTest {
@@ -78,41 +79,36 @@ class InputUtilsTest {
 
     @Test
     fun `formatValueForCurrency - KRW - returns integer string`() {
-        assertThat(InputUtils.formatValueForCurrency(1234.56, "KRW")).isEqualTo("1234")
+        assertThat(InputUtils.formatValueForCurrency(1234.56, Currency.KRW)).isEqualTo("1234")
     }
 
     @Test
     fun `formatValueForCurrency - KRW with round number - returns integer`() {
-        assertThat(InputUtils.formatValueForCurrency(1000.0, "KRW")).isEqualTo("1000")
+        assertThat(InputUtils.formatValueForCurrency(1000.0, Currency.KRW)).isEqualTo("1000")
     }
 
     @Test
     fun `formatValueForCurrency - USD - returns decimal string`() {
-        assertThat(InputUtils.formatValueForCurrency(123.45, "USD")).isEqualTo("123.45")
+        assertThat(InputUtils.formatValueForCurrency(123.45, Currency.USD)).isEqualTo("123.45")
     }
 
     @Test
     fun `formatValueForCurrency - USD round number - keeps decimal format`() {
-        assertThat(InputUtils.formatValueForCurrency(100.0, "USD")).isEqualTo("100.0")
+        assertThat(InputUtils.formatValueForCurrency(100.0, Currency.USD)).isEqualTo("100.0")
     }
 
     @Test
     fun `formatValueForCurrency - zero KRW - returns zero`() {
-        assertThat(InputUtils.formatValueForCurrency(0.0, "KRW")).isEqualTo("0")
+        assertThat(InputUtils.formatValueForCurrency(0.0, Currency.KRW)).isEqualTo("0")
     }
 
     @Test
     fun `formatValueForCurrency - zero USD - returns zero with decimal`() {
-        assertThat(InputUtils.formatValueForCurrency(0.0, "USD")).isEqualTo("0.0")
+        assertThat(InputUtils.formatValueForCurrency(0.0, Currency.USD)).isEqualTo("0.0")
     }
 
     @Test
     fun `formatValueForCurrency - large KRW value - returns integer`() {
-        assertThat(InputUtils.formatValueForCurrency(1000000.99, "KRW")).isEqualTo("1000000")
-    }
-
-    @Test
-    fun `formatValueForCurrency - unknown currency - treated as non-KRW`() {
-        assertThat(InputUtils.formatValueForCurrency(123.45, "EUR")).isEqualTo("123.45")
+        assertThat(InputUtils.formatValueForCurrency(1000000.99, Currency.KRW)).isEqualTo("1000000")
     }
 }

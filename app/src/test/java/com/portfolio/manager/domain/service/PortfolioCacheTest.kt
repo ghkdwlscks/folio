@@ -2,6 +2,7 @@ package com.portfolio.manager.domain.service
 
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
 import org.junit.Test
 
@@ -16,7 +17,7 @@ class PortfolioCacheTest {
         currentPrice = currentPrice,
         dayChange = 0.0,
         dayChangePercent = 0.0,
-        currency = "USD",
+        currency = Currency.USD,
         priceHistory = emptyList(),
         priceHistoryTimestamps = emptyList(),
         accountDetails = emptyList(),
@@ -31,7 +32,7 @@ class PortfolioCacheTest {
         name = name,
         originalValue = value,
         annualYieldRate = 5.0,
-        currency = "USD",
+        currency = Currency.USD,
         createdAt = 0L
     )
 

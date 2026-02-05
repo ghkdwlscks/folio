@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
@@ -62,7 +63,7 @@ class AddHoldingViewModelTest {
         assertThat(state.symbol).isEmpty()
         assertThat(state.quantity).isEmpty()
         assertThat(state.averagePrice).isEmpty()
-        assertThat(state.currency).isEqualTo("USD")
+        assertThat(state.currency).isEqualTo(Currency.USD)
     }
 
     @Test
@@ -85,7 +86,7 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("AAPL")
         viewModel.updateQuantity("10")
         viewModel.updateAveragePrice("150.00")
-        viewModel.updateCurrency("USD")
+        viewModel.updateCurrency(Currency.USD)
 
         val result = viewModel.saveHolding()
 
@@ -154,7 +155,7 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("005930.KS")
         viewModel.updateQuantity("50")
         viewModel.updateAveragePrice("72000")
-        viewModel.updateCurrency("KRW")
+        viewModel.updateCurrency(Currency.KRW)
 
         val result = viewModel.saveHolding()
 
@@ -263,7 +264,7 @@ class AddHoldingViewModelTest {
         assertThat(state.symbol).isEqualTo("AAPL")
         assertThat(state.quantity).isEqualTo("10")
         assertThat(state.averagePrice).isEqualTo("150.0")
-        assertThat(state.currency).isEqualTo("USD")
+        assertThat(state.currency).isEqualTo(Currency.USD)
     }
 
     @Test
@@ -448,7 +449,7 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("005930")
         viewModel.updateQuantity("50")
         viewModel.updateAveragePrice("72000")
-        viewModel.updateCurrency("KRW")
+        viewModel.updateCurrency(Currency.KRW)
 
         val result = viewModel.saveHolding()
 
@@ -471,7 +472,7 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("005930.KS")
         viewModel.updateQuantity("50")
         viewModel.updateAveragePrice("72000")
-        viewModel.updateCurrency("KRW")
+        viewModel.updateCurrency(Currency.KRW)
 
         val result = viewModel.saveHolding()
 
@@ -533,7 +534,7 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("005930")
         viewModel.onSymbolFocusLost()
 
-        assertThat(viewModel.uiState.value.currency).isEqualTo("KRW")
+        assertThat(viewModel.uiState.value.currency).isEqualTo(Currency.KRW)
     }
 
     @Test
@@ -544,7 +545,7 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("AAPL")
         viewModel.onSymbolFocusLost()
 
-        assertThat(viewModel.uiState.value.currency).isEqualTo("USD")
+        assertThat(viewModel.uiState.value.currency).isEqualTo(Currency.USD)
     }
 
     @Test
@@ -555,7 +556,7 @@ class AddHoldingViewModelTest {
         viewModel.updateSymbol("12345")
         viewModel.onSymbolFocusLost()
 
-        assertThat(viewModel.uiState.value.currency).isEqualTo("USD")
+        assertThat(viewModel.uiState.value.currency).isEqualTo(Currency.USD)
     }
 
     @Test

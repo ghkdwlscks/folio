@@ -8,6 +8,7 @@ import com.portfolio.manager.data.local.CashItemEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.BenchmarkReturns
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.PeriodReturn
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.SortOption
@@ -221,7 +222,7 @@ class DashboardViewModelTest {
         assertThat(samsungStock).isNotNull()
         // Should use longName first
         assertThat(samsungStock?.name).isEqualTo("Samsung Electronics Co., Ltd.")
-        assertThat(samsungStock?.currency).isEqualTo("KRW")
+        assertThat(samsungStock?.currency).isEqualTo(Currency.KRW)
         assertThat(samsungStock?.currentPrice).isEqualTo(78500.0)
     }
 

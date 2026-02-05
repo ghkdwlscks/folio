@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.CashItemEntity
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
@@ -101,7 +102,7 @@ class AddCashViewModelTest {
         assertThat(state.name).isEqualTo("Emergency Fund")
         assertThat(state.value).isEqualTo("10000.0")
         assertThat(state.yieldRate).isEqualTo("4.5")
-        assertThat(state.currency).isEqualTo("USD")
+        assertThat(state.currency).isEqualTo(Currency.USD)
         assertThat(state.selectedAccountId).isEqualTo(1L)
     }
 
@@ -140,9 +141,9 @@ class AddCashViewModelTest {
         val savedStateHandle = SavedStateHandle(mapOf("accountId" to 1L))
         val viewModel = AddCashViewModel(cashRepository, accountRepository, savedStateHandle)
 
-        viewModel.updateCurrency("KRW")
+        viewModel.updateCurrency(Currency.KRW)
 
-        assertThat(viewModel.uiState.value.currency).isEqualTo("KRW")
+        assertThat(viewModel.uiState.value.currency).isEqualTo(Currency.KRW)
     }
 
     @Test
@@ -219,7 +220,7 @@ class AddCashViewModelTest {
         viewModel.updateName("Emergency Fund")
         viewModel.updateValue("10000")
         viewModel.updateYieldRate("4.5")
-        viewModel.updateCurrency("USD")
+        viewModel.updateCurrency(Currency.USD)
 
         val result = viewModel.saveCashItem()
 

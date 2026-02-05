@@ -13,7 +13,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 0.0,
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
@@ -28,7 +28,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 14000000.0, // 14 million KRW
             annualYieldRate = 0.0,
-            currency = "KRW",
+            currency = Currency.KRW,
             createdAt = System.currentTimeMillis()
         )
 
@@ -44,7 +44,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 14000000.0,
             annualYieldRate = 0.0,
-            currency = "KRW",
+            currency = Currency.KRW,
             createdAt = System.currentTimeMillis()
         )
 
@@ -59,7 +59,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 0.0,
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
@@ -75,7 +75,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 5.2, // 5.2% annual
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
@@ -91,7 +91,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 12.0, // 12% annual
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
@@ -107,7 +107,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 8.0, // 8% annual
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
@@ -123,7 +123,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 10.0, // 10% annual
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
@@ -139,7 +139,7 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 4.5, // 4.5% annual
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
@@ -154,10 +154,10 @@ class CashItemTest {
             name = "Test",
             originalValue = 10000.0,
             annualYieldRate = 5.0,
-            currency = "USD",
+            currency = Currency.USD,
             createdAt = System.currentTimeMillis()
         )
 
-        assertThat(cashItem.currency).isEqualTo("USD")
+        assertThat(cashItem.currency).isEqualTo(Currency.USD)
     }
 }

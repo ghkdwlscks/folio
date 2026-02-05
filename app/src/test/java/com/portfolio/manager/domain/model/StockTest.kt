@@ -160,7 +160,7 @@ class StockTest {
             currentPrice = 175.0
         )
 
-        assertThat(stock.currency).isEqualTo("USD")
+        assertThat(stock.currency).isEqualTo(Currency.USD)
     }
 
     @Test
@@ -172,10 +172,10 @@ class StockTest {
             quantity = 50,
             averagePrice = 72000.0,
             currentPrice = 78500.0,
-            currency = "KRW"
+            currency = Currency.KRW
         )
 
-        assertThat(stock.currency).isEqualTo("KRW")
+        assertThat(stock.currency).isEqualTo(Currency.KRW)
     }
 
     @Test
@@ -237,7 +237,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         assertThat(stock.totalValueInUsd()).isEqualTo(1750.0)
@@ -252,7 +252,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 72000.0,
             currentPrice = 78000.0,
-            currency = "KRW"
+            currency = Currency.KRW
         )
 
         // 780,000 KRW / 1400 = 557.14 USD (approximately)
@@ -268,7 +268,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 72000.0,
             currentPrice = 78000.0,
-            currency = "KRW"
+            currency = Currency.KRW
         )
 
         // 780,000 KRW / 1300 = 600.0 USD
@@ -284,7 +284,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         assertThat(stock.totalCostInUsd()).isEqualTo(1500.0)
@@ -299,7 +299,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 70000.0,
             currentPrice = 78000.0,
-            currency = "KRW"
+            currency = Currency.KRW
         )
 
         // 700,000 KRW / 1400 = 500.0 USD
@@ -315,7 +315,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 70000.0,
             currentPrice = 78000.0,
-            currency = "KRW"
+            currency = Currency.KRW
         )
 
         // 700,000 KRW / 1400 = 500.0 USD with default, but with 1000 rate: 700.0 USD
@@ -331,7 +331,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 70000.0,
             currentPrice = 78000.0,
-            currency = "KRW"
+            currency = Currency.KRW
         )
 
         assertThat(stock.totalValueInKrw()).isEqualTo(780000.0)
@@ -346,7 +346,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         // 1750 USD * 1400 = 2,450,000 KRW
@@ -362,7 +362,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         // 1750 USD * 1300 = 2,275,000 KRW
@@ -378,7 +378,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 70000.0,
             currentPrice = 78000.0,
-            currency = "KRW"
+            currency = Currency.KRW
         )
 
         assertThat(stock.totalCostInKrw()).isEqualTo(700000.0)
@@ -393,7 +393,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         // 1500 USD * 1400 = 2,100,000 KRW
@@ -409,7 +409,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         // 1500 USD * 1300 = 1,950,000 KRW
@@ -506,10 +506,10 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
-        assertThat(stock.currency).isEqualTo("USD")
+        assertThat(stock.currency).isEqualTo(Currency.USD)
     }
 
     @Test
@@ -521,7 +521,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         assertThat(stock.valueInUsd(1400.0)).isEqualTo(stock.totalValueInUsd(1400.0))
@@ -536,7 +536,7 @@ class StockTest {
             quantity = 10,
             averagePrice = 150.0,
             currentPrice = 175.0,
-            currency = "USD"
+            currency = Currency.USD
         )
 
         assertThat(stock.valueInKrw(1400.0)).isEqualTo(stock.totalValueInKrw(1400.0))

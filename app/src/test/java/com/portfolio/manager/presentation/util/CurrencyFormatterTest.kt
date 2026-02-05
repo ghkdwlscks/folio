@@ -1,32 +1,27 @@
 package com.portfolio.manager.presentation.util
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.domain.model.Currency
 import org.junit.Test
 
 class CurrencyFormatterTest {
 
     @Test
     fun `format - USD currency - formats with dollar sign and decimals`() {
-        val result = CurrencyFormatter.format(1500.50, "USD")
+        val result = CurrencyFormatter.format(1500.50, Currency.USD)
         assertThat(result).isEqualTo("$1,500.50")
     }
 
     @Test
     fun `format - KRW currency - formats with won sign and no decimals`() {
-        val result = CurrencyFormatter.format(72000.0, "KRW")
+        val result = CurrencyFormatter.format(72000.0, Currency.KRW)
         assertThat(result).isEqualTo("₩72,000")
     }
 
     @Test
     fun `format - KRW large amount - formats with commas`() {
-        val result = CurrencyFormatter.format(1500000.0, "KRW")
+        val result = CurrencyFormatter.format(1500000.0, Currency.KRW)
         assertThat(result).isEqualTo("₩1,500,000")
-    }
-
-    @Test
-    fun `format - unknown currency - defaults to USD format`() {
-        val result = CurrencyFormatter.format(100.0, "EUR")
-        assertThat(result).isEqualTo("$100.00")
     }
 
     @Test
@@ -43,7 +38,7 @@ class CurrencyFormatterTest {
 
     @Test
     fun `format - negative amount - formats with minus sign`() {
-        val result = CurrencyFormatter.format(-150.50, "USD")
+        val result = CurrencyFormatter.format(-150.50, Currency.USD)
         assertThat(result).isEqualTo("-$150.50")
     }
 

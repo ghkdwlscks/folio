@@ -2,6 +2,7 @@ package com.portfolio.manager.domain.service
 
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.data.local.CashItemEntity
+import com.portfolio.manager.domain.model.Currency
 import org.junit.Test
 
 class CashItemMapperTest {
@@ -25,7 +26,7 @@ class CashItemMapperTest {
         assertThat(cashItem.name).isEqualTo("Emergency Fund")
         assertThat(cashItem.originalValue).isEqualTo(10000.0)
         assertThat(cashItem.annualYieldRate).isEqualTo(4.5)
-        assertThat(cashItem.currency).isEqualTo("USD")
+        assertThat(cashItem.currency).isEqualTo(Currency.USD)
         assertThat(cashItem.createdAt).isEqualTo(1000L)
     }
 

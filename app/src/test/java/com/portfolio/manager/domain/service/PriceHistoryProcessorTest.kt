@@ -1,6 +1,7 @@
 package com.portfolio.manager.domain.service
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.StockHolding
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import org.junit.Test
@@ -153,8 +154,8 @@ class PriceHistoryProcessorTest {
     @Test
     fun `calculatePortfolioValues - calculates values for each date`() {
         val holdings = listOf(
-            StockHolding("AAPL", 10, "USD"),
-            StockHolding("GOOG", 5, "USD")
+            StockHolding("AAPL", 10, Currency.USD),
+            StockHolding("GOOG", 5, Currency.USD)
         )
         val filledPrices = mapOf(
             "AAPL" to mapOf("2024-01-01" to 150.0, "2024-01-02" to 155.0),
@@ -180,7 +181,7 @@ class PriceHistoryProcessorTest {
 
     @Test
     fun `calculatePortfolioValues - with KRW display - converts values`() {
-        val holdings = listOf(StockHolding("AAPL", 1, "USD"))
+        val holdings = listOf(StockHolding("AAPL", 1, Currency.USD))
         val filledPrices = mapOf(
             "AAPL" to mapOf("2024-01-01" to 100.0)
         )
@@ -201,8 +202,8 @@ class PriceHistoryProcessorTest {
     @Test
     fun `calculatePortfolioValues - missing price - skips holding`() {
         val holdings = listOf(
-            StockHolding("AAPL", 10, "USD"),
-            StockHolding("GOOG", 5, "USD")
+            StockHolding("AAPL", 10, Currency.USD),
+            StockHolding("GOOG", 5, Currency.USD)
         )
         val filledPrices = mapOf(
             "AAPL" to mapOf("2024-01-01" to 150.0)
@@ -224,7 +225,7 @@ class PriceHistoryProcessorTest {
 
     @Test
     fun `calculatePortfolioValues - zero total - excluded from result`() {
-        val holdings = listOf(StockHolding("AAPL", 0, "USD"))
+        val holdings = listOf(StockHolding("AAPL", 0, Currency.USD))
         val filledPrices = mapOf(
             "AAPL" to mapOf("2024-01-01" to 150.0)
         )
@@ -323,10 +324,10 @@ class PriceHistoryProcessorTest {
 
     @Test
     fun `StockHolding - data class properties`() {
-        val holding = StockHolding("AAPL", 100, "USD")
+        val holding = StockHolding("AAPL", 100, Currency.USD)
         assertThat(holding.symbol).isEqualTo("AAPL")
         assertThat(holding.quantity).isEqualTo(100)
-        assertThat(holding.currency).isEqualTo("USD")
+        assertThat(holding.currency).isEqualTo(Currency.USD)
     }
 
     @Test

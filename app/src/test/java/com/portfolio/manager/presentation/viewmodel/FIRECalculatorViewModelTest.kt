@@ -3,6 +3,7 @@ package com.portfolio.manager.presentation.viewmodel
 import android.content.SharedPreferences
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
@@ -81,7 +82,7 @@ class FIRECalculatorViewModelTest {
         quantity: Int,
         averagePrice: Double,
         currentPrice: Double,
-        currency: String = "USD"
+        currency: Currency = Currency.USD
     ) = Stock(
         id = 1L,
         symbol = symbol,
@@ -105,7 +106,7 @@ class FIRECalculatorViewModelTest {
         name: String,
         value: Double,
         yieldRate: Double,
-        currency: String
+        currency: Currency
     ) = CashItem(
         id = id,
         accountId = 1L,
@@ -293,7 +294,7 @@ class FIRECalculatorViewModelTest {
     @Test
     fun `KRW stocks - converted correctly to USD`() = runTest {
         val stocks = listOf(
-            createStock("005930.KS", "Samsung", 10, 70000.0, 70000.0, "KRW")
+            createStock("005930.KS", "Samsung", 10, 70000.0, 70000.0, Currency.KRW)
         )
         portfolioCache.update(stocks, emptyList(), 1400.0)
 
@@ -330,7 +331,7 @@ class FIRECalculatorViewModelTest {
             createStock("AAPL", "Apple", 10, 100.0, 100.0)
         )
         val cashItems = listOf(
-            createCashItem(1L, "Emergency Fund", 5000.0, 4.0, "USD")
+            createCashItem(1L, "Emergency Fund", 5000.0, 4.0, Currency.USD)
         )
         portfolioCache.update(stocks, cashItems, KRW_TO_USD_RATE)
 
@@ -349,7 +350,7 @@ class FIRECalculatorViewModelTest {
             createStock("AAPL", "Apple", 10, 100.0, 100.0)
         )
         val cashItems = listOf(
-            createCashItem(1L, "Korean Savings", 1400000.0, 3.5, "KRW")
+            createCashItem(1L, "Korean Savings", 1400000.0, 3.5, Currency.KRW)
         )
         portfolioCache.update(stocks, cashItems, 1400.0)
 
@@ -365,7 +366,7 @@ class FIRECalculatorViewModelTest {
     @Test
     fun `portfolio value - cash only with no stocks`() = runTest {
         val cashItems = listOf(
-            createCashItem(1L, "Savings", 10000.0, 5.0, "USD")
+            createCashItem(1L, "Savings", 10000.0, 5.0, Currency.USD)
         )
         portfolioCache.update(emptyList(), cashItems, KRW_TO_USD_RATE)
 
