@@ -16,6 +16,7 @@ import com.portfolio.manager.domain.model.FIRETargetCalculation
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import com.portfolio.manager.util.ErrorMessages
 import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
 import com.portfolio.manager.util.double
@@ -69,7 +70,7 @@ class FIRECalculatorViewModel @Inject constructor(
     private fun loadData() {
         // Read from shared cache (populated by DashboardViewModel)
         if (!portfolioCache.hasData()) {
-            _uiState.value = FIRECalculatorUiState.Error("No portfolio data. Please refresh the dashboard first.")
+            _uiState.value = FIRECalculatorUiState.Error(ErrorMessages.NO_PORTFOLIO_DATA)
             return
         }
 

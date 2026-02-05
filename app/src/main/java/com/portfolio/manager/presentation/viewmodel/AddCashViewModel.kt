@@ -21,6 +21,7 @@ import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.presentation.util.InputUtils
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
+import com.portfolio.manager.util.ErrorMessages
 
 data class AddCashUiState(
     val isInitialLoading: Boolean = true,
@@ -116,22 +117,22 @@ class AddCashViewModel @Inject constructor(
             val targetAccountId = state.selectedAccountId
 
             if (nameValue.isEmpty()) {
-                _uiState.update { it.copy(errorMessage = "Please enter a name") }
+                _uiState.update { it.copy(errorMessage = ErrorMessages.EMPTY_NAME) }
                 return false
             }
 
             if (valueAmount == null || valueAmount <= 0) {
-                _uiState.update { it.copy(errorMessage = "Please enter a valid value") }
+                _uiState.update { it.copy(errorMessage = ErrorMessages.INVALID_VALUE) }
                 return false
             }
 
             if (yieldRateValue == null || yieldRateValue < 0) {
-                _uiState.update { it.copy(errorMessage = "Please enter a valid yield rate") }
+                _uiState.update { it.copy(errorMessage = ErrorMessages.INVALID_YIELD) }
                 return false
             }
 
             if (targetAccountId == ALL_ACCOUNTS_ID) {
-                _uiState.update { it.copy(errorMessage = "Please select an account") }
+                _uiState.update { it.copy(errorMessage = ErrorMessages.SELECT_ACCOUNT) }
                 return false
             }
 

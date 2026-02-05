@@ -25,6 +25,7 @@ import com.portfolio.manager.util.AppConstants.MAX_PRICE
 import com.portfolio.manager.util.AppConstants.MAX_QUANTITY
 import com.portfolio.manager.util.AppConstants.MIN_PRICE
 import com.portfolio.manager.util.AppConstants.MIN_QUANTITY
+import com.portfolio.manager.util.ErrorMessages
 
 data class AddHoldingUiState(
     val isInitialLoading: Boolean = true,
@@ -147,18 +148,18 @@ class AddHoldingViewModel @Inject constructor(
 
             // Validate quantity bounds
             if (quantityValue < MIN_QUANTITY || quantityValue > MAX_QUANTITY) {
-                _uiState.update { it.copy(errorMessage = "Quantity must be between $MIN_QUANTITY and $MAX_QUANTITY") }
+                _uiState.update { it.copy(errorMessage = ErrorMessages.invalidQuantity(MIN_QUANTITY, MAX_QUANTITY)) }
                 return false
             }
 
             // Validate price bounds
             if (priceValue < MIN_PRICE || priceValue > MAX_PRICE) {
-                _uiState.update { it.copy(errorMessage = "Price must be between $MIN_PRICE and $MAX_PRICE") }
+                _uiState.update { it.copy(errorMessage = ErrorMessages.invalidPrice(MIN_PRICE, MAX_PRICE)) }
                 return false
             }
 
             if (targetAccountId == ALL_ACCOUNTS_ID) {
-                _uiState.update { it.copy(errorMessage = "Please select an account") }
+                _uiState.update { it.copy(errorMessage = ErrorMessages.SELECT_ACCOUNT) }
                 return false
             }
 
@@ -196,7 +197,7 @@ class AddHoldingViewModel @Inject constructor(
     ): Boolean {
         val existingHolding = repository.getHoldingByAccountAndSymbol(accountId, symbol)
         if (existingHolding != null && existingHolding.id != excludeHoldingId) {
-            _uiState.update { it.copy(errorMessage = "This stock already exists in the account") }
+            _uiState.update { it.copy(errorMessage = ErrorMessages.DUPLICATE_SYMBOL) }
             return false
         }
         return true

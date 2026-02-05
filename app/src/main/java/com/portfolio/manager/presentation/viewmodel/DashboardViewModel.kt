@@ -48,6 +48,7 @@ import com.portfolio.manager.util.AppConstants.BENCHMARK_KOSPI
 import com.portfolio.manager.util.AppConstants.BENCHMARK_SP500
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import com.portfolio.manager.util.ErrorMessages
 import com.portfolio.manager.util.JsonSerializer
 import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
@@ -917,7 +918,7 @@ class DashboardViewModel @Inject constructor(
             },
             onFailure = { exception ->
                 _uiState.value = DashboardUiState.Error(
-                    exception.message ?: "Failed to load prices"
+                    exception.message ?: ErrorMessages.LOAD_PRICES_FAILED
                 )
             }
         )
