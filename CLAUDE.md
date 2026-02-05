@@ -204,6 +204,39 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - SharedPreferences delegates for clean preference access
 - CacheManager for JSON-based caching with type safety
 
+### Import Order
+
+Imports must be ordered by group with blank lines between groups, alphabetically sorted within each group:
+
+1. **Android** (`android.*`)
+2. **AndroidX** (`androidx.*`)
+3. **Third-party** (`dagger.*`, `javax.*`, `com.google.*`, `okhttp3.*`, `retrofit2.*`)
+4. **Kotlinx** (`kotlinx.*`)
+5. **Project** (`com.portfolio.manager.*`)
+6. **Kotlin stdlib** (`kotlin.*`)
+7. **Java stdlib** (`java.*`)
+
+Example:
+```kotlin
+import android.content.SharedPreferences
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+
+import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.repository.StockRepository
+
+import kotlin.math.abs
+
+import java.time.Instant
+```
+
 ## AppConstants & PreferenceKeys
 
 ```kotlin
