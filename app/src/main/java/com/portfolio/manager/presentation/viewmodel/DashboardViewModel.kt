@@ -38,9 +38,10 @@ import com.portfolio.manager.domain.service.CashItemMapper
 import com.portfolio.manager.domain.service.PeriodReturnsService
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.service.PortfolioSorter
+import com.portfolio.manager.domain.service.RebalanceCalculator
+import com.portfolio.manager.domain.service.RebalanceItemData
 import com.portfolio.manager.domain.service.SparklineService
 import com.portfolio.manager.domain.service.StockMapper
-import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
@@ -49,8 +50,6 @@ import com.portfolio.manager.util.JsonSerializer
 import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
 import com.portfolio.manager.util.enum
-
-import kotlin.math.abs
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
@@ -862,27 +861,9 @@ class DashboardViewModel @Inject constructor(
         if (selectedAccountId == ALL_ACCOUNTS_ID) return emptyList()
 
         val holdings = holdingsRepository.getHoldingsByAccountSync(selectedAccountId)
-        val stocks = state.stocks
-
-        return stocks.mapNotNull { stock ->
-            val holding = holdings.find { it.symbol == stock.symbol } ?: return@mapNotNull null
-            val value = if (state.showInKrw) {
-                stock.totalValueInKrw(currentExchangeRate)
-            } else {
-                stock.totalValueInUsd(currentExchangeRate)
-            }
-            val price = CurrencyConverter.convert(stock.currentPrice, stock.currency, state.showInKrw, currentExchangeRate)
-            RebalanceItemData(
-                holdingId = holding.id,
-                symbol = stock.symbol,
-                name = stock.name,
-                currentValue = value,
-                currentPrice = price,
-                currentPercentage = holding.targetPercentage ?: 0,
-                currency = stock.currency,
-                quantity = stock.quantity
-            )
-        }
+        return RebalanceCalculator.buildRebalanceItems(
+            holdings, state.stocks, state.showInKrw, currentExchangeRate
+        )
     }
 
     fun saveTargetPercentages(percentages: Map<Long, Int>) {
@@ -951,49 +932,8 @@ class DashboardViewModel @Inject constructor(
         showInKrw: Boolean
     ): Boolean {
         val holdings = holdingsRepository.getHoldingsByAccountSync(accountId)
-        if (holdings.isEmpty()) return false
-
-        // Calculate total portfolio value for this account
-        val totalValue = holdings.sumOf { holding ->
-            val stock = stockMap[holding.symbol] ?: return@sumOf 0.0
-            val value = stock.currentPrice * holding.quantity
-            CurrencyConverter.convert(value, stock.currency, showInKrw, currentExchangeRate)
-        }
-
-        if (totalValue <= 0) return false
-
-        // Check each holding
-        for (holding in holdings) {
-            val targetPercent = holding.targetPercentage ?: continue
-            val stock = stockMap[holding.symbol] ?: continue
-
-            val currentValue = CurrencyConverter.convert(
-                stock.currentPrice * holding.quantity,
-                stock.currency,
-                showInKrw,
-                currentExchangeRate
-            )
-            val targetValue = totalValue * (targetPercent / 100.0)
-            val diffAmount = abs(targetValue - currentValue)
-            val price = CurrencyConverter.convert(
-                stock.currentPrice, stock.currency, showInKrw, currentExchangeRate
-            )
-
-            if (diffAmount >= price && price > 0) {
-                return true
-            }
-        }
-        return false
+        return RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw, currentExchangeRate
+        )
     }
 }
-
-data class RebalanceItemData(
-    val holdingId: Long,
-    val symbol: String,
-    val name: String,
-    val currentValue: Double,
-    val currentPrice: Double,
-    val currentPercentage: Int,
-    val currency: Currency,
-    val quantity: Int
-)
