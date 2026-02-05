@@ -51,6 +51,8 @@ fun AccountDropdown(
         } ?: "All ($totalHoldings)"
     }
 
+    val anyNeedsRebalance = accounts.any { it.needsRebalance }
+
     Box(modifier = modifier) {
         Row(
             modifier = Modifier
@@ -65,6 +67,14 @@ fun AccountDropdown(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
+            if (selectedAccountId == ALL_ACCOUNTS_ID && anyNeedsRebalance) {
+                Icon(
+                    imageVector = Icons.Outlined.Balance,
+                    contentDescription = "Needs rebalancing",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
             Icon(
                 imageVector = Icons.Filled.ArrowDropDown,
                 contentDescription = "Select account",
