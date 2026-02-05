@@ -113,16 +113,18 @@ app/src/main/java/com/portfolio/manager/
 │   ├── model/              # Domain models
 │   │   ├── Stock.kt, CashItem.kt, StockAccountDetail.kt
 │   │   ├── PortfolioItem.kt, StockHolding.kt  # Common interface and holding model
+│   │   ├── Currency.kt                        # Type-safe USD/KRW enum
 │   │   ├── PeriodReturn.kt, BenchmarkReturns.kt, TimePeriod.kt
 │   │   ├── SortOption.kt, PortfolioStats.kt
-│   │   └── FIRECalculation.kt
+│   │   └── FIRECalculation.kt, FIRETargetCalculation.kt
 │   ├── service/            # Domain services
 │   │   ├── PortfolioCalculationService.kt # Portfolio values, period returns, cash returns
 │   │   ├── PortfolioStatsCalculator.kt  # MDD, Sharpe, Volatility calculations
 │   │   ├── PriceHistoryProcessor.kt     # Date alignment, forward-fill logic
 │   │   ├── PortfolioSorter.kt           # Stock/cash sorting by various criteria
 │   │   ├── StockMapper.kt, CashItemMapper.kt  # Entity to domain model mapping
-│   │   └── CacheManager.kt              # JSON-based SharedPreferences caching
+│   │   ├── CacheManager.kt              # JSON-based SharedPreferences caching
+│   │   └── PortfolioCache.kt            # In-memory cache for Dashboard/FIRE data sharing
 │   ├── util/               # Domain utilities
 │   │   ├── CurrencyConverter.kt         # USD/KRW conversion
 │   │   └── ReturnCalculator.kt          # Return percentage calculations
@@ -167,6 +169,7 @@ app/src/main/java/com/portfolio/manager/
 │   └── RepositoryModule.kt
 └── util/                   # App-wide utilities
     ├── AppConstants.kt          # Global constants
+    ├── ErrorMessages.kt         # Centralized error message strings
     ├── StockExtensions.kt       # Symbol formatting helpers
     ├── JsonSerializer.kt        # Kotlinx serialization config
     └── SharedPreferencesDelegate.kt  # Property delegates for prefs
@@ -184,7 +187,9 @@ app/src/main/java/com/portfolio/manager/
 
 ```
 Yahoo Finance API → StockRepository → DashboardViewModel → DashboardScreen
-                                    ↘                    ↓
+                                    ↘         ↓
+                                     PortfolioCache (in-memory)
+                                              ↓
 Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIRECalculatorScreen
              → AccountRepository
              → CashRepository
@@ -203,6 +208,8 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor)
 - SharedPreferences delegates for clean preference access
 - CacheManager for JSON-based caching with type safety
+- Currency enum for type-safe currency handling (never use "USD"/"KRW" strings in domain/presentation)
+- ErrorMessages constants for consistent user-facing error strings
 
 ### Import Order
 
@@ -379,8 +386,12 @@ object PreferenceKeys {
     const val DASHBOARD_CACHED_ACCOUNTS_JSON = "dashboard_cached_accounts_json"
     const val DASHBOARD_CACHED_EXCHANGE_RATE = "dashboard_cached_exchange_rate"
     const val DASHBOARD_CACHED_PORTFOLIO_SPARKLINE = "dashboard_cached_portfolio_sparkline"
+    const val DASHBOARD_CACHED_SPARKLINE_TIMESTAMPS = "dashboard_cached_sparkline_timestamps"
     const val DASHBOARD_CACHED_PORTFOLIO_STATS = "dashboard_cached_portfolio_stats"
     const val DASHBOARD_CACHED_PERIOD_RETURNS = "dashboard_cached_period_returns"
+    const val DASHBOARD_CACHED_BENCHMARK_SPARKLINES = "dashboard_cached_benchmark_sparklines"
+    const val DASHBOARD_CACHED_BENCHMARK_TIMESTAMPS = "dashboard_cached_benchmark_timestamps"
+    const val DASHBOARD_CACHED_BENCHMARK_RETURNS = "dashboard_cached_benchmark_returns"
     const val STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
     const val PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
     const val SORT_OPTION = "sort_option"
@@ -389,6 +400,7 @@ object PreferenceKeys {
     const val FIRE_ANNUAL_RETURN = "fire_annual_return"
     const val FIRE_ANNUAL_INFLATION = "fire_annual_inflation"
     const val FIRE_TARGET_MONTHLY_SPENDING = "fire_target_monthly_spending"
+    const val FIRE_TARGET_SPENDING_IN_KRW = "fire_target_spending_in_krw"
     const val FIRE_SHOW_IN_KRW = "fire_show_in_krw"
 }
 ```
@@ -434,12 +446,13 @@ app/src/test/java/com/portfolio/manager/
 │   ├── remote/               # YahooFinanceApiTest
 │   └── repository/           # Repository tests (Holdings, Account, Cash, Stock)
 ├── domain/
-│   ├── model/                # Model tests (Stock, CashItem, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns)
-│   └── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CacheManager)
+│   ├── model/                # Model tests (Stock, CashItem, StockHolding, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns)
+│   ├── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CashItemMapper, CacheManager, PortfolioCache)
+│   └── util/                 # Domain utility tests (CurrencyConverter, ReturnCalculator)
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)
-│   └── util/                 # Utility tests (CurrencyFormatter, CurrencyConverter, InputUtils, TrendIndicator)
-└── util/                     # Extension tests (StockExtensions, AppConstants, SharedPreferencesDelegate)
+│   └── util/                 # Presentation utility tests (CurrencyFormatter, InputUtils, TrendIndicator)
+└── util/                     # App utility tests (StockExtensions, AppConstants, SharedPreferencesDelegate, ErrorMessages)
 ```
 
 ### Test Tools
