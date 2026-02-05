@@ -7,33 +7,35 @@ import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.Stock
 
 /**
+ * Immutable snapshot of portfolio data.
+ * Used for thread-safe atomic updates.
+ */
+private data class CacheData(
+    val stocks: List<Stock> = emptyList(),
+    val cashItems: List<CashItem> = emptyList(),
+    val exchangeRate: Double = 1400.0,
+    val isInitialized: Boolean = false
+)
+
+/**
  * Shared in-memory cache for portfolio data.
  * Used to share stock/cash data between Dashboard and FIRE calculator.
+ * Thread-safe: uses atomic reference to immutable snapshot.
  */
 @Singleton
 class PortfolioCache @Inject constructor() {
     @Volatile
-    var stocks: List<Stock> = emptyList()
-        private set
+    private var data: CacheData = CacheData()
 
-    @Volatile
-    var cashItems: List<CashItem> = emptyList()
-        private set
+    val stocks: List<Stock> get() = data.stocks
 
-    @Volatile
-    var exchangeRate: Double = 1400.0
-        private set
+    val cashItems: List<CashItem> get() = data.cashItems
 
-    @Volatile
-    var isInitialized: Boolean = false
-        private set
+    val exchangeRate: Double get() = data.exchangeRate
 
     fun update(stocks: List<Stock>, cashItems: List<CashItem>, exchangeRate: Double) {
-        this.stocks = stocks
-        this.cashItems = cashItems
-        this.exchangeRate = exchangeRate
-        this.isInitialized = true
+        data = CacheData(stocks, cashItems, exchangeRate, isInitialized = true)
     }
 
-    fun hasData(): Boolean = isInitialized
+    fun hasData(): Boolean = data.isInitialized
 }

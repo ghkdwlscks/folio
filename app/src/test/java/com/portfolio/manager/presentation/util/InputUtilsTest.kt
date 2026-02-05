@@ -56,8 +56,13 @@ class InputUtilsTest {
     }
 
     @Test
-    fun `filterNumeric - multiple decimals - keeps all decimals`() {
-        assertThat(InputUtils.filterNumeric("1.2.3")).isEqualTo("1.2.3")
+    fun `filterNumeric - multiple decimals - keeps only first decimal`() {
+        assertThat(InputUtils.filterNumeric("1.2.3")).isEqualTo("1.23")
+    }
+
+    @Test
+    fun `filterNumeric - multiple decimals at end - keeps only first decimal`() {
+        assertThat(InputUtils.filterNumeric("12..34")).isEqualTo("12.34")
     }
 
     @Test

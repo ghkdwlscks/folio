@@ -15,6 +15,9 @@ interface CashItemDao {
     @Query("SELECT * FROM cash_items ORDER BY createdAt DESC")
     fun getAllCashItems(): Flow<List<CashItemEntity>>
 
+    @Query("SELECT accountId, COUNT(*) as count FROM cash_items GROUP BY accountId")
+    fun getCashItemsCountByAccountFlow(): Flow<List<AccountHoldingCount>>
+
     @Query("SELECT * FROM cash_items WHERE id = :id")
     suspend fun getCashItemById(id: Long): CashItemEntity?
 

@@ -43,7 +43,6 @@ class PortfolioCacheTest {
         assertThat(cache.stocks).isEmpty()
         assertThat(cache.cashItems).isEmpty()
         assertThat(cache.exchangeRate).isEqualTo(1400.0)
-        assertThat(cache.isInitialized).isFalse()
         assertThat(cache.hasData()).isFalse()
     }
 
@@ -70,7 +69,6 @@ class PortfolioCacheTest {
         cache.update(stocks, emptyList(), 1400.0)
 
         assertThat(cache.hasData()).isTrue()
-        assertThat(cache.isInitialized).isTrue()
     }
 
     @Test
@@ -81,7 +79,6 @@ class PortfolioCacheTest {
         cache.update(emptyList(), cashItems, 1400.0)
 
         assertThat(cache.hasData()).isTrue()
-        assertThat(cache.isInitialized).isTrue()
     }
 
     @Test
@@ -92,7 +89,6 @@ class PortfolioCacheTest {
 
         // hasData returns true after initialization even if lists are empty
         assertThat(cache.hasData()).isTrue()
-        assertThat(cache.isInitialized).isTrue()
     }
 
     @Test

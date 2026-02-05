@@ -14,10 +14,22 @@ object InputUtils {
     fun filterDigitsOnly(input: String): String = input.filter { it.isDigit() }
 
     /**
-     * Filters input to allow digits and decimal point.
+     * Filters input to allow digits and at most one decimal point.
      * Use for decimal inputs like price, value, yield rate.
      */
-    fun filterNumeric(input: String): String = input.filter { it.isDigit() || it == '.' }
+    fun filterNumeric(input: String): String {
+        var hasDecimal = false
+        return input.filter { char ->
+            when {
+                char.isDigit() -> true
+                char == '.' && !hasDecimal -> {
+                    hasDecimal = true
+                    true
+                }
+                else -> false
+            }
+        }
+    }
 
     /**
      * Formats a currency value for display based on currency type.

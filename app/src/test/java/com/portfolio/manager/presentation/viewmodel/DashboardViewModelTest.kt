@@ -91,6 +91,7 @@ class DashboardViewModelTest {
         // Default cash repository mock
         every { cashRepository.getAllCashItems() } returns flowOf(emptyList())
         every { cashRepository.getCashItemsByAccount(any()) } returns flowOf(emptyList())
+        every { cashRepository.getCashItemsCountByAccountFlow() } returns flowOf(emptyMap())
         // Default exchange rate mock
         coEvery { stockRepository.getExchangeRate(any(), any()) } returns Result.success(1400.0)
         // Default exchange rate history mock

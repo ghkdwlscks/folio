@@ -3,6 +3,7 @@ package com.portfolio.manager.data.repository
 import javax.inject.Inject
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 import com.portfolio.manager.data.local.CashItemDao
 import com.portfolio.manager.data.local.CashItemEntity
@@ -18,6 +19,12 @@ class CashRepositoryImpl @Inject constructor(
 
     override fun getAllCashItems(): Flow<List<CashItemEntity>> {
         return cashItemDao.getAllCashItems()
+    }
+
+    override fun getCashItemsCountByAccountFlow(): Flow<Map<Long, Int>> {
+        return cashItemDao.getCashItemsCountByAccountFlow().map { counts ->
+            counts.associate { it.accountId to it.count }
+        }
     }
 
     override suspend fun getCashItemById(id: Long): CashItemEntity? {

@@ -704,10 +704,9 @@ class DashboardViewModel @Inject constructor(
         else cashRepository.getCashItemsByAccount(selectedAccountId),
         accountRepository.getAllAccounts(),
         holdingsRepository.getHoldingsCountByAccountFlow(),
-        cashRepository.getAllCashItems()
-    ) { holdings, cashEntities, accounts, holdingsCountMap, allCashEntities ->
+        cashRepository.getCashItemsCountByAccountFlow()
+    ) { holdings, cashEntities, accounts, holdingsCountMap, cashCountMap ->
         val cashItems = CashItemMapper.fromEntities(cashEntities)
-        val cashCountMap = allCashEntities.groupBy { it.accountId }.mapValues { it.value.size }
         HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
     }
 
