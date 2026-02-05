@@ -24,6 +24,7 @@ import com.portfolio.manager.data.local.CashItemEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.Stock
@@ -1113,6 +1114,6 @@ data class RebalanceItemData(
     val currentValue: Double,
     val currentPrice: Double,
     val currentPercentage: Int,
-    val currency: String,
+    val currency: Currency,
     val quantity: Int
 )

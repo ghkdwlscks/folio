@@ -4,6 +4,7 @@ import android.util.Log
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
 import com.portfolio.manager.data.remote.dto.QuoteResult
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.StockAccountDetail
 import com.portfolio.manager.domain.repository.PriceHistoryData
@@ -32,7 +33,7 @@ object StockMapper {
             currentPrice = quote?.regularMarketPrice ?: holding.averagePrice,
             dayChange = quote?.regularMarketChange,
             dayChangePercent = quote?.regularMarketChangePercent,
-            currency = holding.currency,
+            currency = Currency.fromCode(holding.currency),
             priceHistory = priceHistory?.prices ?: emptyList(),
             priceHistoryTimestamps = priceHistory?.timestamps ?: emptyList(),
             annualDividend = quote?.trailingAnnualDividendRate,
@@ -63,7 +64,7 @@ object StockMapper {
             currentPrice = quote?.regularMarketPrice ?: weightedAvgPrice,
             dayChange = quote?.regularMarketChange,
             dayChangePercent = quote?.regularMarketChangePercent,
-            currency = holdingGroup.first().currency,
+            currency = Currency.fromCode(holdingGroup.first().currency),
             accountDetails = accountDetails,
             priceHistory = priceHistory?.prices ?: emptyList(),
             priceHistoryTimestamps = priceHistory?.timestamps ?: emptyList(),
@@ -88,7 +89,7 @@ object StockMapper {
             currentPrice = existingStock?.currentPrice ?: holding.averagePrice,
             dayChange = existingStock?.dayChange,
             dayChangePercent = existingStock?.dayChangePercent,
-            currency = holding.currency,
+            currency = Currency.fromCode(holding.currency),
             priceHistory = existingStock?.priceHistory ?: emptyList(),
             priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),
             annualDividend = existingStock?.annualDividend,
@@ -117,7 +118,7 @@ object StockMapper {
             currentPrice = existingStock?.currentPrice ?: weightedAvgPrice,
             dayChange = existingStock?.dayChange,
             dayChangePercent = existingStock?.dayChangePercent,
-            currency = holdingGroup.first().currency,
+            currency = Currency.fromCode(holdingGroup.first().currency),
             accountDetails = accountDetails,
             priceHistory = existingStock?.priceHistory ?: emptyList(),
             priceHistoryTimestamps = existingStock?.priceHistoryTimestamps ?: emptyList(),

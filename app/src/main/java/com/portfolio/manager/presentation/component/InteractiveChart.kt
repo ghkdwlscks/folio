@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.getTrendColor
 
@@ -66,7 +67,7 @@ data class OverlayLine(
 fun InteractiveChart(
     prices: List<Double>,
     timestamps: List<Long>,
-    currency: String,
+    currency: Currency,
     modifier: Modifier = Modifier,
     lineColor: Color? = null,
     overlayLines: List<OverlayLine> = emptyList()

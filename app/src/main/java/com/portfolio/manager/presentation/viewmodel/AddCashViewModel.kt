@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.CashItemEntity
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.presentation.util.InputUtils
@@ -26,7 +27,7 @@ data class AddCashUiState(
     val name: String = "",
     val value: String = "",
     val yieldRate: String = "",
-    val currency: String = "KRW",
+    val currency: Currency = Currency.KRW,
     val errorMessage: String? = null,
     val selectedAccountId: Long = ALL_ACCOUNTS_ID,
     val accounts: List<AccountEntity> = emptyList(),
@@ -68,12 +69,13 @@ class AddCashViewModel @Inject constructor(
             // Load existing cash item for edit mode
             if (cashItemId != null) {
                 cashRepository.getCashItemById(cashItemId)?.let { cashItem ->
-                    val valueStr = InputUtils.formatValueForCurrency(cashItem.originalValue, cashItem.currency)
+                    val itemCurrency = Currency.fromCode(cashItem.currency)
+                    val valueStr = InputUtils.formatValueForCurrency(cashItem.originalValue, itemCurrency)
                     _uiState.update { it.copy(
                         name = cashItem.name,
                         value = valueStr,
                         yieldRate = cashItem.annualYieldRate.toString(),
-                        currency = cashItem.currency,
+                        currency = itemCurrency,
                         selectedAccountId = cashItem.accountId
                     )}
                 }
@@ -95,7 +97,7 @@ class AddCashViewModel @Inject constructor(
         _uiState.update { it.copy(yieldRate = InputUtils.filterNumeric(value)) }
     }
 
-    fun updateCurrency(value: String) {
+    fun updateCurrency(value: Currency) {
         _uiState.update { it.copy(currency = value) }
     }
 
@@ -140,7 +142,7 @@ class AddCashViewModel @Inject constructor(
                         name = nameValue,
                         originalValue = valueAmount,
                         annualYieldRate = yieldRateValue,
-                        currency = state.currency
+                        currency = state.currency.code
                     )
                     cashRepository.updateCashItem(updatedItem)
                 }
@@ -150,7 +152,7 @@ class AddCashViewModel @Inject constructor(
                     name = nameValue,
                     originalValue = valueAmount,
                     annualYieldRate = yieldRateValue,
-                    currency = state.currency
+                    currency = state.currency.code
                 )
                 cashRepository.addCashItem(newItem)
             }

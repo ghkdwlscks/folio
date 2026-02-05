@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.data.local.HoldingEntity
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.presentation.util.InputUtils
@@ -30,7 +31,7 @@ data class AddHoldingUiState(
     val symbol: String = "",
     val quantity: String = "",
     val averagePrice: String = "",
-    val currency: String = "USD",
+    val currency: Currency = Currency.USD,
     val errorMessage: String? = null,
     val selectedAccountId: Long = ALL_ACCOUNTS_ID,
     val accounts: List<AccountEntity> = emptyList(),
@@ -74,12 +75,13 @@ class AddHoldingViewModel @Inject constructor(
             if (holdingId != null) {
                 repository.getHoldingById(holdingId)?.let { holding ->
                     existingTargetPercentage = holding.targetPercentage
-                    val priceStr = InputUtils.formatValueForCurrency(holding.averagePrice, holding.currency)
+                    val holdingCurrency = Currency.fromCode(holding.currency)
+                    val priceStr = InputUtils.formatValueForCurrency(holding.averagePrice, holdingCurrency)
                     _uiState.update { it.copy(
                         symbol = holding.symbol,
                         quantity = holding.quantity.toString(),
                         averagePrice = priceStr,
-                        currency = holding.currency,
+                        currency = holdingCurrency,
                         selectedAccountId = holding.accountId
                     )}
                 }
@@ -103,7 +105,7 @@ class AddHoldingViewModel @Inject constructor(
         _uiState.update { it.copy(averagePrice = InputUtils.filterNumeric(value)) }
     }
 
-    fun updateCurrency(value: String) {
+    fun updateCurrency(value: Currency) {
         _uiState.update { it.copy(currency = value) }
     }
 
@@ -115,7 +117,7 @@ class AddHoldingViewModel @Inject constructor(
         val symbol = _uiState.value.symbol.trim()
         // If 6-digit number (Korean stock), auto-select KRW currency
         if (symbol.length == 6 && symbol.all { it.isDigit() }) {
-            _uiState.update { it.copy(currency = "KRW") }
+            _uiState.update { it.copy(currency = Currency.KRW) }
         }
     }
 
@@ -172,7 +174,7 @@ class AddHoldingViewModel @Inject constructor(
                 name = symbolValue,
                 quantity = quantityValue,
                 averagePrice = priceValue,
-                currency = state.currency,
+                currency = state.currency.code,
                 targetPercentage = if (state.isEditMode) existingTargetPercentage else null
             )
 

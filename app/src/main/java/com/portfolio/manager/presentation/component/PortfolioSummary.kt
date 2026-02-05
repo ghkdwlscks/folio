@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 
 import com.portfolio.manager.domain.model.BenchmarkReturns
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
@@ -300,7 +301,7 @@ fun PortfolioSummary(
                 currentPrice = totalValue,
                 dayChange = dayChange.takeIf { it != 0.0 },
                 dayChangePercent = dayChangePercent.takeIf { dayChange != 0.0 },
-                currency = if (showInKrw) "KRW" else "USD",
+                currency = if (showInKrw) Currency.KRW else Currency.USD,
                 priceHistory = actualPriceHistory,
                 priceHistoryTimestamps = portfolioSparklineTimestamps,
                 benchmarkSparklines = scaledBenchmarks,

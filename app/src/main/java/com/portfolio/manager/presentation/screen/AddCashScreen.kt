@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 
 import kotlinx.coroutines.launch
 
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.presentation.viewmodel.AddCashViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -127,13 +128,13 @@ fun AddCashScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
-                    selected = uiState.currency == "USD",
-                    onClick = { viewModel.updateCurrency("USD") },
+                    selected = uiState.currency.isUsd,
+                    onClick = { viewModel.updateCurrency(Currency.USD) },
                     label = { Text("USD ($)") }
                 )
                 FilterChip(
-                    selected = uiState.currency == "KRW",
-                    onClick = { viewModel.updateCurrency("KRW") },
+                    selected = uiState.currency.isKrw,
+                    onClick = { viewModel.updateCurrency(Currency.KRW) },
                     label = { Text("KRW (\u20a9)") }
                 )
             }

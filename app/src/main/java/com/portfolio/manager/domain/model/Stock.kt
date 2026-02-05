@@ -24,7 +24,7 @@ data class Stock(
     val currentPrice: Double,
     val dayChange: Double? = null,
     val dayChangePercent: Double? = null,
-    override val currency: String = "USD",
+    override val currency: Currency = Currency.USD,
     val accountDetails: List<StockAccountDetail> = emptyList(),
     val priceHistory: List<Double> = emptyList(),
     val priceHistoryTimestamps: List<Long> = emptyList(),

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.getTrendColor
@@ -49,7 +50,7 @@ data class FullScreenChartData(
     val currentPrice: Double,
     val dayChange: Double?,
     val dayChangePercent: Double?,
-    val currency: String,
+    val currency: Currency,
     val priceHistory: List<Double>,
     val priceHistoryTimestamps: List<Long>,
     val benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
@@ -283,7 +284,7 @@ fun FullScreenChartDialog(
 @Composable
 private fun ChartStatistics(
     priceHistory: List<Double>,
-    currency: String,
+    currency: Currency,
     periodReturn: Double? = null
 ) {
     val high = priceHistory.maxOrNull() ?: 0.0

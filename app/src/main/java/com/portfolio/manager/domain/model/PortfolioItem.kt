@@ -5,7 +5,7 @@ package com.portfolio.manager.domain.model
  * Provides a unified API for currency conversion.
  */
 interface PortfolioItem {
-    val currency: String
+    val currency: Currency
     fun valueInUsd(exchangeRate: Double): Double
     fun valueInKrw(exchangeRate: Double): Double
 }

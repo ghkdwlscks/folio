@@ -1,5 +1,7 @@
 package com.portfolio.manager.presentation.util
 
+import com.portfolio.manager.domain.model.Currency
+
 /**
  * Utility functions for input validation and formatting.
  */
@@ -22,9 +24,9 @@ object InputUtils {
      * KRW values are shown as integers, USD values keep decimals.
      *
      * @param value The numeric value to format
-     * @param currency The currency type ("KRW" or "USD")
+     * @param currency The currency type
      * @return Formatted string representation
      */
-    fun formatValueForCurrency(value: Double, currency: String): String =
-        if (currency == "KRW") value.toLong().toString() else value.toString()
+    fun formatValueForCurrency(value: Double, currency: Currency): String =
+        if (currency.isKrw) value.toLong().toString() else value.toString()
 }

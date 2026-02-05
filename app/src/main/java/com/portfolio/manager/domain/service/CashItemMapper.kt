@@ -2,6 +2,7 @@ package com.portfolio.manager.domain.service
 
 import com.portfolio.manager.data.local.CashItemEntity
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 
 /**
  * Service for mapping between CashItemEntity and CashItem domain model.
@@ -19,7 +20,7 @@ object CashItemMapper {
             name = entity.name,
             originalValue = entity.originalValue,
             annualYieldRate = entity.annualYieldRate,
-            currency = entity.currency,
+            currency = Currency.fromCode(entity.currency),
             createdAt = entity.createdAt
         )
     }

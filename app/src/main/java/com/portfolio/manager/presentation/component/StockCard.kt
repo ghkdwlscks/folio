@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
@@ -350,7 +351,7 @@ private fun StockCardExpandableContent(
 @Composable
 private fun AccountDetailsSection(
     accountDetails: List<com.portfolio.manager.domain.model.StockAccountDetail>,
-    currency: String,
+    currency: Currency,
     onEditAccountHolding: ((Long) -> Unit)?,
     onDeleteAccountHolding: ((Long) -> Unit)?
 ) {
@@ -380,7 +381,7 @@ private fun AccountDetailsSection(
 @Composable
 private fun AccountDetailRow(
     detail: com.portfolio.manager.domain.model.StockAccountDetail,
-    currency: String,
+    currency: Currency,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?
 ) {

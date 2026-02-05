@@ -11,7 +11,7 @@ data class CashItem(
     val name: String,
     val originalValue: Double,
     val annualYieldRate: Double,
-    override val currency: String,
+    override val currency: Currency,
     val createdAt: Long
 ) : PortfolioItem {
     /**

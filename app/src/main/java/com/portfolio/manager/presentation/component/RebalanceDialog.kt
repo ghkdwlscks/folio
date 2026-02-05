@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.presentation.theme.GainGreen
 import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.util.CurrencyFormatter
@@ -51,7 +52,7 @@ data class RebalanceItem(
     val currentValue: Double,
     val currentPrice: Double,
     val currentPercentage: Int,
-    val currency: String,
+    val currency: Currency,
     val quantity: Int
 )
 
@@ -64,7 +65,7 @@ data class RebalanceRecommendation(
     val diffPercent: Double,
     val diffAmount: Double,
     val currentPrice: Double,
-    val currency: String,
+    val currency: Currency,
     val currentShares: Int,
     val idealShares: Double
 )

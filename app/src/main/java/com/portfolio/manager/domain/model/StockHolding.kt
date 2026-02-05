@@ -6,5 +6,5 @@ package com.portfolio.manager.domain.model
 data class StockHolding(
     val symbol: String,
     val quantity: Int,
-    val currency: String
+    val currency: Currency
 )

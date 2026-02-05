@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.CashItem
+import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.getTrendColor
 
@@ -55,7 +56,7 @@ fun CashCard(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = CurrencyFormatter.format(currentValue, if (showInKrw) "KRW" else "USD"),
+                    text = CurrencyFormatter.format(currentValue, if (showInKrw) Currency.KRW else Currency.USD),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
