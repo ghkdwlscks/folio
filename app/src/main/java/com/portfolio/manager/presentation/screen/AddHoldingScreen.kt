@@ -1,46 +1,22 @@
 package com.portfolio.manager.presentation.screen
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,12 +24,11 @@ import androidx.compose.ui.unit.dp
 
 import kotlinx.coroutines.launch
 
-import com.portfolio.manager.domain.model.Currency
-import com.portfolio.manager.presentation.theme.AppAnimations
-import com.portfolio.manager.presentation.util.rememberHapticFeedback
+import com.portfolio.manager.presentation.component.form.AccountSelectionSection
+import com.portfolio.manager.presentation.component.form.CurrencySegmentedButton
+import com.portfolio.manager.presentation.component.form.FormScaffold
 import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddHoldingScreen(
     viewModel: AddHoldingViewModel,
@@ -62,23 +37,11 @@ fun AddHoldingScreen(
 ) {
     val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState()
-    val haptic = rememberHapticFeedback()
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { Text(if (uiState.isEditMode) "Edit Holding" else "Add Holding") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
-        }
+    FormScaffold(
+        title = if (uiState.isEditMode) "Edit Holding" else "Add Holding",
+        onNavigateBack = onNavigateBack,
+        modifier = modifier
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -94,24 +57,11 @@ fun AddHoldingScreen(
                     fontWeight = FontWeight.Medium
                 )
 
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    uiState.accounts.forEach { account ->
-                        FilterChip(
-                            selected = uiState.selectedAccountId == account.id,
-                            onClick = {
-                                haptic.tick()
-                                viewModel.selectAccount(account.id)
-                            },
-                            label = { Text(account.name) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        )
-                    }
-                }
+                AccountSelectionSection(
+                    accounts = uiState.accounts,
+                    selectedAccountId = uiState.selectedAccountId,
+                    onAccountSelected = { viewModel.selectAccount(it) }
+                )
             }
 
             OutlinedTextField(
@@ -179,105 +129,5 @@ fun AddHoldingScreen(
                 Text(if (uiState.isEditMode) "Update" else "Add Holding")
             }
         }
-    }
-}
-
-/**
- * Material 3 style segmented button for currency selection.
- */
-@Composable
-private fun CurrencySegmentedButton(
-    selectedCurrency: Currency,
-    onCurrencySelected: (Currency) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val haptic = rememberHapticFeedback()
-    val segmentWidth = 100.dp
-    val segmentHeight = 40.dp
-    val cornerRadius = 12.dp
-
-    val indicatorOffset by animateDpAsState(
-        targetValue = if (selectedCurrency.isKrw) segmentWidth else 0.dp,
-        animationSpec = AppAnimations.DpSprings.Toggle,
-        label = "currencyIndicator"
-    )
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(cornerRadius))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(cornerRadius)
-            )
-            .height(segmentHeight)
-    ) {
-        // Animated indicator
-        Box(
-            modifier = Modifier
-                .offset(x = indicatorOffset)
-                .width(segmentWidth)
-                .height(segmentHeight)
-                .background(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(cornerRadius)
-                )
-        )
-
-        // Segment buttons
-        Row {
-            CurrencySegment(
-                text = "$ USD",
-                isSelected = selectedCurrency.isUsd,
-                onClick = {
-                    if (!selectedCurrency.isUsd) {
-                        haptic.tick()
-                        onCurrencySelected(Currency.USD)
-                    }
-                },
-                modifier = Modifier.width(segmentWidth)
-            )
-            CurrencySegment(
-                text = "₩ KRW",
-                isSelected = selectedCurrency.isKrw,
-                onClick = {
-                    if (!selectedCurrency.isKrw) {
-                        haptic.tick()
-                        onCurrencySelected(Currency.KRW)
-                    }
-                },
-                modifier = Modifier.width(segmentWidth)
-            )
-        }
-    }
-}
-
-@Composable
-private fun CurrencySegment(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .height(40.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.onSecondaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            }
-        )
     }
 }
