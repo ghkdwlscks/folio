@@ -34,6 +34,7 @@ import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
+import com.portfolio.manager.domain.service.BenchmarkDataService
 import com.portfolio.manager.domain.service.CacheManager
 import com.portfolio.manager.domain.service.CashItemMapper
 import com.portfolio.manager.domain.service.PortfolioCache
@@ -44,8 +45,6 @@ import com.portfolio.manager.domain.service.PriceHistoryProcessor
 import com.portfolio.manager.domain.service.StockMapper
 import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
-import com.portfolio.manager.util.AppConstants.BENCHMARK_KOSPI
-import com.portfolio.manager.util.AppConstants.BENCHMARK_SP500
 import com.portfolio.manager.util.AppConstants.DEFAULT_ACCOUNT_NAME
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 import com.portfolio.manager.util.ErrorMessages
@@ -424,46 +423,10 @@ class DashboardViewModel @Inject constructor(
             val currentState = _uiState.value
             val showInKrw = (currentState as? DashboardUiState.Success)?.showInKrw ?: false
 
-            // Fetch exchange rate history for currency-adjusted returns
-            val exchangeRateData = stockRepository.getExchangeRateHistory("USD", "KRW", period.range)
-            val startExchangeRate = exchangeRateData.prices.firstOrNull() ?: currentExchangeRate
-            val endExchangeRate = exchangeRateData.prices.lastOrNull() ?: currentExchangeRate
-
-            // Fetch benchmark price histories (single fetch for both returns and sparklines)
-            val sp500Deferred = async { stockRepository.getPriceHistory(listOf(BENCHMARK_SP500), period.range) }
-            val kospiDeferred = async { stockRepository.getPriceHistory(listOf(BENCHMARK_KOSPI), period.range) }
-
-            val sp500History = sp500Deferred.await()[BENCHMARK_SP500]
-            val kospiHistory = kospiDeferred.await()[BENCHMARK_KOSPI]
-
-            // Calculate benchmark returns
-            val sp500Return = sp500History?.prices?.let { prices ->
-                PriceHistoryProcessor.calculateBenchmarkReturn(
-                    prices, "USD", showInKrw, startExchangeRate, endExchangeRate
-                )
-            }
-            val kospiReturn = kospiHistory?.prices?.let { prices ->
-                PriceHistoryProcessor.calculateBenchmarkReturn(
-                    prices, "KRW", showInKrw, startExchangeRate, endExchangeRate
-                )
-            }
-
-            // Build benchmark sparklines and timestamps from same data
-            val sparklines = buildMap {
-                sp500History?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                    put(BENCHMARK_SP500, PriceHistoryProcessor.normalizeValues(prices))
-                }
-                kospiHistory?.prices?.takeIf { it.size >= 2 }?.let { prices ->
-                    put(BENCHMARK_KOSPI, PriceHistoryProcessor.normalizeValues(prices))
-                }
-            }
-            val timestamps = buildMap {
-                sp500History?.timestamps?.takeIf { it.size >= 2 }?.let { put(BENCHMARK_SP500, it) }
-                kospiHistory?.timestamps?.takeIf { it.size >= 2 }?.let { put(BENCHMARK_KOSPI, it) }
-            }
-
-            val benchmarks = BenchmarkReturns(sp500 = sp500Return, kospi = kospiReturn)
-            updateBenchmarkData(period, benchmarks, sparklines, timestamps)
+            val result = BenchmarkDataService.loadBenchmarkData(
+                stockRepository, period, showInKrw, currentExchangeRate
+            )
+            updateBenchmarkData(period, result.returns, result.sparklines, result.timestamps)
         }
     }
 
