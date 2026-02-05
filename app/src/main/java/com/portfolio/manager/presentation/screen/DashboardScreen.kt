@@ -29,9 +29,11 @@ import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,6 +80,7 @@ import com.portfolio.manager.presentation.component.DeleteConfirmationDialog
 import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.component.PortfolioSummary
 import com.portfolio.manager.presentation.component.RebalanceDialog
+import com.portfolio.manager.presentation.util.rememberHapticFeedback
 import com.portfolio.manager.presentation.component.RebalanceItem
 import com.portfolio.manager.presentation.component.SectionHeader
 import com.portfolio.manager.presentation.component.SkeletonDashboard
@@ -321,27 +324,33 @@ fun DashboardScreen(
     }
 
     if (showAddChoiceDialog) {
+        val bottomSheetHaptic = rememberHapticFeedback()
         ModalBottomSheet(
             onDismissRequest = { showAddChoiceDialog = false },
-            sheetState = rememberModalBottomSheetState()
+            sheetState = rememberModalBottomSheetState(),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            tonalElevation = 6.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(bottom = 16.dp)
             ) {
                 Text(
-                    text = "Add to Account",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Add to Portfolio",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
                 Button(
                     onClick = {
+                        bottomSheetHaptic.click()
                         showAddChoiceDialog = false
                         onAddHolding()
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ShowChart,
@@ -349,15 +358,17 @@ fun DashboardScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text("Add Stock")
+                    Text("Add Stock Holding")
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
+                Spacer(modifier = Modifier.height(12.dp))
+                FilledTonalButton(
                     onClick = {
+                        bottomSheetHaptic.click()
                         showAddChoiceDialog = false
                         onAddCash()
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.AccountBalance,
@@ -365,7 +376,7 @@ fun DashboardScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text("Add Cash")
+                    Text("Add Cash / Savings")
                 }
             }
         }
