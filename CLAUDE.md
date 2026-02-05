@@ -237,6 +237,125 @@ import kotlin.math.abs
 import java.time.Instant
 ```
 
+### Class Member Ordering
+
+Members within classes should be ordered as follows:
+
+1. **Companion object** (constants, factory methods)
+2. **Injected dependencies** (constructor parameters)
+3. **Private state variables** (mutable internal state)
+4. **SharedPreferences delegates** (persisted settings)
+5. **StateFlow backing fields** (`_uiState`)
+6. **Public StateFlow properties** (`uiState`)
+7. **Init block**
+8. **Public functions**
+9. **Private functions**
+
+Example (ViewModel):
+```kotlin
+@HiltViewModel
+class ExampleViewModel @Inject constructor(
+    private val repository: ExampleRepository,
+    private val sharedPreferences: SharedPreferences
+) : ViewModel() {
+
+    companion object {
+        private const val TAG = "ExampleViewModel"
+    }
+
+    private var cachedData: List<Item> = emptyList()
+
+    private var showInKrw by sharedPreferences.boolean(PreferenceKeys.SHOW_IN_KRW, true)
+
+    private val _uiState = MutableStateFlow<ExampleUiState>(ExampleUiState.Loading)
+    val uiState: StateFlow<ExampleUiState> = _uiState.asStateFlow()
+
+    init {
+        loadData()
+    }
+
+    fun refresh() { /* ... */ }
+    fun updateSetting(value: Boolean) { /* ... */ }
+
+    private fun loadData() { /* ... */ }
+    private fun processItems(items: List<Item>) { /* ... */ }
+}
+```
+
+### Composable Parameter Ordering
+
+Parameters in Composable functions should follow this order:
+
+1. **Required parameters** (no default value)
+2. **Optional parameters** (with default values)
+3. **Event callbacks** (onClick, onValueChange, etc.)
+4. **Modifier** (always last, default `Modifier`)
+
+Example:
+```kotlin
+@Composable
+fun StockCard(
+    stock: Stock,                              // Required
+    weightPercent: Double? = null,             // Optional
+    targetWeight: Int? = null,                 // Optional
+    onEdit: (() -> Unit)? = null,              // Callback
+    onDelete: (() -> Unit)? = null,            // Callback
+    modifier: Modifier = Modifier              // Modifier LAST
+) {
+```
+
+### Naming Conventions
+
+| Element | Convention | Example |
+|---------|------------|---------|
+| StateFlow backing field | Underscore prefix | `_uiState` |
+| StateFlow public property | No prefix | `uiState` |
+| Repository implementation | `*Impl` suffix | `HoldingsRepositoryImpl` |
+| Extension functions file | `*Extensions.kt` | `StockExtensions.kt` |
+| UI state sealed interface | `*UiState` | `DashboardUiState` |
+| Screen composable | `*Screen` | `DashboardScreen` |
+| Reusable component | Descriptive name | `StockCard`, `CurrencyToggle` |
+
+### Function Ordering
+
+Within a file, functions should be ordered:
+
+1. **Public/Main functions first** - The primary API or main composable
+2. **Private helper functions after** - Supporting implementation details
+
+For Composables:
+```kotlin
+// Main composable first
+@Composable
+fun StockCard(stock: Stock, modifier: Modifier = Modifier) {
+    // ...
+}
+
+// Private helper composables after
+@Composable
+private fun StockCardHeader(name: String, symbol: String) {
+    // ...
+}
+
+@Composable
+private fun StockCardDetails(price: Double, change: Double) {
+    // ...
+}
+```
+
+For services/utilities:
+```kotlin
+object PortfolioCalculator {
+    // Public API
+    fun calculateReturn(values: List<Double>): Double { /* ... */ }
+    fun calculateVolatility(returns: List<Double>): Double { /* ... */ }
+
+    // Private helpers
+    private fun normalize(values: List<Double>): List<Double> { /* ... */ }
+    private fun validateInput(values: List<Double>): Boolean { /* ... */ }
+}
+```
+
 ## AppConstants & PreferenceKeys
 
 ```kotlin
