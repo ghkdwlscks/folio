@@ -1,26 +1,36 @@
 package com.portfolio.manager.presentation.component
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 
 import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
+/**
+ * Modern Material 3 segmented button style currency toggle.
+ * Features pill-shaped segments with currency icons and smooth animated indicator.
+ */
 @Composable
 fun CurrencyToggle(
     showInKrw: Boolean,
@@ -28,63 +38,94 @@ fun CurrencyToggle(
     modifier: Modifier = Modifier
 ) {
     val haptic = rememberHapticFeedback()
-    val indicatorOffset by animateFloatAsState(
-        targetValue = if (showInKrw) 1f else 0f,
-        animationSpec = AppAnimations.Springs.Toggle,
+
+    // Track segment size for indicator animation
+    val segmentWidth = 56.dp
+    val segmentHeight = 24.dp
+    val cornerRadius = 12.dp
+
+    val indicatorOffset by animateDpAsState(
+        targetValue = if (showInKrw) segmentWidth else 0.dp,
+        animationSpec = AppAnimations.DpSprings.Toggle,
         label = "currencyToggleIndicator"
     )
 
-    Layout(
-        content = {
-            // Indicator (measured but positioned manually)
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = Color.White.copy(alpha = 0.35f),
-                        shape = RoundedCornerShape(4.dp)
-                    )
-            )
-            // USD option
-            Text(
-                text = "USD",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (!showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (!showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-            )
-            // KRW option
-            Text(
-                text = "KRW",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (showInKrw) FontWeight.Bold else FontWeight.Normal,
-                color = if (showInKrw) Color.White else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
-            )
-        },
+    Box(
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color.White.copy(alpha = 0.15f))
-            .clickable {
-                haptic.tick()
-                onToggle()
-            }
-    ) { measurables, constraints ->
-        val usdPlaceable = measurables[1].measure(constraints)
-        val krwPlaceable = measurables[2].measure(constraints)
-
-        val width = usdPlaceable.width + krwPlaceable.width
-        val height = maxOf(usdPlaceable.height, krwPlaceable.height)
-
-        val indicatorWidth = if (showInKrw) krwPlaceable.width else usdPlaceable.width
-        val indicatorX = (usdPlaceable.width * indicatorOffset).toInt()
-        val indicatorPlaceable = measurables[0].measure(
-            Constraints.fixed(indicatorWidth, height)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(Color.White.copy(alpha = 0.12f))
+            .height(segmentHeight)
+    ) {
+        // Animated indicator pill
+        Box(
+            modifier = Modifier
+                .offset(x = indicatorOffset)
+                .width(segmentWidth)
+                .height(segmentHeight)
+                .background(
+                    color = Color.White.copy(alpha = 0.25f),
+                    shape = RoundedCornerShape(cornerRadius)
+                )
         )
 
-        layout(width, height) {
-            indicatorPlaceable.placeRelative(indicatorX, 0)
-            usdPlaceable.placeRelative(0, 0)
-            krwPlaceable.placeRelative(usdPlaceable.width, 0)
+        // Segment buttons
+        Row(
+            modifier = Modifier.height(segmentHeight),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // USD segment
+            SegmentButton(
+                text = "$ USD",
+                isSelected = !showInKrw,
+                onClick = {
+                    if (showInKrw) {
+                        haptic.tick()
+                        onToggle()
+                    }
+                },
+                modifier = Modifier
+                    .width(segmentWidth)
+                    .height(segmentHeight)
+            )
+            // KRW segment
+            SegmentButton(
+                text = "₩ KRW",
+                isSelected = showInKrw,
+                onClick = {
+                    if (!showInKrw) {
+                        haptic.tick()
+                        onToggle()
+                    }
+                },
+                modifier = Modifier
+                    .width(segmentWidth)
+                    .height(segmentHeight)
+            )
         }
+    }
+}
+
+@Composable
+private fun SegmentButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.5f)
+        )
     }
 }

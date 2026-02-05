@@ -1,20 +1,24 @@
 package com.portfolio.manager.presentation.component
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.outlined.ShowChart
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
 /**
  * A header component for list sections with title, count, and filter dropdowns.
@@ -92,30 +97,46 @@ private fun SortDropdown(
     onExpandedChange: (Boolean) -> Unit,
     onSortOptionSelected: (SortOption) -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
+
     Box {
-        Row(
-            modifier = Modifier.clickable { onExpandedChange(true) },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+            modifier = Modifier
+                .height(32.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    haptic.tick()
+                    onExpandedChange(true)
+                }
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.Sort,
-                contentDescription = "Sort",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = sortOption.label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Sort,
+                    contentDescription = "Sort",
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text = sortOption.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
         }
         DropdownMenu(
             expanded = expanded,
@@ -129,7 +150,10 @@ private fun SortDropdown(
                             fontWeight = if (option == sortOption) FontWeight.Bold else FontWeight.Normal
                         )
                     },
-                    onClick = { onSortOptionSelected(option) }
+                    onClick = {
+                        haptic.tick()
+                        onSortOptionSelected(option)
+                    }
                 )
             }
         }
@@ -143,30 +167,46 @@ private fun SparklinePeriodDropdown(
     onExpandedChange: (Boolean) -> Unit,
     onPeriodSelected: (TimePeriod) -> Unit
 ) {
+    val haptic = rememberHapticFeedback()
+
     Box {
-        Row(
-            modifier = Modifier.clickable { onExpandedChange(true) },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+            modifier = Modifier
+                .height(32.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    haptic.tick()
+                    onExpandedChange(true)
+                }
         ) {
-            Icon(
-                imageVector = Icons.Outlined.ShowChart,
-                contentDescription = "Sparkline Period",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = sparklinePeriod.label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ShowChart,
+                    contentDescription = "Sparkline Period",
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Text(
+                    text = sparklinePeriod.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
         }
         DropdownMenu(
             expanded = expanded,
@@ -180,7 +220,10 @@ private fun SparklinePeriodDropdown(
                             fontWeight = if (period == sparklinePeriod) FontWeight.Bold else FontWeight.Normal
                         )
                     },
-                    onClick = { onPeriodSelected(period) }
+                    onClick = {
+                        haptic.tick()
+                        onPeriodSelected(period)
+                    }
                 )
             }
         }

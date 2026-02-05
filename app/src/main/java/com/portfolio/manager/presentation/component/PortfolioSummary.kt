@@ -19,10 +19,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -486,72 +488,127 @@ private fun PeriodSelector(
     onPeriodSelected: (TimePeriod) -> Unit
 ) {
     val haptic = rememberHapticFeedback()
+    val selectedIndex = periods.indexOf(selectedPeriod).coerceAtLeast(0)
+    val density = androidx.compose.ui.platform.LocalDensity.current
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        periods.forEach { period ->
-            val isSelected = period == selectedPeriod
-            val returnValue = periodReturns[period]
-            val displayValue = when {
-                isLoading && isSelected -> "..."
-                returnValue != null -> {
-                    val sign = if (returnValue >= 0) "+" else ""
-                    "$sign${CurrencyFormatter.formatPercent(returnValue)}%"
-                }
-                else -> period.label
-            }
-            val returnColor = when {
-                returnValue == null -> Color.White.copy(alpha = 0.7f)
-                returnValue >= 0 -> GainGreenPastel
-                else -> LossRedPastel
-            }
+    // Track total width and segment width
+    var totalWidth by remember { mutableStateOf(0) }
+    val segmentWidth = if (periods.isNotEmpty()) totalWidth / periods.size else 0
 
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val scale by animateFloatAsState(
-                targetValue = if (isPressed) 0.92f else 1f,
-                animationSpec = AppAnimations.Springs.Toggle,
-                label = "periodScale"
+    // Use Animatable for more control - skip animation on initial composition
+    val indicatorOffset = remember { androidx.compose.animation.core.Animatable(0f) }
+    val targetOffset = (selectedIndex * segmentWidth).toFloat()
+
+    // Track if this is the first time we're setting the position
+    var isInitialized by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(targetOffset) {
+        if (!isInitialized && targetOffset > 0f) {
+            // First time with valid width - snap without animation
+            indicatorOffset.snapTo(targetOffset)
+            isInitialized = true
+        } else if (isInitialized) {
+            // Subsequent changes - animate
+            indicatorOffset.animateTo(
+                targetValue = targetOffset,
+                animationSpec = AppAnimations.Springs.Toggle
             )
+        }
+    }
 
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = if (isSelected) Color.White.copy(alpha = 0.2f) else Color.Transparent,
-                modifier = Modifier
-                    .weight(1f)
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null
-                    ) {
-                        haptic.tick()
-                        onPeriodSelected(period)
-                    }
-            ) {
-                Column(
+    val indicatorOffsetPx = indicatorOffset.value
+
+    // Container with pill shape
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White.copy(alpha = 0.08f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { size -> totalWidth = size.width }
+    ) {
+        Box {
+            // Animated indicator pill
+            if (segmentWidth > 0) {
+                val indicatorWidthDp = with(density) { segmentWidth.toDp() }
+                val indicatorOffsetDp = with(density) { indicatorOffsetPx.toDp() }
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = period.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
-                    )
-                    if (returnValue != null) {
-                        Text(
-                            text = displayValue,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) returnColor else returnColor.copy(alpha = 0.7f)
+                        .padding(3.dp)
+                        .offset(x = indicatorOffsetDp)
+                        .width(indicatorWidthDp - 6.dp)
+                        .height(48.dp)
+                        .background(
+                            color = Color.White.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(10.dp)
                         )
+                )
+            }
+
+            // Period buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                periods.forEach { period ->
+                    val isSelected = period == selectedPeriod
+                    val returnValue = periodReturns[period]
+                    val displayValue = when {
+                        isLoading && isSelected -> "..."
+                        returnValue != null -> {
+                            val sign = if (returnValue >= 0) "+" else ""
+                            "$sign${CurrencyFormatter.formatPercent(returnValue)}%"
+                        }
+                        else -> period.label
+                    }
+                    val returnColor = when {
+                        returnValue == null -> Color.White.copy(alpha = 0.7f)
+                        returnValue >= 0 -> GainGreenPastel
+                        else -> LossRedPastel
+                    }
+
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.92f else 1f,
+                        animationSpec = AppAnimations.Springs.Toggle,
+                        label = "periodScale"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                haptic.tick()
+                                onPeriodSelected(period)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = period.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
+                            )
+                            if (returnValue != null) {
+                                Text(
+                                    text = displayValue,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) returnColor else returnColor.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
                     }
                 }
             }

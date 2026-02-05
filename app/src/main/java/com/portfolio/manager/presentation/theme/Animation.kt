@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.Dp
 
 /**
  * Centralized animation specifications for consistent motion throughout the app.
@@ -21,7 +22,7 @@ object AppAnimations {
         const val EMPHASIS = 800
     }
 
-    // Spring configurations for interactive elements
+    // Spring configurations for interactive elements (Float-based)
     object Springs {
         /** Press feedback - bouncy and responsive */
         val Press: AnimationSpec<Float> = spring(
@@ -43,6 +44,21 @@ object AppAnimations {
 
         /** Snappy response for quick interactions */
         val Snappy: AnimationSpec<Float> = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh
+        )
+    }
+
+    // Spring configurations for Dp-based animations (position, size)
+    object DpSprings {
+        /** Toggle/switch position animations - smooth with slight bounce */
+        val Toggle: AnimationSpec<Dp> = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+
+        /** Snappy position changes */
+        val Snappy: AnimationSpec<Dp> = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessHigh
         )
