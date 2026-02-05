@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.presentation.component.ErrorContent
+import com.portfolio.manager.presentation.util.rememberHapticFeedback
 import com.portfolio.manager.presentation.viewmodel.AccountsUiState
 import com.portfolio.manager.presentation.viewmodel.AccountsViewModel
 
@@ -97,7 +98,7 @@ fun AccountsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -257,6 +258,8 @@ private fun AccountCard(
     onMoveDown: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
+    val haptic = rememberHapticFeedback()
+
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -271,10 +274,13 @@ private fun AccountCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Reorder buttons
+            // Reorder buttons with haptic feedback
             Column {
                 IconButton(
-                    onClick = { onMoveUp?.invoke() },
+                    onClick = {
+                        haptic.tick()
+                        onMoveUp?.invoke()
+                    },
                     enabled = onMoveUp != null,
                     modifier = Modifier.size(32.dp)
                 ) {
@@ -288,7 +294,10 @@ private fun AccountCard(
                     )
                 }
                 IconButton(
-                    onClick = { onMoveDown?.invoke() },
+                    onClick = {
+                        haptic.tick()
+                        onMoveDown?.invoke()
+                    },
                     enabled = onMoveDown != null,
                     modifier = Modifier.size(32.dp)
                 ) {

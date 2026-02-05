@@ -14,10 +14,13 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.util.CurrencyFormatter
+import kotlin.math.abs
 
 /**
  * TwoWayConverter for Double to preserve precision for large currency values.
@@ -30,6 +33,9 @@ private val DoubleToVector: TwoWayConverter<Double, AnimationVector1D> =
         convertFromVector = { it.value.toDouble() }
     )
 
+/** Threshold for "significant" change that triggers pulse (1% change) */
+private const val SIGNIFICANT_CHANGE_THRESHOLD = 0.01
+
 @Composable
 fun AnimatedCurrencyCounter(
     targetValue: Double,
@@ -38,15 +44,38 @@ fun AnimatedCurrencyCounter(
     style: TextStyle = MaterialTheme.typography.displayMedium,
     fontWeight: FontWeight = FontWeight.Bold,
     color: Color = Color.White,
-    durationMillis: Int = 800
+    durationMillis: Int = 800,
+    enablePulse: Boolean = true
 ) {
     var previousValue by remember { mutableDoubleStateOf(targetValue) }
     // Use Double directly to preserve precision for large values (especially KRW)
     val animatable = remember { Animatable(targetValue, DoubleToVector) }
 
+    // Scale animation for pulse effect on significant changes
+    val scaleAnimatable = remember { Animatable(1f) }
+
     LaunchedEffect(targetValue) {
         // Only animate if value actually changed
         if (previousValue != targetValue) {
+            // Check if change is significant (>1%) for pulse effect
+            val changePercent = if (previousValue != 0.0) {
+                abs(targetValue - previousValue) / abs(previousValue)
+            } else 0.0
+
+            val isSignificantChange = changePercent > SIGNIFICANT_CHANGE_THRESHOLD
+
+            // Start pulse animation for significant changes
+            if (enablePulse && isSignificantChange) {
+                scaleAnimatable.animateTo(
+                    targetValue = 1.05f,
+                    animationSpec = AppAnimations.Springs.Snappy
+                )
+                scaleAnimatable.animateTo(
+                    targetValue = 1f,
+                    animationSpec = AppAnimations.Springs.Snappy
+                )
+            }
+
             animatable.animateTo(
                 targetValue = targetValue,
                 animationSpec = tween(
@@ -70,7 +99,7 @@ fun AnimatedCurrencyCounter(
         style = style,
         fontWeight = fontWeight,
         color = color,
-        modifier = modifier
+        modifier = modifier.scale(scaleAnimatable.value)
     )
 }
 
@@ -83,14 +112,34 @@ fun AnimatedPercentCounter(
     color: Color = Color.White,
     prefix: String = "",
     suffix: String = "%",
-    durationMillis: Int = 600
+    durationMillis: Int = 600,
+    enablePulse: Boolean = true
 ) {
     var previousValue by remember { mutableDoubleStateOf(targetValue) }
     // Use Double directly to preserve precision
     val animatable = remember { Animatable(targetValue, DoubleToVector) }
 
+    // Scale animation for pulse effect on significant changes
+    val scaleAnimatable = remember { Animatable(1f) }
+
     LaunchedEffect(targetValue) {
         if (previousValue != targetValue) {
+            // Check if change is significant (>1 percentage point) for pulse effect
+            val changeAmount = abs(targetValue - previousValue)
+            val isSignificantChange = changeAmount > 1.0
+
+            // Start pulse animation for significant changes
+            if (enablePulse && isSignificantChange) {
+                scaleAnimatable.animateTo(
+                    targetValue = 1.08f,
+                    animationSpec = AppAnimations.Springs.Snappy
+                )
+                scaleAnimatable.animateTo(
+                    targetValue = 1f,
+                    animationSpec = AppAnimations.Springs.Snappy
+                )
+            }
+
             animatable.animateTo(
                 targetValue = targetValue,
                 animationSpec = tween(
@@ -110,6 +159,6 @@ fun AnimatedPercentCounter(
         style = style,
         fontWeight = fontWeight,
         color = color,
-        modifier = modifier
+        modifier = modifier.scale(scaleAnimatable.value)
     )
 }

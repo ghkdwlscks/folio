@@ -1,6 +1,6 @@
 package com.portfolio.manager.presentation.component
 
-import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -38,26 +38,28 @@ import androidx.compose.ui.unit.dp
 fun SkeletonDashboard(
     modifier: Modifier = Modifier
 ) {
+    // Smoother shimmer with wider gradient and softer easing
     val shimmerColors = listOf(
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     )
 
     val transition = rememberInfiniteTransition(label = "shimmer")
     val translateAnim by transition.animateFloat(
         initialValue = 0f,
-        targetValue = 1000f,
+        targetValue = 1200f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing),
+            animation = tween(durationMillis = 1500, easing = EaseInOutSine),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmer"
     )
 
+    // Wider gradient spread for smoother visual
     val brush = Brush.linearGradient(
         colors = shimmerColors,
-        start = Offset(translateAnim - 500f, translateAnim - 500f),
+        start = Offset(translateAnim - 600f, translateAnim - 600f),
         end = Offset(translateAnim, translateAnim)
     )
 

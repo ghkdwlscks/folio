@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 
 import com.portfolio.manager.presentation.theme.ChartColors
 import com.portfolio.manager.presentation.util.CurrencyFormatter
+import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
 data class AllocationItem(
     val symbol: String,
@@ -73,6 +74,7 @@ fun AllocationPieChart(
     var expanded by remember { mutableStateOf(false) }
     val canExpand = items.size > COLLAPSED_ITEM_COUNT
     val remainingCount = items.size - COLLAPSED_ITEM_COUNT
+    val haptic = rememberHapticFeedback()
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -88,7 +90,10 @@ fun AllocationPieChart(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(
-                        if (canExpand) Modifier.clickable { expanded = !expanded }
+                        if (canExpand) Modifier.clickable {
+                            haptic.tick()
+                            expanded = !expanded
+                        }
                         else Modifier
                     ),
                 horizontalArrangement = Arrangement.SpaceBetween,
