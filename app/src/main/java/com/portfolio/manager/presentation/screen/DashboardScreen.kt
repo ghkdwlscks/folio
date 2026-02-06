@@ -735,7 +735,7 @@ private fun DashboardTopBar(
         title = {
             Column {
                 Text(
-                    text = "Portfolio Manager",
+                    text = "Folio",
                     fontWeight = FontWeight.Bold,
                     style = if (showCompactValue && compactTitle != null) {
                         MaterialTheme.typography.titleMedium

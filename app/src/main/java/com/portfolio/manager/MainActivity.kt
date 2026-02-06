@@ -10,7 +10,7 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 
 import com.portfolio.manager.presentation.navigation.NavGraph
-import com.portfolio.manager.presentation.theme.PortfolioManagerTheme
+import com.portfolio.manager.presentation.theme.FolioTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PortfolioManagerTheme {
+            FolioTheme {
                 val navController = rememberNavController()
                 NavGraph(navController = navController)
             }

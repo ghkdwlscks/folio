@@ -1,4 +1,4 @@
-# Stock Portfolio Manager
+# Folio
 
 A personal Android app for manually tracking your stock portfolio and cash savings with real-time price updates.
 

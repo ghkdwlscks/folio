@@ -61,7 +61,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun PortfolioManagerTheme(
+fun FolioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit

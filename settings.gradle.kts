@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PortfolioManager"
+rootProject.name = "Folio"
 include(":app")
