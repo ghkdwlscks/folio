@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Balance
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -37,91 +39,124 @@ import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 fun AccountDropdown(
     accounts: List<AccountWithCount>,
     selectedAccountId: Long,
+    filteredAccountIds: Set<Long>,
     onAccountSelected: (Long) -> Unit,
+    onFilterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val totalHoldings = accounts.sumOf { it.holdingsCount }
-
-    val selectedLabel = if (selectedAccountId == ALL_ACCOUNTS_ID) {
-        "All ($totalHoldings)"
+    val isFilterActive = filteredAccountIds.isNotEmpty()
+    val filteredCount = if (isFilterActive) {
+        accounts.filter { it.account.id in filteredAccountIds }.sumOf { it.holdingsCount }
     } else {
-        accounts.find { it.account.id == selectedAccountId }?.let {
-            "${it.account.name} (${it.holdingsCount})"
-        } ?: "All ($totalHoldings)"
+        totalHoldings
+    }
+
+    val selectedLabel = when {
+        selectedAccountId != ALL_ACCOUNTS_ID -> {
+            accounts.find { it.account.id == selectedAccountId }?.let {
+                "${it.account.name} (${it.holdingsCount})"
+            } ?: "All ($totalHoldings)"
+        }
+        isFilterActive -> "${filteredAccountIds.size} of ${accounts.size} ($filteredCount)"
+        else -> "All ($totalHoldings)"
     }
 
     val anyNeedsRebalance = accounts.any { it.needsRebalance }
+    val showFilterIcon = selectedAccountId == ALL_ACCOUNTS_ID
 
-    Box(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .clickable { expanded = true }
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = selectedLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            if (selectedAccountId == ALL_ACCOUNTS_ID && anyNeedsRebalance) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box {
+            Row(
+                modifier = Modifier
+                    .clickable { expanded = true }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = selectedLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                if (selectedAccountId == ALL_ACCOUNTS_ID && anyNeedsRebalance) {
+                    Icon(
+                        imageVector = Icons.Outlined.Balance,
+                        contentDescription = "Needs rebalancing",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
                 Icon(
-                    imageVector = Icons.Outlined.Balance,
-                    contentDescription = "Needs rebalancing",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.error
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = "Select account",
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
             }
-            Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
-                contentDescription = "Select account",
-                tint = MaterialTheme.colorScheme.onBackground
-            )
-        }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = "All ($totalHoldings)",
-                        fontWeight = if (selectedAccountId == ALL_ACCOUNTS_ID) FontWeight.Bold else FontWeight.Normal
-                    )
-                },
-                onClick = {
-                    onAccountSelected(ALL_ACCOUNTS_ID)
-                    expanded = false
-                }
-            )
-            accounts.forEach { accountWithCount ->
-                val isSelected = selectedAccountId == accountWithCount.account.id
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
                 DropdownMenuItem(
                     text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "${accountWithCount.account.name} (${accountWithCount.holdingsCount})",
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                            if (accountWithCount.needsRebalance) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Outlined.Balance,
-                                    contentDescription = "Needs rebalancing",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
+                        Text(
+                            text = "All ($totalHoldings)",
+                            fontWeight = if (selectedAccountId == ALL_ACCOUNTS_ID) FontWeight.Bold else FontWeight.Normal
+                        )
                     },
                     onClick = {
-                        onAccountSelected(accountWithCount.account.id)
+                        onAccountSelected(ALL_ACCOUNTS_ID)
                         expanded = false
+                    }
+                )
+                accounts.forEach { accountWithCount ->
+                    val isSelected = selectedAccountId == accountWithCount.account.id
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${accountWithCount.account.name} (${accountWithCount.holdingsCount})",
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                                if (accountWithCount.needsRebalance) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Outlined.Balance,
+                                        contentDescription = "Needs rebalancing",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            onAccountSelected(accountWithCount.account.id)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+        if (showFilterIcon) {
+            IconButton(
+                onClick = onFilterClick,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.FilterList,
+                    contentDescription = "Filter accounts",
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isFilterActive) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     }
                 )
             }

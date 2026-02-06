@@ -36,6 +36,7 @@ sealed interface DashboardUiState {
         val cashItems: List<CashItem> = emptyList(),
         val accounts: List<AccountWithCount> = emptyList(),
         val selectedAccountId: Long = 1L,
+        val filteredAccountIds: Set<Long> = emptySet(),
         val periodReturns: Map<TimePeriod, Double> = emptyMap(),
         val benchmarkReturns: Map<TimePeriod, BenchmarkReturns> = emptyMap(),
         val selectedPeriod: TimePeriod = TimePeriod.ONE_YEAR,

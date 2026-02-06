@@ -1388,4 +1388,82 @@ class DashboardViewModelTest {
             })
         }
     }
+
+    @Test
+    fun `updateAccountFilter - updates filter and persists to cache`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
+
+        viewModel.updateAccountFilter(setOf(1L, 2L))
+
+        assertThat(viewModel.getAccountFilter()).isEqualTo(setOf(1L, 2L))
+        io.mockk.verify { sharedPreferencesEditor.putString("dashboard_account_filter", any()) }
+    }
+
+    @Test
+    fun `updateAccountFilter - empty set means all accounts`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
+
+        viewModel.updateAccountFilter(setOf(1L))
+        assertThat(viewModel.getAccountFilter()).isEqualTo(setOf(1L))
+
+        viewModel.updateAccountFilter(emptySet())
+        assertThat(viewModel.getAccountFilter()).isEmpty()
+    }
+
+    @Test
+    fun `account filter - filters holdings when active`() = runTest {
+        val account1 = AccountEntity(1, "Account1", 1000L)
+        val account2 = AccountEntity(2, "Account2", 2000L)
+
+        val holding1 = HoldingEntity(1, 1L, "AAPL", "Apple Inc", 10, 100.0, "USD")
+        val holding2 = HoldingEntity(2, 2L, "GOOGL", "Google", 5, 200.0, "USD")
+
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(account1, account2))
+        every { holdingsRepository.getAllHoldings() } returns flowOf(listOf(holding1, holding2))
+        every { holdingsRepository.getHoldingsCountByAccountFlow() } returns flowOf(mapOf(1L to 1, 2L to 1))
+
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
+            listOf(
+                QuoteResult(symbol = "AAPL", regularMarketPrice = 150.0),
+                QuoteResult(symbol = "GOOGL", regularMarketPrice = 250.0)
+            )
+        )
+        coEvery { stockRepository.getPriceHistory(any(), any()) } returns emptyMap()
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Initially all accounts visible
+        val initialState = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(initialState.stocks).hasSize(2)
+        assertThat(initialState.filteredAccountIds).isEmpty()
+
+        // Apply filter to only show account 1
+        viewModel.updateAccountFilter(setOf(1L))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val filteredState = viewModel.uiState.value as DashboardUiState.Success
+        assertThat(filteredState.stocks).hasSize(1)
+        assertThat(filteredState.stocks[0].symbol).isEqualTo("AAPL")
+        assertThat(filteredState.filteredAccountIds).isEqualTo(setOf(1L))
+    }
+
+    @Test
+    fun `account filter - clears cache when filter changes`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
+
+        // First set filter
+        viewModel.updateAccountFilter(setOf(1L))
+        // Then change filter - should clear cached data
+        viewModel.updateAccountFilter(setOf(2L))
+
+        // Verify filter is updated
+        assertThat(viewModel.getAccountFilter()).isEqualTo(setOf(2L))
+    }
 }

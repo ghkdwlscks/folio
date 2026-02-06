@@ -78,6 +78,7 @@ import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.presentation.component.AccountDropdown
+import com.portfolio.manager.presentation.component.AccountFilterDialog
 import com.portfolio.manager.presentation.component.AllocationItem
 import com.portfolio.manager.presentation.component.AllocationPieChart
 import com.portfolio.manager.presentation.component.CashCard
@@ -664,7 +665,8 @@ private fun DashboardTopBarWrapper(
 
 private data class AccountTabState(
     val accounts: List<AccountWithCount>,
-    val selectedAccountId: Long
+    val selectedAccountId: Long,
+    val filteredAccountIds: Set<Long> = emptySet()
 )
 
 @Composable
@@ -672,6 +674,7 @@ private fun AccountDropdownWrapper(
     viewModel: DashboardViewModel,
     modifier: Modifier = Modifier
 ) {
+    var showFilterDialog by remember { mutableStateOf(false) }
     val initialState = AccountTabState(emptyList(), ALL_ACCOUNTS_ID)
     val tabState by remember {
         viewModel.uiState
@@ -679,14 +682,16 @@ private fun AccountDropdownWrapper(
                 val success = state as? DashboardUiState.Success
                 AccountTabState(
                     accounts = success?.accounts ?: emptyList(),
-                    selectedAccountId = success?.selectedAccountId ?: ALL_ACCOUNTS_ID
+                    selectedAccountId = success?.selectedAccountId ?: ALL_ACCOUNTS_ID,
+                    filteredAccountIds = success?.filteredAccountIds ?: emptySet()
                 )
             }
             .runningFold(initialState) { prev, new ->
                 // Keep previous accounts during Loading state to prevent component removal
                 AccountTabState(
                     accounts = new.accounts.ifEmpty { prev.accounts },
-                    selectedAccountId = new.selectedAccountId
+                    selectedAccountId = new.selectedAccountId,
+                    filteredAccountIds = new.filteredAccountIds
                 )
             }
             .distinctUntilChanged()
@@ -696,8 +701,22 @@ private fun AccountDropdownWrapper(
         AccountDropdown(
             accounts = tabState.accounts,
             selectedAccountId = tabState.selectedAccountId,
+            filteredAccountIds = tabState.filteredAccountIds,
             onAccountSelected = { viewModel.selectAccount(it) },
+            onFilterClick = { showFilterDialog = true },
             modifier = modifier
+        )
+    }
+
+    if (showFilterDialog) {
+        AccountFilterDialog(
+            accounts = tabState.accounts,
+            selectedAccountIds = tabState.filteredAccountIds,
+            onApply = { selectedIds ->
+                viewModel.updateAccountFilter(selectedIds)
+                showFilterDialog = false
+            },
+            onDismiss = { showFilterDialog = false }
         )
     }
 }

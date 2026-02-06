@@ -67,6 +67,7 @@ class DashboardViewModel @Inject constructor(
 
     // Declare all properties BEFORE _uiState since loadCachedStateOrDefault() uses them
     private var selectedAccountId: Long = ALL_ACCOUNTS_ID
+    private var accountFilter: Set<Long> = emptySet()
     private var holdingsJob: Job? = null
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
@@ -108,6 +109,8 @@ class DashboardViewModel @Inject constructor(
         return try {
             val stocks = cacheManager.load<List<Stock>>(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON)
                 ?: return DashboardUiState.Loading
+            // Load account filter from cache
+            accountFilter = cacheManager.loadOrDefault<Set<Long>>(PreferenceKeys.DASHBOARD_ACCOUNT_FILTER, emptySet())
             // Load into memory cache for fast account switching
             allStocksCache = stocks
             val cachedRate = cacheManager.loadFloat(PreferenceKeys.DASHBOARD_CACHED_EXCHANGE_RATE, KRW_TO_USD_RATE.toFloat()).toDouble()
@@ -149,6 +152,7 @@ class DashboardViewModel @Inject constructor(
                 cashItems = cashItems,
                 accounts = accounts,
                 selectedAccountId = selectedAccountId,
+                filteredAccountIds = accountFilter,
                 periodReturns = periodReturns,
                 benchmarkReturns = benchmarkReturns,
                 selectedPeriod = summaryPeriod,
@@ -205,6 +209,18 @@ class DashboardViewModel @Inject constructor(
         // Render immediately from cache, then refresh in background
         renderFromCacheThenRefresh()
     }
+
+    fun updateAccountFilter(filterIds: Set<Long>) {
+        accountFilter = filterIds
+        cacheManager.save(PreferenceKeys.DASHBOARD_ACCOUNT_FILTER, filterIds)
+        // Clear cached period returns and sparkline for ALL_ACCOUNTS_ID (will be recalculated)
+        periodReturnsCache.remove(ALL_ACCOUNTS_ID)
+        portfolioSparklineCache.remove(ALL_ACCOUNTS_ID)
+        portfolioStatsCache.remove(ALL_ACCOUNTS_ID)
+        renderFromCacheThenRefresh()
+    }
+
+    fun getAccountFilter(): Set<Long> = accountFilter
 
     private fun renderFromCacheThenRefresh() {
         holdingsJob?.cancel()
@@ -268,6 +284,7 @@ class DashboardViewModel @Inject constructor(
             cashItems = sortedCashItems,
             accounts = accountsWithRebalance,
             selectedAccountId = selectedAccountId,
+            filteredAccountIds = accountFilter,
             periodReturns = periodReturnsCache[selectedAccountId] ?: emptyMap(),
             selectedPeriod = summaryPeriod,
             isRefreshing = true,
@@ -585,8 +602,19 @@ class DashboardViewModel @Inject constructor(
         holdingsRepository.getHoldingsCountByAccountFlow(),
         cashRepository.getCashItemsCountByAccountFlow()
     ) { holdings, cashEntities, accounts, holdingsCountMap, cashCountMap ->
-        val cashItems = CashItemMapper.fromEntities(cashEntities)
-        HoldingsData(holdings, cashItems, accounts, holdingsCountMap, cashCountMap)
+        // Apply account filter when viewing "All Accounts" with active filter
+        val filteredHoldings = if (selectedAccountId == ALL_ACCOUNTS_ID && accountFilter.isNotEmpty()) {
+            holdings.filter { it.accountId in accountFilter }
+        } else {
+            holdings
+        }
+        val filteredCashEntities = if (selectedAccountId == ALL_ACCOUNTS_ID && accountFilter.isNotEmpty()) {
+            cashEntities.filter { it.accountId in accountFilter }
+        } else {
+            cashEntities
+        }
+        val cashItems = CashItemMapper.fromEntities(filteredCashEntities)
+        HoldingsData(filteredHoldings, cashItems, accounts, holdingsCountMap, cashCountMap)
     }
 
     private suspend fun loadPricesForHoldings(
@@ -633,6 +661,7 @@ class DashboardViewModel @Inject constructor(
             cashItems = emptyList(),
             accounts = accounts,
             selectedAccountId = selectedAccountId,
+            filteredAccountIds = accountFilter,
             periodReturns = emptyMap(),
             selectedPeriod = summaryPeriod,
             exchangeRate = currentExchangeRate,
@@ -656,6 +685,7 @@ class DashboardViewModel @Inject constructor(
             cashItems = sortedCashItems,
             accounts = accounts,
             selectedAccountId = selectedAccountId,
+            filteredAccountIds = accountFilter,
             periodReturns = currentSuccess?.periodReturns ?: emptyMap(),
             selectedPeriod = summaryPeriod,
             exchangeRate = currentExchangeRate,
@@ -775,6 +805,7 @@ class DashboardViewModel @Inject constructor(
                     cashItems = sortedCashItems,
                     accounts = accountsWithRebalance,
                     selectedAccountId = selectedAccountId,
+                    filteredAccountIds = accountFilter,
                     periodReturns = previousReturns,
                     benchmarkReturns = currentSuccess?.benchmarkReturns ?: emptyMap(),
                     selectedPeriod = selectedPeriod,

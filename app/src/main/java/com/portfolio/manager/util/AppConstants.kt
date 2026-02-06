@@ -37,6 +37,7 @@ object PreferenceKeys {
     const val STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
     const val PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
     const val SORT_OPTION = "sort_option"
+    const val DASHBOARD_ACCOUNT_FILTER = "dashboard_account_filter"
 
     // FIRE calculator preferences
     const val FIRE_ANNUAL_RETURN = "fire_annual_return"
