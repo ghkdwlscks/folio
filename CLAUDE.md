@@ -28,6 +28,7 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 - **Stock Sparklines**: Each card shows price history chart with configurable period
 - **Weight Display**: Each stock shows its percentage of total portfolio, with target if set
 - **Account Filter**: Dropdown menu to view all accounts aggregated or filter by specific account
+- **Multi-Account Filter**: Filter dialog to select which accounts appear in aggregated "All Accounts" view
 - **Multi-Account Details**: Expandable stock cards showing per-account holdings breakdown
 - **Annual Income**: Shows combined dividend income from stocks and yield income from cash
 - **Delete Confirmation**: Reusable dialogs for holdings and cash items
@@ -120,7 +121,11 @@ app/src/main/java/com/portfolio/manager/
 │   ├── service/            # Domain services
 │   │   ├── PortfolioCalculationService.kt # Portfolio values, period returns, cash returns
 │   │   ├── PortfolioStatsCalculator.kt  # MDD, Sharpe, Volatility calculations
-│   │   ├── PriceHistoryProcessor.kt     # Date alignment, forward-fill logic
+│   │   ├── PriceHistoryProcessor.kt     # Date alignment, forward-fill orchestration
+│   │   ├── DateTimeConverter.kt         # Timestamp/date string conversion utilities
+│   │   ├── TimeSeriesProcessor.kt       # Forward-fill and normalization logic
+│   │   ├── ExchangeRateAdjuster.kt      # Exchange rate adjustment calculations
+│   │   ├── PerAccountCache.kt           # Generic per-account caching utility
 │   │   ├── PortfolioSorter.kt           # Stock/cash sorting by various criteria
 │   │   ├── StockMapper.kt, CashItemMapper.kt  # Entity to domain model mapping
 │   │   ├── CacheManager.kt              # JSON-based SharedPreferences caching
@@ -150,7 +155,9 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── CurrencyToggle.kt                 # USD/KRW switcher
 │   │   ├── AnimatedCounter.kt                # Value transition animations
 │   │   ├── AccountDropdown.kt                # Account filter dropdown
+│   │   ├── AccountFilterDialog.kt            # Multi-account filter selection
 │   │   ├── SectionHeader.kt                  # Holdings section with sort options
+│   │   ├── BaseDialog.kt                     # Common dialog wrapper with animations
 │   │   ├── ConfirmationDialog.kt             # Reusable confirmation dialogs
 │   │   ├── RebalanceDialog.kt                # Portfolio rebalancing UI
 │   │   ├── Skeleton.kt                       # Loading placeholders
@@ -215,7 +222,7 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Error handling with try-catch in ViewModel operations
 - Batch queries to avoid N+1 problems (e.g., `getHoldingsCountByAccountFlow`)
 - Room `@Transaction` for atomic operations
-- Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
+- Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, DateTimeConverter, TimeSeriesProcessor, ExchangeRateAdjuster, PerAccountCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
 - SharedPreferences delegates for clean preference access
 - CacheManager for JSON-based caching with type safety
 - Currency enum for type-safe currency handling (never use "USD"/"KRW" strings in domain/presentation)
@@ -405,6 +412,7 @@ object PreferenceKeys {
     const val STOCK_SPARKLINE_PERIOD = "stock_sparkline_period"
     const val PORTFOLIO_SUMMARY_PERIOD = "portfolio_summary_period"
     const val SORT_OPTION = "sort_option"
+    const val DASHBOARD_ACCOUNT_FILTER = "dashboard_account_filter"
 
     // FIRE calculator preferences
     const val FIRE_ANNUAL_RETURN = "fire_annual_return"
@@ -457,7 +465,7 @@ app/src/test/java/com/portfolio/manager/
 │   └── repository/           # Repository tests (Holdings, Account, Cash, Stock)
 ├── domain/
 │   ├── model/                # Model tests (Stock, CashItem, StockHolding, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns)
-│   ├── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, PortfolioSorter, StockMapper, CashItemMapper, CacheManager, PortfolioCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
+│   ├── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, DateTimeConverter, TimeSeriesProcessor, ExchangeRateAdjuster, PerAccountCache, PortfolioSorter, StockMapper, CashItemMapper, CacheManager, PortfolioCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
 │   └── util/                 # Domain utility tests (CurrencyConverter, ReturnCalculator)
 ├── presentation/
 │   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)

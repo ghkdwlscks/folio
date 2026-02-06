@@ -37,7 +37,8 @@ A personal Android app for tracking your stock portfolio and cash savings with r
 
 ### Additional Features
 - **Rebalancing** - Set target percentages, view ideal shares, and calculate adjustments needed
-- **Aggregated View** - View all accounts combined or filter by account
+- **Aggregated View** - View all accounts combined or filter by specific account
+- **Account Filter** - Multi-select filter to choose which accounts appear in aggregated view
 - **Fast Cold Start** - Cached dashboard for instant display
 - **Offline Support** - View cached data when offline
 
