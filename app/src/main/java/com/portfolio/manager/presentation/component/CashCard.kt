@@ -66,10 +66,11 @@ fun CashCard(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
+                val displayedYield = Math.round(cashItem.annualYieldRate * 100) / 100.0
                 Text(
-                    text = "Yield: ${String.format("%.2f", cashItem.annualYieldRate)}%",
+                    text = "Yield: ${String.format("%.2f", displayedYield)}%",
                     style = MaterialTheme.typography.bodySmall,
-                    color = getTrendColor(cashItem.annualYieldRate)
+                    color = getTrendColor(displayedYield)
                 )
             }
             Row(
