@@ -1,8 +1,8 @@
 package com.portfolio.manager.presentation.util
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.TrendingUp
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.portfolio.manager.presentation.theme.GainGreen
@@ -56,7 +56,7 @@ fun getTrendBackgroundColor(value: Double): Color {
  * Gets the trend icon based on whether the value represents a gain.
  */
 fun getTrendIcon(value: Double): ImageVector {
-    return if (value >= 0) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
+    return if (value >= 0) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown
 }
 
 /**
@@ -88,6 +88,6 @@ fun createTrendIndicator(value: Double, usePastel: Boolean = false): TrendIndica
         isGain = gain,
         color = color,
         backgroundColor = backgroundColor,
-        icon = if (value >= 0) Icons.Rounded.TrendingUp else Icons.Rounded.TrendingDown
+        icon = if (value >= 0) Icons.AutoMirrored.Rounded.TrendingUp else Icons.AutoMirrored.Rounded.TrendingDown
     )
 }

@@ -1,8 +1,8 @@
 package com.portfolio.manager.presentation.util
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.TrendingDown
-import androidx.compose.material.icons.rounded.TrendingUp
+import androidx.compose.material.icons.automirrored.rounded.TrendingDown
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.presentation.theme.GainGreen
 import com.portfolio.manager.presentation.theme.GainGreenLight
@@ -78,17 +78,17 @@ class TrendIndicatorTest {
 
     @Test
     fun `getTrendIcon - positive value - returns TrendingUp`() {
-        assertThat(getTrendIcon(100.0)).isEqualTo(Icons.Rounded.TrendingUp)
+        assertThat(getTrendIcon(100.0)).isEqualTo(Icons.AutoMirrored.Rounded.TrendingUp)
     }
 
     @Test
     fun `getTrendIcon - negative value - returns TrendingDown`() {
-        assertThat(getTrendIcon(-50.0)).isEqualTo(Icons.Rounded.TrendingDown)
+        assertThat(getTrendIcon(-50.0)).isEqualTo(Icons.AutoMirrored.Rounded.TrendingDown)
     }
 
     @Test
     fun `getTrendIcon - zero value - returns TrendingUp`() {
-        assertThat(getTrendIcon(0.0)).isEqualTo(Icons.Rounded.TrendingUp)
+        assertThat(getTrendIcon(0.0)).isEqualTo(Icons.AutoMirrored.Rounded.TrendingUp)
     }
 
     @Test
@@ -98,7 +98,7 @@ class TrendIndicatorTest {
         assertThat(indicator.isGain).isTrue()
         assertThat(indicator.color).isEqualTo(GainGreen)
         assertThat(indicator.backgroundColor).isEqualTo(GainGreenLight)
-        assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingUp)
+        assertThat(indicator.icon).isEqualTo(Icons.AutoMirrored.Rounded.TrendingUp)
     }
 
     @Test
@@ -108,7 +108,7 @@ class TrendIndicatorTest {
         assertThat(indicator.isGain).isFalse()
         assertThat(indicator.color).isEqualTo(LossRed)
         assertThat(indicator.backgroundColor).isEqualTo(LossRedLight)
-        assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingDown)
+        assertThat(indicator.icon).isEqualTo(Icons.AutoMirrored.Rounded.TrendingDown)
     }
 
     @Test
@@ -118,7 +118,7 @@ class TrendIndicatorTest {
         assertThat(indicator.isGain).isFalse()
         assertThat(indicator.color).isEqualTo(NeutralGray)
         assertThat(indicator.backgroundColor).isEqualTo(NeutralGrayLight)
-        assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingUp)
+        assertThat(indicator.icon).isEqualTo(Icons.AutoMirrored.Rounded.TrendingUp)
     }
 
     @Test
@@ -128,7 +128,7 @@ class TrendIndicatorTest {
         assertThat(indicator.isGain).isTrue()
         assertThat(indicator.color).isEqualTo(GainGreenPastel)
         assertThat(indicator.backgroundColor).isEqualTo(GainGreenPastel.copy(alpha = 0.3f))
-        assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingUp)
+        assertThat(indicator.icon).isEqualTo(Icons.AutoMirrored.Rounded.TrendingUp)
     }
 
     @Test
@@ -138,7 +138,7 @@ class TrendIndicatorTest {
         assertThat(indicator.isGain).isFalse()
         assertThat(indicator.color).isEqualTo(LossRedPastel)
         assertThat(indicator.backgroundColor).isEqualTo(LossRedPastel.copy(alpha = 0.3f))
-        assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingDown)
+        assertThat(indicator.icon).isEqualTo(Icons.AutoMirrored.Rounded.TrendingDown)
     }
 
     @Test
@@ -148,6 +148,6 @@ class TrendIndicatorTest {
         assertThat(indicator.isGain).isFalse()
         assertThat(indicator.color).isEqualTo(NeutralGray)
         assertThat(indicator.backgroundColor).isEqualTo(NeutralGray.copy(alpha = 0.3f))
-        assertThat(indicator.icon).isEqualTo(Icons.Rounded.TrendingUp)
+        assertThat(indicator.icon).isEqualTo(Icons.AutoMirrored.Rounded.TrendingUp)
     }
 }
