@@ -16,7 +16,8 @@ class RebalanceCalculatorTest {
             holdings = emptyList(),
             stockMap = emptyMap(),
             showInKrw = false,
-            exchangeRate = 1400.0
+            exchangeRate = 1400.0,
+            toleranceBandPercent = null
         )
 
         assertThat(result).isFalse()
@@ -32,7 +33,8 @@ class RebalanceCalculatorTest {
         )
 
         val result = RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = null
         )
 
         assertThat(result).isFalse()
@@ -51,7 +53,8 @@ class RebalanceCalculatorTest {
         )
 
         val result = RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = null
         )
 
         assertThat(result).isFalse()
@@ -73,7 +76,8 @@ class RebalanceCalculatorTest {
         )
 
         val result = RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = null
         )
 
         assertThat(result).isFalse()
@@ -95,7 +99,8 @@ class RebalanceCalculatorTest {
         )
 
         val result = RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = null
         )
 
         assertThat(result).isTrue()
@@ -111,7 +116,8 @@ class RebalanceCalculatorTest {
         )
 
         val result = RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = null
         )
 
         assertThat(result).isFalse()
@@ -129,11 +135,160 @@ class RebalanceCalculatorTest {
         )
 
         val result = RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = null
         )
 
         // GOOGL contributes 0, so AAPL is 100% of value but target is 50%
         // This causes diff >= price, so rebalance is detected
+        assertThat(result).isTrue()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, all within band - returns false`() {
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 10, targetPercentage = 50),
+            createHolding(2, "GOOGL", quantity = 10, targetPercentage = 50)
+        )
+        val stockMap = mapOf(
+            "AAPL" to createStock("AAPL", currentPrice = 100.0),
+            "GOOGL" to createStock("GOOGL", currentPrice = 100.0)
+        )
+
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = 25
+        )
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, holding exceeds band - returns true`() {
+        // AAPL: 30 * $100 = $3000 (75%), target 50 -> drift = 25/50 = 0.50 > 0.25
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 30, targetPercentage = 50),
+            createHolding(2, "GOOGL", quantity = 10, targetPercentage = 50)
+        )
+        val stockMap = mapOf(
+            "AAPL" to createStock("AAPL", currentPrice = 100.0),
+            "GOOGL" to createStock("GOOGL", currentPrice = 100.0)
+        )
+
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = 25
+        )
+
+        assertThat(result).isTrue()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, drift exactly equals band - returns false`() {
+        // AAPL: 15 * $100 = $1500 (75%), target 50 -> drift = 25/50 = 0.50 (== band, not >)
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 15, targetPercentage = 50),
+            createHolding(2, "GOOGL", quantity = 5, targetPercentage = 50)
+        )
+        val stockMap = mapOf(
+            "AAPL" to createStock("AAPL", currentPrice = 100.0),
+            "GOOGL" to createStock("GOOGL", currentPrice = 100.0)
+        )
+
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = 50
+        )
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, target null skipped`() {
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 10, targetPercentage = null),
+            createHolding(2, "GOOGL", quantity = 10, targetPercentage = 50)
+        )
+        val stockMap = mapOf(
+            "AAPL" to createStock("AAPL", currentPrice = 0.0),
+            "GOOGL" to createStock("GOOGL", currentPrice = 100.0)
+        )
+
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = 25
+        )
+
+        // GOOGL at 100% vs target 50 -> drift 1.0 > 0.25
+        assertThat(result).isTrue()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, target zero skipped without divide-by-zero`() {
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 10, targetPercentage = 0),
+            createHolding(2, "GOOGL", quantity = 10, targetPercentage = 50)
+        )
+        val stockMap = mapOf(
+            "AAPL" to createStock("AAPL", currentPrice = 100.0),
+            "GOOGL" to createStock("GOOGL", currentPrice = 100.0)
+        )
+
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = 25
+        )
+
+        // AAPL skipped (target 0), GOOGL at 50 vs target 50 -> drift 0 -> false
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, empty holdings - returns false`() {
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings = emptyList(),
+            stockMap = emptyMap(),
+            showInKrw = false,
+            exchangeRate = 1400.0,
+            toleranceBandPercent = 25
+        )
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, zero total value - returns false`() {
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 10, targetPercentage = 50)
+        )
+        val stockMap = mapOf(
+            "AAPL" to createStock("AAPL", currentPrice = 0.0)
+        )
+
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = 25
+        )
+
+        assertThat(result).isFalse()
+    }
+
+    @Test
+    fun `accountNeedsRebalance - band set, missing stock in map - skips holding`() {
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 10, targetPercentage = 50),
+            createHolding(2, "GOOGL", quantity = 10, targetPercentage = 50)
+        )
+        val stockMap = mapOf(
+            "GOOGL" to createStock("GOOGL", currentPrice = 100.0)
+        )
+
+        val result = RebalanceCalculator.accountNeedsRebalance(
+            holdings, stockMap, showInKrw = false, exchangeRate = 1400.0,
+            toleranceBandPercent = 25
+        )
+
+        // AAPL has no stock entry -> skipped; GOOGL is 100% of total vs target 50 -> drift 1.0 > 0.25
         assertThat(result).isTrue()
     }
 

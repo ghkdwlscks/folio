@@ -27,23 +27,31 @@ object RebalanceCalculator {
 
     /**
      * Checks if an account needs rebalancing.
-     * Returns true if any holding's difference from target is >= one share price.
+     *
+     * If [toleranceBandPercent] is non-null, the band rule applies:
+     *   drift = |currentPct - targetPct| / targetPct
+     *   needsRebalance = drift > band/100
+     * Holdings with targetPercentage null or 0 are skipped.
+     *
+     * If [toleranceBandPercent] is null, falls back to the legacy per-share rule:
+     *   needsRebalance = |targetValue - currentValue| >= pricePerShare
      *
      * @param holdings List of holdings for the account
      * @param stockMap Map of symbol to Stock data
      * @param showInKrw Whether to calculate in KRW
      * @param exchangeRate Current USD/KRW exchange rate
+     * @param toleranceBandPercent Optional band; null = use per-share rule
      * @return true if rebalancing is recommended
      */
     fun accountNeedsRebalance(
         holdings: List<HoldingEntity>,
         stockMap: Map<String, Stock>,
         showInKrw: Boolean,
-        exchangeRate: Double
+        exchangeRate: Double,
+        toleranceBandPercent: Int?
     ): Boolean {
         if (holdings.isEmpty()) return false
 
-        // Calculate total portfolio value for this account
         val totalValue = holdings.sumOf { holding ->
             val stock = stockMap[holding.symbol] ?: return@sumOf 0.0
             val value = stock.currentPrice * holding.quantity
@@ -52,7 +60,23 @@ object RebalanceCalculator {
 
         if (totalValue <= 0) return false
 
-        // Check each holding
+        if (toleranceBandPercent != null) {
+            val bandFraction = toleranceBandPercent / 100.0
+            for (holding in holdings) {
+                val target = holding.targetPercentage ?: continue
+                if (target == 0) continue
+                val stock = stockMap[holding.symbol] ?: continue
+                val currentValue = CurrencyConverter.convert(
+                    stock.currentPrice * holding.quantity,
+                    stock.currency, showInKrw, exchangeRate
+                )
+                val currentPct = (currentValue / totalValue) * 100.0
+                val drift = abs(currentPct - target) / target
+                if (drift > bandFraction) return true
+            }
+            return false
+        }
+
         for (holding in holdings) {
             val targetPercent = holding.targetPercentage ?: continue
             val stock = stockMap[holding.symbol] ?: continue

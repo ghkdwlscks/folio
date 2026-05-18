@@ -965,7 +965,7 @@ class DashboardViewModel @Inject constructor(
     ): Boolean {
         val holdings = holdingsRepository.getHoldingsByAccountSync(accountId)
         return RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw, currentExchangeRate
+            holdings, stockMap, showInKrw, currentExchangeRate, toleranceBandPercent = null
         )
     }
 }
