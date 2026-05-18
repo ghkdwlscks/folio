@@ -170,6 +170,7 @@ fun DashboardScreen(
     var showRebalanceDialog by remember { mutableStateOf(false) }
     var showAddChoiceDialog by remember { mutableStateOf(false) }
     var rebalanceItems by remember { mutableStateOf<List<RebalanceItem>>(emptyList()) }
+    var rebalanceInitialBand by remember { mutableStateOf<Int?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -234,8 +235,8 @@ fun DashboardScreen(
                             onClick = {
                                 coroutineScope.launch {
                                     try {
-                                        val items = viewModel.getRebalanceItems()
-                                        rebalanceItems = items.map { item ->
+                                        val data = viewModel.getRebalanceFormData()
+                                        rebalanceItems = data.items.map { item ->
                                             RebalanceItem(
                                                 holdingId = item.holdingId,
                                                 symbol = item.symbol,
@@ -247,6 +248,7 @@ fun DashboardScreen(
                                                 quantity = item.quantity
                                             )
                                         }
+                                        rebalanceInitialBand = data.toleranceBandPercent
                                         showRebalanceDialog = true
                                     } catch (e: Exception) {
                                         android.util.Log.e("DashboardScreen", "Failed to open rebalance dialog", e)
@@ -321,15 +323,16 @@ fun DashboardScreen(
     if (showRebalanceDialog && rebalanceItems.isNotEmpty()) {
         RebalanceDialog(
             items = rebalanceItems,
+            initialToleranceBandPercent = rebalanceInitialBand,
             totalPortfolioValue = viewModel.getStocksValue(),
             showInKrw = viewModel.isShowingInKrw(),
             onDismiss = { showRebalanceDialog = false },
-            onSave = { percentages ->
-                viewModel.saveTargetPercentages(percentages)
+            onSave = { percentages, band ->
+                viewModel.saveRebalance(percentages, band)
                 showRebalanceDialog = false
             },
             onReset = {
-                viewModel.resetTargetPercentages()
+                viewModel.resetRebalance()
                 showRebalanceDialog = false
             }
         )

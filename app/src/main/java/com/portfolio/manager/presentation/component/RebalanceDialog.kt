@@ -81,10 +81,11 @@ data class RebalanceRecommendation(
 @Composable
 fun RebalanceDialog(
     items: List<RebalanceItem>,
+    initialToleranceBandPercent: Int?,
     totalPortfolioValue: Double,
     showInKrw: Boolean,
     onDismiss: () -> Unit,
-    onSave: (Map<Long, Int>) -> Unit,
+    onSave: (percentages: Map<Long, Int>, band: Int?) -> Unit,
     onReset: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -97,6 +98,10 @@ fun RebalanceDialog(
     var percentages by remember {
         mutableStateOf(items.associate { it.holdingId to it.currentPercentage })
     }
+    var bandText by remember {
+        mutableStateOf(initialToleranceBandPercent?.toString().orEmpty())
+    }
+    val parsedBand: Int? = bandText.trim().toIntOrNull()?.coerceIn(1, 100)
 
     val totalPercentage = percentages.values.sum()
     val recommendations = calculateRecommendations(items, percentages, totalPortfolioValue)
@@ -136,6 +141,46 @@ fun RebalanceDialog(
                     text = "Rebalance Portfolio",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Tolerance band input
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Tolerance band",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Empty = per-share rule",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedTextField(
+                    value = bandText,
+                    onValueChange = { newValue ->
+                        val digits = newValue.filter { it.isDigit() }
+                        bandText = when {
+                            digits.isEmpty() -> ""
+                            else -> digits.toIntOrNull()?.coerceIn(1, 100)?.toString().orEmpty()
+                        }
+                    },
+                    modifier = Modifier.width(88.dp),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    suffix = { Text("%") }
                 )
             }
 
@@ -239,7 +284,7 @@ fun RebalanceDialog(
                         haptic.tick()
                         onReset()
                     },
-                    enabled = items.any { it.currentPercentage > 0 },
+                    enabled = items.any { it.currentPercentage > 0 } || initialToleranceBandPercent != null,
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Reset")
@@ -257,7 +302,7 @@ fun RebalanceDialog(
                 Button(
                     onClick = {
                         haptic.click()
-                        onSave(percentages)
+                        onSave(percentages, parsedBand)
                     },
                     enabled = totalPercentage == 100,
                     shape = RoundedCornerShape(12.dp)

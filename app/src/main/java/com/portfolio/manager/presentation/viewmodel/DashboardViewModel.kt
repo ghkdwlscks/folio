@@ -39,7 +39,7 @@ import com.portfolio.manager.domain.service.PeriodReturnsService
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.service.PortfolioSorter
 import com.portfolio.manager.domain.service.RebalanceCalculator
-import com.portfolio.manager.domain.service.RebalanceItemData
+import com.portfolio.manager.domain.service.RebalanceFormData
 import com.portfolio.manager.domain.service.SparklineService
 import com.portfolio.manager.domain.service.StockMapper
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
@@ -888,31 +888,40 @@ class DashboardViewModel @Inject constructor(
         return selectedAccountId != ALL_ACCOUNTS_ID && state.stocks.isNotEmpty()
     }
 
-    suspend fun getRebalanceItems(): List<RebalanceItemData> {
-        val state = _uiState.value as? DashboardUiState.Success ?: return emptyList()
-        if (selectedAccountId == ALL_ACCOUNTS_ID) return emptyList()
+    suspend fun getRebalanceFormData(): RebalanceFormData {
+        val state = _uiState.value as? DashboardUiState.Success
+            ?: return RebalanceFormData(emptyList(), null)
+        if (selectedAccountId == ALL_ACCOUNTS_ID) {
+            return RebalanceFormData(emptyList(), null)
+        }
 
         val holdings = holdingsRepository.getHoldingsByAccountSync(selectedAccountId)
-        return RebalanceCalculator.buildRebalanceItems(
+        val items = RebalanceCalculator.buildRebalanceItems(
             holdings, state.stocks, state.showInKrw, currentExchangeRate
         )
+        val band = accountRepository.getAccountById(selectedAccountId)?.toleranceBandPercent
+        return RebalanceFormData(items, band)
     }
 
-    fun saveTargetPercentages(percentages: Map<Long, Int>) {
+    fun saveRebalance(percentages: Map<Long, Int>, band: Int?) {
         viewModelScope.launch {
             percentages.forEach { (holdingId, percentage) ->
                 holdingsRepository.updateTargetPercentage(holdingId, percentage)
             }
+            if (selectedAccountId != ALL_ACCOUNTS_ID) {
+                accountRepository.updateToleranceBand(selectedAccountId, band)
+            }
         }
     }
 
-    fun resetTargetPercentages() {
+    fun resetRebalance() {
         viewModelScope.launch {
             if (selectedAccountId == ALL_ACCOUNTS_ID) return@launch
             val holdings = holdingsRepository.getHoldingsByAccountSync(selectedAccountId)
             holdings.forEach { holding ->
                 holdingsRepository.updateTargetPercentage(holding.id, null)
             }
+            accountRepository.updateToleranceBand(selectedAccountId, null)
         }
     }
 
@@ -937,35 +946,37 @@ class DashboardViewModel @Inject constructor(
 
     /**
      * Calculates rebalance status for each account.
-     * An account needs rebalancing if any holding has diffAmount >= currentPrice.
+     * Uses each account's own tolerance band (null = legacy per-share rule).
      */
     private suspend fun calculateAccountsWithRebalanceStatus(
         accounts: List<AccountWithCount>,
         showInKrw: Boolean
     ): List<AccountWithCount> {
-        // Use allStocksCache which contains stocks from all accounts
         val stockMap = allStocksCache.associateBy { it.symbol }
 
         return accounts.map { accountWithCount ->
             val needsRebalance = accountNeedsRebalance(
-                accountWithCount.account.id, stockMap, showInKrw
+                accountWithCount.account.id,
+                accountWithCount.account.toleranceBandPercent,
+                stockMap,
+                showInKrw
             )
             accountWithCount.copy(needsRebalance = needsRebalance)
         }
     }
 
     /**
-     * Checks if an account needs rebalancing.
-     * Returns true if any holding has diffAmount >= currentPrice.
+     * Checks if a single account needs rebalancing under its own band rule.
      */
     private suspend fun accountNeedsRebalance(
         accountId: Long,
+        toleranceBandPercent: Int?,
         stockMap: Map<String, Stock>,
         showInKrw: Boolean
     ): Boolean {
         val holdings = holdingsRepository.getHoldingsByAccountSync(accountId)
         return RebalanceCalculator.accountNeedsRebalance(
-            holdings, stockMap, showInKrw, currentExchangeRate, toleranceBandPercent = null
+            holdings, stockMap, showInKrw, currentExchangeRate, toleranceBandPercent
         )
     }
 }

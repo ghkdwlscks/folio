@@ -21,6 +21,15 @@ data class RebalanceItemData(
 )
 
 /**
+ * Bundle of data the Rebalance dialog needs: the per-holding items plus
+ * the account's currently stored tolerance band (null when unset).
+ */
+data class RebalanceFormData(
+    val items: List<RebalanceItemData>,
+    val toleranceBandPercent: Int?
+)
+
+/**
  * Service for calculating rebalancing data.
  */
 object RebalanceCalculator {
