@@ -527,6 +527,72 @@ class AddHoldingViewModelTest {
     }
 
     @Test
+    fun `saveHolding - 6-char alphanumeric Korean code - appends KS suffix`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("0060H0")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("13000")
+        viewModel.updateCurrency(Currency.KRW)
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match {
+                it.symbol == "0060H0.KS" &&
+                it.name == "0060H0.KS"
+            })
+        }
+    }
+
+    @Test
+    fun `saveHolding - lowercase 6-char alphanumeric Korean code - normalized and appends KS`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("0060h0")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("13000")
+        viewModel.updateCurrency(Currency.KRW)
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match {
+                it.symbol == "0060H0.KS"
+            })
+        }
+    }
+
+    @Test
+    fun `saveHolding - 6-char all letters - no KS suffix added`() = runTest {
+        coEvery { repository.getHoldingByAccountAndSymbol(any(), any()) } returns null
+        coEvery { repository.addHolding(any()) } returns 1L
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("ABCDEF")
+        viewModel.updateQuantity("10")
+        viewModel.updateAveragePrice("100")
+
+        val result = viewModel.saveHolding()
+
+        assertThat(result).isTrue()
+        coVerify {
+            repository.addHolding(match {
+                it.symbol == "ABCDEF"
+            })
+        }
+    }
+
+    @Test
     fun `onSymbolFocusLost - 6-digit number - sets currency to KRW`() = runTest {
         val savedStateHandle = createSavedStateHandle(accountId = 1L)
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
@@ -554,6 +620,28 @@ class AddHoldingViewModelTest {
         val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
 
         viewModel.updateSymbol("12345")
+        viewModel.onSymbolFocusLost()
+
+        assertThat(viewModel.uiState.value.currency).isEqualTo(Currency.USD)
+    }
+
+    @Test
+    fun `onSymbolFocusLost - 6-char alphanumeric Korean code - sets currency to KRW`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("0060H0")
+        viewModel.onSymbolFocusLost()
+
+        assertThat(viewModel.uiState.value.currency).isEqualTo(Currency.KRW)
+    }
+
+    @Test
+    fun `onSymbolFocusLost - 6-char all letters - keeps current currency`() = runTest {
+        val savedStateHandle = createSavedStateHandle(accountId = 1L)
+        val viewModel = AddHoldingViewModel(repository, accountRepository, savedStateHandle)
+
+        viewModel.updateSymbol("ABCDEF")
         viewModel.onSymbolFocusLost()
 
         assertThat(viewModel.uiState.value.currency).isEqualTo(Currency.USD)

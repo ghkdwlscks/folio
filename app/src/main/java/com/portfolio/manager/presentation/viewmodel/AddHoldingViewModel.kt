@@ -117,21 +117,20 @@ class AddHoldingViewModel @Inject constructor(
 
     fun onSymbolFocusLost() {
         val symbol = _uiState.value.symbol.trim()
-        // If 6-digit number (Korean stock), auto-select KRW currency
-        if (symbol.length == 6 && symbol.all { it.isDigit() }) {
+        if (isKoreanShortCode(symbol)) {
             _uiState.update { it.copy(currency = Currency.KRW) }
         }
     }
 
     private fun normalizeSymbol(symbol: String): String {
         val trimmed = symbol.trim().uppercase()
-        // If 6-digit number, append .KS for Korean stocks
-        return if (trimmed.length == 6 && trimmed.all { it.isDigit() }) {
-            "$trimmed.KS"
-        } else {
-            trimmed
-        }
+        return if (isKoreanShortCode(trimmed)) "$trimmed.KS" else trimmed
     }
+
+    // KRX short codes are 6 alphanumeric characters starting with a digit.
+    // Since 2024 KRX has mixed letters into later positions (e.g. 0060H0 for an ETF).
+    private fun isKoreanShortCode(symbol: String): Boolean =
+        symbol.length == 6 && symbol[0].isDigit() && symbol.all { it.isLetterOrDigit() }
 
     suspend fun saveHolding(): Boolean {
         if (_uiState.value.isSaving) return false
