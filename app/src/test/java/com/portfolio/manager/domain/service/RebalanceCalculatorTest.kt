@@ -224,7 +224,7 @@ class RebalanceCalculatorTest {
     }
 
     @Test
-    fun `accountNeedsRebalance - band set, target zero skipped without divide-by-zero`() {
+    fun `accountNeedsRebalance - band set, target zero excluded from denominator`() {
         val holdings = listOf(
             createHolding(1, "AAPL", quantity = 10, targetPercentage = 0),
             createHolding(2, "GOOGL", quantity = 10, targetPercentage = 50)
@@ -239,8 +239,9 @@ class RebalanceCalculatorTest {
             toleranceBandPercent = 25
         )
 
-        // AAPL skipped (target 0), GOOGL at 50 vs target 50 -> drift 0 -> false
-        assertThat(result).isFalse()
+        // AAPL excluded from denominator (target 0). GOOGL is 100% of targeted
+        // value vs target 50 -> drift 1.0 > 0.25 -> true.
+        assertThat(result).isTrue()
     }
 
     @Test
@@ -355,7 +356,7 @@ class RebalanceCalculatorTest {
     }
 
     @Test
-    fun `buildRebalanceItems - no target percentage - uses zero`() {
+    fun `buildRebalanceItems - no target percentage - returns null`() {
         val holdings = listOf(
             createHolding(1, "AAPL", quantity = 10, targetPercentage = null)
         )
@@ -368,7 +369,24 @@ class RebalanceCalculatorTest {
         )
 
         assertThat(result).hasSize(1)
-        assertThat(result[0].currentPercentage).isEqualTo(0)
+        assertThat(result[0].currentPercentage).isNull()
+    }
+
+    @Test
+    fun `buildRebalanceItems - target zero in DB - surfaces as null`() {
+        val holdings = listOf(
+            createHolding(1, "AAPL", quantity = 10, targetPercentage = 0)
+        )
+        val stocks = listOf(
+            createStock("AAPL", currentPrice = 150.0)
+        )
+
+        val result = RebalanceCalculator.buildRebalanceItems(
+            holdings, stocks, showInKrw = false, exchangeRate = 1400.0
+        )
+
+        assertThat(result).hasSize(1)
+        assertThat(result[0].currentPercentage).isNull()
     }
 
     @Test

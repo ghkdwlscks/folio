@@ -15,7 +15,7 @@ data class RebalanceItemData(
     val name: String,
     val currentValue: Double,
     val currentPrice: Double,
-    val currentPercentage: Int,
+    val currentPercentage: Int?,
     val currency: Currency,
     val quantity: Int
 )
@@ -40,10 +40,13 @@ object RebalanceCalculator {
      * If [toleranceBandPercent] is non-null, the band rule applies:
      *   drift = |currentPct - targetPct| / targetPct
      *   needsRebalance = drift > band/100
-     * Holdings with targetPercentage null or 0 are skipped.
      *
      * If [toleranceBandPercent] is null, falls back to the legacy per-share rule:
      *   needsRebalance = |targetValue - currentValue| >= pricePerShare
+     *
+     * Holdings with targetPercentage null or 0 are excluded from both the
+     * denominator (totalValue) and the per-row checks — currentPct is computed
+     * over targeted holdings only.
      *
      * @param holdings List of holdings for the account
      * @param stockMap Map of symbol to Stock data
@@ -62,6 +65,8 @@ object RebalanceCalculator {
         if (holdings.isEmpty()) return false
 
         val totalValue = holdings.sumOf { holding ->
+            val target = holding.targetPercentage ?: return@sumOf 0.0
+            if (target == 0) return@sumOf 0.0
             val stock = stockMap[holding.symbol] ?: return@sumOf 0.0
             val value = stock.currentPrice * holding.quantity
             CurrencyConverter.convert(value, stock.currency, showInKrw, exchangeRate)
@@ -88,6 +93,7 @@ object RebalanceCalculator {
 
         for (holding in holdings) {
             val targetPercent = holding.targetPercentage ?: continue
+            if (targetPercent == 0) continue
             val stock = stockMap[holding.symbol] ?: continue
 
             val currentValue = CurrencyConverter.convert(
@@ -140,7 +146,7 @@ object RebalanceCalculator {
                 name = stock.name,
                 currentValue = value,
                 currentPrice = price,
-                currentPercentage = holding.targetPercentage ?: 0,
+                currentPercentage = holding.targetPercentage?.takeIf { it > 0 },
                 currency = stock.currency,
                 quantity = stock.quantity
             )

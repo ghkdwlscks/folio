@@ -903,7 +903,7 @@ class DashboardViewModel @Inject constructor(
         return RebalanceFormData(items, band)
     }
 
-    fun saveRebalance(percentages: Map<Long, Int>, band: Int?) {
+    fun saveRebalance(percentages: Map<Long, Int?>, band: Int?) {
         viewModelScope.launch {
             percentages.forEach { (holdingId, percentage) ->
                 holdingsRepository.updateTargetPercentage(holdingId, percentage)
@@ -922,15 +922,6 @@ class DashboardViewModel @Inject constructor(
                 holdingsRepository.updateTargetPercentage(holding.id, null)
             }
             accountRepository.updateToleranceBand(selectedAccountId, null)
-        }
-    }
-
-    fun getStocksValue(): Double {
-        val state = _uiState.value as? DashboardUiState.Success ?: return 0.0
-        return if (state.showInKrw) {
-            state.stocks.sumOf { it.totalValueInKrw(currentExchangeRate) }
-        } else {
-            state.stocks.sumOf { it.totalValueInUsd(currentExchangeRate) }
         }
     }
 

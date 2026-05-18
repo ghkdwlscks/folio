@@ -1264,6 +1264,24 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `saveRebalance - persists null target percentages`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
+        every { holdingsRepository.getHoldingsByAccount(7L) } returns flowOf(emptyList())
+        every { cashRepository.getCashItemsByAccount(7L) } returns flowOf(emptyList())
+        coEvery { accountRepository.getAccountById(7L) } returns AccountEntity(id = 7L, name = "Test", orderIndex = 0, preferredCurrency = "USD")
+        coEvery { holdingsRepository.updateTargetPercentage(any(), any()) } returns Unit
+        coEvery { accountRepository.updateToleranceBand(any(), any()) } returns Unit
+
+        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
+        viewModel.selectAccount(7L)
+
+        viewModel.saveRebalance(mapOf(1L to 100, 2L to null), band = null)
+
+        coVerify { holdingsRepository.updateTargetPercentage(1L, 100) }
+        coVerify { holdingsRepository.updateTargetPercentage(2L, null) }
+    }
+
+    @Test
     fun `saveRebalance - persists null band when cleared`() = runTest {
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
         every { holdingsRepository.getHoldingsByAccount(7L) } returns flowOf(emptyList())
@@ -1321,22 +1339,6 @@ class DashboardViewModelTest {
         coVerify(exactly = 0) { holdingsRepository.getHoldingsByAccountSync(any()) }
         coVerify(exactly = 0) { holdingsRepository.updateTargetPercentage(any(), any()) }
         coVerify(exactly = 0) { accountRepository.updateToleranceBand(any(), any()) }
-    }
-
-    @Test
-    fun `getStocksValue - returns sum of stock values`() = runTest {
-        val holdings = listOf(
-            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 100.0, "USD")
-        )
-        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
-        coEvery { stockRepository.getQuotes(any()) } returns Result.success(
-            listOf(QuoteResult(symbol = "AAPL", regularMarketPrice = 150.0))
-        )
-
-        val viewModel = DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
-
-        // Total value: 10 * 150 = 1500
-        assertThat(viewModel.getStocksValue()).isEqualTo(1500.0)
     }
 
     @Test

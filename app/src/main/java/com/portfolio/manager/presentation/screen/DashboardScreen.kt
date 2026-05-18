@@ -324,7 +324,6 @@ fun DashboardScreen(
         RebalanceDialog(
             items = rebalanceItems,
             initialToleranceBandPercent = rebalanceInitialBand,
-            totalPortfolioValue = viewModel.getStocksValue(),
             showInKrw = viewModel.isShowingInKrw(),
             onDismiss = { showRebalanceDialog = false },
             onSave = { percentages, band ->

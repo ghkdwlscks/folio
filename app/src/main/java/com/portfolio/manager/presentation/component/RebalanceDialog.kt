@@ -59,7 +59,7 @@ data class RebalanceItem(
     val name: String,
     val currentValue: Double,
     val currentPrice: Double,
-    val currentPercentage: Int,
+    val currentPercentage: Int?,
     val currency: Currency,
     val quantity: Int
 )
@@ -82,10 +82,9 @@ data class RebalanceRecommendation(
 fun RebalanceDialog(
     items: List<RebalanceItem>,
     initialToleranceBandPercent: Int?,
-    totalPortfolioValue: Double,
     showInKrw: Boolean,
     onDismiss: () -> Unit,
-    onSave: (percentages: Map<Long, Int>, band: Int?) -> Unit,
+    onSave: (percentages: Map<Long, Int?>, band: Int?) -> Unit,
     onReset: () -> Unit
 ) {
     if (items.isEmpty()) {
@@ -95,16 +94,21 @@ fun RebalanceDialog(
 
     val haptic = rememberHapticFeedback()
 
-    var percentages by remember {
-        mutableStateOf(items.associate { it.holdingId to it.currentPercentage })
+    var percentageTexts by remember {
+        mutableStateOf(
+            items.associate { it.holdingId to (it.currentPercentage?.toString() ?: "") }
+        )
     }
     var bandText by remember {
         mutableStateOf(initialToleranceBandPercent?.toString().orEmpty())
     }
     val parsedBand: Int? = bandText.trim().toIntOrNull()?.coerceIn(1, 100)
 
-    val totalPercentage = percentages.values.sum()
-    val recommendations = calculateRecommendations(items, percentages, totalPortfolioValue)
+    val parsedPercentages: Map<Long, Int?> = percentageTexts.mapValues { (_, text) ->
+        text.trim().toIntOrNull()?.coerceIn(0, 100)
+    }
+    val totalPercentage = parsedPercentages.values.filterNotNull().sum()
+    val recommendations = calculateRecommendations(items, parsedPercentages)
 
     BaseDialog(
         onDismiss = onDismiss,
@@ -206,11 +210,11 @@ fun RebalanceDialog(
                     PercentageInputRow(
                         symbol = item.symbol,
                         name = item.name,
-                        percentage = percentages[item.holdingId] ?: 0,
+                        text = percentageTexts[item.holdingId].orEmpty(),
                         isOverBudget = totalPercentage > 100,
-                        onPercentageChange = { newPercentage ->
-                            percentages = percentages.toMutableMap().apply {
-                                this[item.holdingId] = newPercentage
+                        onTextChange = { newText ->
+                            percentageTexts = percentageTexts.toMutableMap().apply {
+                                this[item.holdingId] = newText
                             }
                         }
                     )
@@ -284,7 +288,7 @@ fun RebalanceDialog(
                         haptic.tick()
                         onReset()
                     },
-                    enabled = items.any { it.currentPercentage > 0 } || initialToleranceBandPercent != null,
+                    enabled = items.any { it.currentPercentage != null } || initialToleranceBandPercent != null,
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Reset")
@@ -302,7 +306,7 @@ fun RebalanceDialog(
                 Button(
                     onClick = {
                         haptic.click()
-                        onSave(percentages, parsedBand)
+                        onSave(parsedPercentages, parsedBand)
                     },
                     enabled = totalPercentage == 100,
                     shape = RoundedCornerShape(12.dp)
@@ -318,9 +322,9 @@ fun RebalanceDialog(
 private fun PercentageInputRow(
     symbol: String,
     name: String,
-    percentage: Int,
+    text: String,
     isOverBudget: Boolean,
-    onPercentageChange: (Int) -> Unit
+    onTextChange: (String) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -340,10 +344,15 @@ private fun PercentageInputRow(
             )
         }
         OutlinedTextField(
-            value = percentage.toString(),
+            value = text,
             onValueChange = { newValue ->
-                val parsed = newValue.filter { it.isDigit() }.toIntOrNull() ?: 0
-                onPercentageChange(parsed.coerceIn(0, 100))
+                val digits = newValue.filter { it.isDigit() }
+                onTextChange(
+                    when {
+                        digits.isEmpty() -> ""
+                        else -> digits.toIntOrNull()?.coerceIn(0, 100)?.toString().orEmpty()
+                    }
+                )
             },
             modifier = Modifier.width(72.dp),
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -447,23 +456,24 @@ private fun RecommendationRow(
 
 private fun calculateRecommendations(
     items: List<RebalanceItem>,
-    percentages: Map<Long, Int>,
-    totalPortfolioValue: Double
+    percentages: Map<Long, Int?>
 ): List<RebalanceRecommendation> {
-    val totalPercentage = percentages.values.sum()
-    if (totalPercentage <= 0 || totalPortfolioValue <= 0) return emptyList()
+    val totalPercentage = percentages.values.filterNotNull().sum()
+    if (totalPercentage <= 0) return emptyList()
 
-    val totalCurrentValue = items.sumOf { it.currentValue }
+    val totalCurrentValue = items.sumOf { item ->
+        if (percentages[item.holdingId] == null) 0.0 else item.currentValue
+    }
+    if (totalCurrentValue <= 0) return emptyList()
 
-    return items.map { item ->
-        val currentPercent = if (totalCurrentValue > 0) {
-            (item.currentValue / totalCurrentValue) * 100
-        } else 0.0
+    return items.mapNotNull { item ->
+        val target = percentages[item.holdingId] ?: return@mapNotNull null
+        val currentPercent = (item.currentValue / totalCurrentValue) * 100
 
-        val targetPercent = percentages[item.holdingId]?.toDouble() ?: 0.0
+        val targetPercent = target.toDouble()
 
         val diffPercent = targetPercent - currentPercent
-        val targetValue = totalPortfolioValue * (targetPercent / 100)
+        val targetValue = totalCurrentValue * (targetPercent / 100)
         val diffAmount = targetValue - item.currentValue
 
         val idealShares = if (item.currentPrice > 0) {
