@@ -45,6 +45,9 @@ interface AccountDao {
     @Query("UPDATE accounts SET preferredCurrency = :currency WHERE id = :accountId")
     suspend fun updatePreferredCurrency(accountId: Long, currency: String)
 
+    @Query("UPDATE accounts SET toleranceBandPercent = :band WHERE id = :accountId")
+    suspend fun updateToleranceBand(accountId: Long, band: Int?)
+
     @Transaction
     suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity {
         val existing = getFirstAccount()

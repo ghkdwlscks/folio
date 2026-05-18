@@ -139,4 +139,22 @@ class AccountRepositoryImplTest {
 
         coVerify { dao.updatePreferredCurrency(1L, "KRW") }
     }
+
+    @Test
+    fun `updateToleranceBand - forwards non-null band to dao`() = runTest {
+        coEvery { dao.updateToleranceBand(1L, 25) } returns Unit
+
+        repository.updateToleranceBand(1L, 25)
+
+        coVerify { dao.updateToleranceBand(1L, 25) }
+    }
+
+    @Test
+    fun `updateToleranceBand - forwards null band to dao`() = runTest {
+        coEvery { dao.updateToleranceBand(1L, null) } returns Unit
+
+        repository.updateToleranceBand(1L, null)
+
+        coVerify { dao.updateToleranceBand(1L, null) }
+    }
 }

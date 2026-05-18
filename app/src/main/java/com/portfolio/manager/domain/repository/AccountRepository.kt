@@ -15,4 +15,5 @@ interface AccountRepository {
     suspend fun getMaxOrderIndex(): Int
     suspend fun getOrCreateDefaultAccount(defaultName: String): AccountEntity
     suspend fun updatePreferredCurrency(accountId: Long, currency: String)
+    suspend fun updateToleranceBand(accountId: Long, band: Int?)
 }

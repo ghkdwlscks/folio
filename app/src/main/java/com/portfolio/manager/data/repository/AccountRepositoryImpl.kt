@@ -49,4 +49,8 @@ class AccountRepositoryImpl(
     override suspend fun updatePreferredCurrency(accountId: Long, currency: String) {
         dao.updatePreferredCurrency(accountId, currency)
     }
+
+    override suspend fun updateToleranceBand(accountId: Long, band: Int?) {
+        dao.updateToleranceBand(accountId, band)
+    }
 }
