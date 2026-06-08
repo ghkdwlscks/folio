@@ -38,10 +38,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -316,6 +319,41 @@ fun PortfolioSummary(
     }
 }
 
+/**
+ * Single-line text that automatically shrinks its font to fit the available
+ * width instead of wrapping. Keeps return/value figures readable on one line
+ * when the layout is narrow (e.g. split-screen).
+ */
+@Composable
+private fun AutoSizeText(
+    text: String,
+    style: TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontWeight: FontWeight? = null,
+    minFontSize: TextUnit = 9.sp
+) {
+    var resizedStyle by remember(text, style) { mutableStateOf(style) }
+    var readyToDraw by remember(text, style) { mutableStateOf(false) }
+
+    Text(
+        text = text,
+        style = resizedStyle,
+        color = color,
+        fontWeight = fontWeight,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier.drawWithContent { if (readyToDraw) drawContent() },
+        onTextLayout = { result ->
+            if (result.didOverflowWidth && resizedStyle.fontSize.value > minFontSize.value) {
+                resizedStyle = resizedStyle.copy(fontSize = resizedStyle.fontSize * 0.9f)
+            } else {
+                readyToDraw = true
+            }
+        }
+    )
+}
+
 @Composable
 private fun InfoCard(
     label: String,
@@ -351,7 +389,7 @@ private fun InfoCard(
                         tint = valueColor
                     )
                 }
-                Text(
+                AutoSizeText(
                     text = value,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
@@ -601,7 +639,7 @@ private fun PeriodSelector(
                                 color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f)
                             )
                             if (returnValue != null) {
-                                Text(
+                                AutoSizeText(
                                     text = displayValue,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
