@@ -50,7 +50,10 @@ sealed interface DashboardUiState {
         val benchmarkSparklines: Map<String, List<Double>> = emptyMap(),
         val benchmarkTimestamps: Map<String, List<Long>> = emptyMap(),
         val portfolioStats: PortfolioStats = PortfolioStats(),
-        val sortOption: SortOption = SortOption.WEIGHT
+        val sortOption: SortOption = SortOption.WEIGHT,
+        // Maps account id -> owner display label, for the household combined view.
+        // Empty on the regular dashboard (single user).
+        val ownerLabels: Map<Long, String> = emptyMap()
     ) : DashboardUiState
 
     /**

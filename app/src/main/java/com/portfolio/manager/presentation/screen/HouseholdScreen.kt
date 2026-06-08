@@ -96,7 +96,8 @@ fun HouseholdScreen(
                         onEditCash = {},
                         listState = listState,
                         isRefreshing = state.isRefreshing,
-                        onRefresh = { viewModel.refresh() }
+                        onRefresh = { viewModel.refresh() },
+                        accountOwnerLabels = state.ownerLabels
                     )
                 }
 

@@ -60,6 +60,7 @@ fun PortfolioContent(
     listState: LazyListState,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
+    accountOwnerLabels: Map<Long, String> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     val totalStocksValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
@@ -135,6 +136,7 @@ fun PortfolioContent(
                     StockCard(
                         stock = stock,
                         weightPercent = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate),
+                        accountOwnerLabels = accountOwnerLabels,
                         onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated },
                         onDeleteAccountHolding = { holdingId: Long ->
                             val detail = stock.accountDetails.find { it.holdingId == holdingId }

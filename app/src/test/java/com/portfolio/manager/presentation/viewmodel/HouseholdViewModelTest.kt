@@ -159,6 +159,8 @@ class HouseholdViewModelTest {
         val state = successState()
 
         assertThat(state.stocks.map { it.symbol }).containsExactly("AAPL", "GOOGL")
+        // Owner labels cover both my account and the partner's namespaced account.
+        assertThat(state.ownerLabels.values).containsExactly("남편", "와이프")
     }
 
     @Test

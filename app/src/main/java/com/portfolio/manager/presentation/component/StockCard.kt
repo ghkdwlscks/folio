@@ -62,6 +62,7 @@ import kotlin.math.min
 fun StockCard(
     stock: Stock,
     weightPercent: Double? = null,
+    accountOwnerLabels: Map<Long, String> = emptyMap(),
     onDelete: (() -> Unit)? = null,
     onDeleteAccountHolding: ((Long) -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
@@ -297,6 +298,7 @@ fun StockCard(
                 StockCardExpandableContent(
                     stock = stock,
                     hasAccountDetails = hasAccountDetails,
+                    accountOwnerLabels = accountOwnerLabels,
                     onEdit = onEdit,
                     onDelete = onDelete,
                     onEditAccountHolding = onEditAccountHolding,
@@ -329,6 +331,7 @@ fun StockCard(
 private fun StockCardExpandableContent(
     stock: Stock,
     hasAccountDetails: Boolean,
+    accountOwnerLabels: Map<Long, String>,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
     onEditAccountHolding: ((Long) -> Unit)?,
@@ -344,6 +347,7 @@ private fun StockCardExpandableContent(
             AccountDetailsSection(
                 accountDetails = stock.accountDetails,
                 currency = stock.currency,
+                accountOwnerLabels = accountOwnerLabels,
                 onEditAccountHolding = onEditAccountHolding,
                 onDeleteAccountHolding = onDeleteAccountHolding
             )
@@ -362,6 +366,7 @@ private fun StockCardExpandableContent(
 private fun AccountDetailsSection(
     accountDetails: List<com.portfolio.manager.domain.model.StockAccountDetail>,
     currency: Currency,
+    accountOwnerLabels: Map<Long, String>,
     onEditAccountHolding: ((Long) -> Unit)?,
     onDeleteAccountHolding: ((Long) -> Unit)?
 ) {
@@ -381,6 +386,7 @@ private fun AccountDetailsSection(
             AccountDetailRow(
                 detail = detail,
                 currency = currency,
+                ownerLabel = accountOwnerLabels[detail.accountId],
                 onEdit = onEditAccountHolding?.let { { it(detail.holdingId) } },
                 onDelete = onDeleteAccountHolding?.let { { it(detail.holdingId) } }
             )
@@ -392,6 +398,7 @@ private fun AccountDetailsSection(
 private fun AccountDetailRow(
     detail: com.portfolio.manager.domain.model.StockAccountDetail,
     currency: Currency,
+    ownerLabel: String? = null,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?
 ) {
@@ -401,7 +408,7 @@ private fun AccountDetailRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = detail.accountName,
+            text = if (ownerLabel != null) "$ownerLabel · ${detail.accountName}" else detail.accountName,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)

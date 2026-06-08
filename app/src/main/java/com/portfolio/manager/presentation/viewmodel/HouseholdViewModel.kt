@@ -107,7 +107,7 @@ class HouseholdViewModel @Inject constructor(
             val symbols = merged.holdings.map { it.symbol }.distinct()
 
             if (symbols.isEmpty()) {
-                val base = successOf(emptyList(), cashItems)
+                val base = successOf(emptyList(), cashItems, merged.ownerLabels)
                 _uiState.value = base
                 if (cashItems.isNotEmpty()) {
                     _uiState.value = withAnalytics(base, emptyList(), cashItems)
@@ -131,7 +131,7 @@ class HouseholdViewModel @Inject constructor(
                 currentExchangeRate
             )
 
-            val base = successOf(stocks, cashItems)
+            val base = successOf(stocks, cashItems, merged.ownerLabels)
             _uiState.value = base
             _uiState.value = withAnalytics(base, stocks, cashItems)
         }
@@ -153,14 +153,19 @@ class HouseholdViewModel @Inject constructor(
         return syncRepository.fetchPartnerSnapshot(code, uid).getOrNull()
     }
 
-    private fun successOf(stocks: List<Stock>, cashItems: List<CashItem>) = DashboardUiState.Success(
+    private fun successOf(
+        stocks: List<Stock>,
+        cashItems: List<CashItem>,
+        ownerLabels: Map<Long, String>
+    ) = DashboardUiState.Success(
         stocks = stocks,
         cashItems = cashItems,
         selectedPeriod = PERIOD,
         exchangeRate = currentExchangeRate,
         showInKrw = showInKrw,
         sparklinePeriod = PERIOD,
-        isRefreshing = false
+        isRefreshing = false,
+        ownerLabels = ownerLabels
     )
 
     private suspend fun withAnalytics(
