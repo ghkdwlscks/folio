@@ -29,6 +29,7 @@ import com.portfolio.manager.domain.service.CashItemMapper
 import com.portfolio.manager.domain.service.HouseholdMerger
 import com.portfolio.manager.domain.service.PeriodReturnsService
 import com.portfolio.manager.domain.service.PortfolioSorter
+import com.portfolio.manager.domain.service.SnapshotMapper
 import com.portfolio.manager.domain.service.SparklineService
 import com.portfolio.manager.domain.service.StockMapper
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
@@ -55,6 +56,7 @@ class HouseholdViewModel @Inject constructor(
     private val cashRepository: CashRepository,
     private val syncRepository: SyncRepository,
     private val merger: HouseholdMerger,
+    private val snapshotMapper: SnapshotMapper,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -96,7 +98,8 @@ class HouseholdViewModel @Inject constructor(
             val myAccounts = accountRepository.getAllAccounts().first()
             val myCash = cashRepository.getAllCashItems().first()
 
-            val merged = merger.merge(myAccounts, myHoldings, myCash, myLabel, loadPartnerSnapshot())
+            val partner = syncHousehold(myHoldings, myAccounts, myCash)
+            val merged = merger.merge(myAccounts, myHoldings, myCash, myLabel, partner)
 
             val cashItems = PortfolioSorter.sortCashItems(
                 CashItemMapper.fromEntities(merged.cashItems), SortOption.WEIGHT, currentExchangeRate
@@ -134,9 +137,19 @@ class HouseholdViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadPartnerSnapshot(): PortfolioSnapshot? {
+    /**
+     * When paired, publishes my latest snapshot (best-effort) and returns the
+     * partner's snapshot. Keeps both sides fresh on every screen open/refresh.
+     */
+    private suspend fun syncHousehold(
+        myHoldings: List<com.portfolio.manager.data.local.HoldingEntity>,
+        myAccounts: List<com.portfolio.manager.data.local.AccountEntity>,
+        myCash: List<com.portfolio.manager.data.local.CashItemEntity>
+    ): PortfolioSnapshot? {
         val code = householdCode ?: return null
         val uid = syncRepository.ensureSignedIn().getOrNull() ?: return null
+        val mine = snapshotMapper.toSnapshot(myLabel, System.currentTimeMillis(), myAccounts, myHoldings, myCash)
+        syncRepository.publishSnapshot(code, uid, mine)
         return syncRepository.fetchPartnerSnapshot(code, uid).getOrNull()
     }
 
