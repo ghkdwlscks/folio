@@ -62,7 +62,6 @@ import kotlin.math.min
 fun StockCard(
     stock: Stock,
     weightPercent: Double? = null,
-    targetWeight: Int? = null,
     onDelete: (() -> Unit)? = null,
     onDeleteAccountHolding: ((Long) -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
@@ -199,13 +198,8 @@ fun StockCard(
                         }
                         // Row 4: weight
                         if (weightPercent != null) {
-                            val weightText = if (targetWeight != null) {
-                                "Weight ${CurrencyFormatter.formatPercent(weightPercent)}% / $targetWeight%"
-                            } else {
-                                "Weight ${CurrencyFormatter.formatPercent(weightPercent)}%"
-                            }
                             Text(
-                                text = weightText,
+                                text = "Weight ${CurrencyFormatter.formatPercent(weightPercent)}%",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
