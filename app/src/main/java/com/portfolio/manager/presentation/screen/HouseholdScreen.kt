@@ -1,11 +1,9 @@
 package com.portfolio.manager.presentation.screen
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,9 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 
-import com.portfolio.manager.presentation.component.PortfolioSummary
+import com.portfolio.manager.presentation.component.PortfolioContent
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
 import com.portfolio.manager.presentation.viewmodel.HouseholdViewModel
 
@@ -37,6 +34,7 @@ fun HouseholdScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -62,20 +60,34 @@ fun HouseholdScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (val state = uiState) {
                 is DashboardUiState.Success -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp)
-                    ) {
-                        PortfolioSummary(
-                            stocks = state.stocks,
-                            cashItems = state.cashItems,
-                            exchangeRate = state.exchangeRate,
-                            showInKrw = state.showInKrw,
-                            onCurrencyToggle = { viewModel.toggleCurrency() }
-                        )
-                    }
+                    PortfolioContent(
+                        stocks = state.stocks,
+                        cashItems = state.cashItems,
+                        exchangeRate = state.exchangeRate,
+                        periodReturns = state.periodReturns,
+                        benchmarkReturns = state.benchmarkReturns,
+                        selectedPeriod = state.selectedPeriod,
+                        isLoadingPeriodReturns = state.isLoadingPeriodReturns,
+                        onPeriodSelected = {},
+                        showInKrw = state.showInKrw,
+                        onCurrencyToggle = { viewModel.toggleCurrency() },
+                        portfolioSparkline = state.portfolioSparkline,
+                        portfolioSparklineTimestamps = state.portfolioSparklineTimestamps,
+                        benchmarkSparklines = state.benchmarkSparklines,
+                        benchmarkTimestamps = state.benchmarkTimestamps,
+                        portfolioStats = state.portfolioStats,
+                        sortOption = state.sortOption,
+                        onSortOptionSelected = {},
+                        sparklinePeriod = state.sparklinePeriod,
+                        onSparklinePeriodSelected = {},
+                        onDeleteHolding = { _, _, _ -> },
+                        onEditHolding = {},
+                        onDeleteCash = { _, _ -> },
+                        onEditCash = {},
+                        listState = listState,
+                        isRefreshing = state.isRefreshing,
+                        onRefresh = { viewModel.refresh() }
+                    )
                 }
 
                 is DashboardUiState.Loading -> {
