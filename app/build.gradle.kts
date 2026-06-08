@@ -6,6 +6,7 @@ plugins {
     id("org.jetbrains.kotlinx.kover")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -104,6 +105,12 @@ dependencies {
     ksp("com.google.dagger:hilt-android-compiler:2.51.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
+    // Firebase (household sharing)
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
     // Unit Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.google.truth:truth:1.4.4")
@@ -140,7 +147,9 @@ koverReport {
                 "*.presentation.navigation.*",
                 // Exclude MainActivity and Room
                 "*.MainActivity*",
-                "*.data.local.*"
+                "*.data.local.*",
+                // Exclude Firebase SDK boundary (not unit-testable)
+                "*FirebaseSyncDataSource*"
             )
             packages("dagger.hilt.*")
         }
