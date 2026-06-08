@@ -6,6 +6,7 @@ import com.portfolio.manager.data.local.PriceHistoryEntity
 import com.portfolio.manager.data.local.StockNameDao
 import com.portfolio.manager.data.local.StockNameEntity
 import com.portfolio.manager.data.remote.YahooFinanceApi
+import com.portfolio.manager.data.remote.dto.ChartAdjClose
 import com.portfolio.manager.data.remote.dto.ChartData
 import com.portfolio.manager.data.remote.dto.ChartIndicators
 import com.portfolio.manager.data.remote.dto.ChartMeta
@@ -76,6 +77,36 @@ class StockRepositoryImplTest {
         assertThat(quote?.symbol).isEqualTo("AAPL")
         assertThat(quote?.regularMarketPrice).isEqualTo(178.50)
         assertThat(quote?.regularMarketChange).isWithin(0.01).of(3.50)
+    }
+
+    @Test
+    fun `getQuotes - prefers adjusted close for previous close`() = runTest {
+        coEvery { api.getChart("AAPL", any(), any(), any()) } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "AAPL",
+                            regularMarketPrice = 178.50,
+                            chartPreviousClose = 175.00,
+                            currency = "USD"
+                        ),
+                        indicators = ChartIndicators(
+                            quote = listOf(ChartQuote(close = listOf(300.0, 350.0))),
+                            adjclose = listOf(ChartAdjClose(adjclose = listOf(170.0, 175.0)))
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getQuotes(listOf("AAPL"))
+
+        assertThat(result.isSuccess).isTrue()
+        val quote = result.getOrNull()?.first()
+        // Previous close is the second-to-last adjusted close (170.0), not raw close (300.0)
+        assertThat(quote?.regularMarketPreviousClose).isEqualTo(170.0)
+        assertThat(quote?.regularMarketChange).isWithin(0.01).of(8.50)
     }
 
     @Test
@@ -168,6 +199,37 @@ class StockRepositoryImplTest {
         assertThat(periodReturn?.period).isEqualTo(TimePeriod.ONE_MONTH)
         // Return: (180 - 150) / 150 * 100 = 20%
         assertThat(periodReturn?.returnPercent).isWithin(0.01).of(20.0)
+    }
+
+    @Test
+    fun `getPeriodReturn - prefers adjusted close over raw close`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1mo") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(
+                            symbol = "AAPL",
+                            regularMarketPrice = 180.0,
+                            chartPreviousClose = 175.0
+                        ),
+                        indicators = ChartIndicators(
+                            quote = listOf(
+                                ChartQuote(close = listOf(300.0, 320.0, 340.0, 360.0))
+                            ),
+                            adjclose = listOf(
+                                ChartAdjClose(adjclose = listOf(150.0, 160.0, 170.0, 180.0))
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPeriodReturn("AAPL", TimePeriod.ONE_MONTH)
+
+        assertThat(result.isSuccess).isTrue()
+        // Adjusted close start price 150.0: (180 - 150) / 150 * 100 = 20%
+        assertThat(result.getOrNull()?.returnPercent).isWithin(0.01).of(20.0)
     }
 
     @Test
@@ -420,6 +482,53 @@ class StockRepositoryImplTest {
     }
 
     @Test
+    fun `getPriceHistory - prefers adjusted close over raw close`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1y") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        timestamp = listOf(1000L, 2000L, 3000L),
+                        indicators = ChartIndicators(
+                            quote = listOf(ChartQuote(close = listOf(300.0, 320.0, 340.0))),
+                            adjclose = listOf(ChartAdjClose(adjclose = listOf(150.0, 160.0, 170.0)))
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"), "1y")
+
+        assertThat(result["AAPL"]?.prices).containsExactly(150.0, 160.0, 170.0).inOrder()
+        assertThat(result["AAPL"]?.timestamps).containsExactly(1000L, 2000L, 3000L).inOrder()
+    }
+
+    @Test
+    fun `getPriceHistory - adjusted close with null element - falls back to raw close`() = runTest {
+        coEvery { api.getChart("AAPL", "1d", "1y") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "AAPL", regularMarketPrice = 180.0, chartPreviousClose = 175.0),
+                        timestamp = listOf(1000L, 2000L, 3000L),
+                        indicators = ChartIndicators(
+                            quote = listOf(ChartQuote(close = listOf(300.0, 320.0, 340.0))),
+                            adjclose = listOf(ChartAdjClose(adjclose = listOf(150.0, null, 170.0)))
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getPriceHistory(listOf("AAPL"), "1y")
+
+        // Null adjusted value at index 1 falls back to raw close 320.0
+        assertThat(result["AAPL"]?.prices).containsExactly(150.0, 320.0, 170.0).inOrder()
+        assertThat(result["AAPL"]?.timestamps).containsExactly(1000L, 2000L, 3000L).inOrder()
+    }
+
+    @Test
     fun `getPriceHistory - multiple symbols - returns map of prices`() = runTest {
         coEvery { api.getChart("AAPL", "1d", "5d") } returns YahooChartResponse(
             chart = ChartData(
@@ -654,6 +763,29 @@ class StockRepositoryImplTest {
 
         assertThat(result.prices).containsExactly(1300.0, 1320.0, 1350.0, 1380.0, 1400.0).inOrder()
         assertThat(result.timestamps).containsExactly(1000L, 2000L, 3000L, 4000L, 5000L).inOrder()
+    }
+
+    @Test
+    fun `getExchangeRateHistory - prefers adjusted close over raw close`() = runTest {
+        coEvery { api.getChart("USDKRW=X", "1d", "1y") } returns YahooChartResponse(
+            chart = ChartData(
+                result = listOf(
+                    ChartResult(
+                        meta = ChartMeta(symbol = "USDKRW=X", regularMarketPrice = 1400.0, chartPreviousClose = 1350.0),
+                        timestamp = listOf(1000L, 2000L, 3000L),
+                        indicators = ChartIndicators(
+                            quote = listOf(ChartQuote(close = listOf(9999.0, 9999.0, 9999.0))),
+                            adjclose = listOf(ChartAdjClose(adjclose = listOf(1300.0, 1350.0, 1400.0)))
+                        )
+                    )
+                )
+            )
+        )
+
+        val result = repository.getExchangeRateHistory("USD", "KRW", "1y")
+
+        assertThat(result.prices).containsExactly(1300.0, 1350.0, 1400.0).inOrder()
+        assertThat(result.timestamps).containsExactly(1000L, 2000L, 3000L).inOrder()
     }
 
     @Test

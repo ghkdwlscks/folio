@@ -12,6 +12,7 @@ import com.portfolio.manager.data.local.PriceHistoryEntity
 import com.portfolio.manager.data.local.StockNameDao
 import com.portfolio.manager.data.local.StockNameEntity
 import com.portfolio.manager.data.remote.YahooFinanceApi
+import com.portfolio.manager.data.remote.dto.ChartResult
 import com.portfolio.manager.data.remote.dto.QuoteResult
 import com.portfolio.manager.domain.model.PeriodReturn
 import com.portfolio.manager.domain.model.TimePeriod
@@ -52,6 +53,18 @@ class StockRepositoryImpl(
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Extracts the close series from a chart result, preferring adjusted close
+     * (split/dividend-adjusted) over raw close. Falls back to the raw close
+     * per-element whenever an adjusted value is missing.
+     */
+    private fun extractCloses(result: ChartResult): List<Double?> {
+        val rawCloses = result.indicators?.quote?.firstOrNull()?.close
+        val adjCloses = result.indicators?.adjclose?.firstOrNull()?.adjclose
+            ?: return rawCloses ?: emptyList()
+        return adjCloses.mapIndexed { index, adjClose -> adjClose ?: rawCloses?.getOrNull(index) }
     }
 
     /**
@@ -117,7 +130,7 @@ class StockRepositoryImpl(
 
                         // Get previous close from price history (second-to-last close)
                         // chartPreviousClose is relative to chart range (1 year ago for 1y range)
-                        val closes = result.indicators?.quote?.firstOrNull()?.close?.filterNotNull()
+                        val closes = extractCloses(result).filterNotNull()
                         val prevClose = if (!closes.isNullOrEmpty() && closes.size >= 2) {
                             closes[closes.size - 2]
                         } else {
@@ -160,7 +173,7 @@ class StockRepositoryImpl(
                 ?: return Result.failure(Exception("No data for $symbol"))
 
             val currentPrice = result.meta.regularMarketPrice
-            val closes = result.indicators?.quote?.firstOrNull()?.close?.filterNotNull()
+            val closes = extractCloses(result).filterNotNull()
 
             val startPrice = if (!closes.isNullOrEmpty()) {
                 closes.first()
@@ -232,7 +245,7 @@ class StockRepositoryImpl(
         return try {
             val response = api.getChart(symbol, interval = "1d", range = range)
             val result = response.chart.result?.firstOrNull()
-            val rawCloses = result?.indicators?.quote?.firstOrNull()?.close ?: emptyList()
+            val rawCloses = result?.let { extractCloses(it) } ?: emptyList()
             val rawTimestamps = result?.timestamp ?: emptyList()
 
             val priceData = parsePriceData(rawCloses, rawTimestamps)
@@ -292,7 +305,7 @@ class StockRepositoryImpl(
                         try {
                             val response = api.getChart(symbol, interval = "1d", range = range)
                             val chartResult = response.chart.result?.firstOrNull()
-                            val rawCloses = chartResult?.indicators?.quote?.firstOrNull()?.close ?: emptyList()
+                            val rawCloses = chartResult?.let { extractCloses(it) } ?: emptyList()
                             val rawTimestamps = chartResult?.timestamp ?: emptyList()
 
                             symbol to parsePriceData(rawCloses, rawTimestamps)

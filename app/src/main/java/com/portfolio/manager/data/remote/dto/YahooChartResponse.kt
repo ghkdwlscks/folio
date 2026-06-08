@@ -46,12 +46,18 @@ data class ChartMeta(
 
 @Serializable
 data class ChartIndicators(
-    val quote: List<ChartQuote>? = null
+    val quote: List<ChartQuote>? = null,
+    val adjclose: List<ChartAdjClose>? = null
 )
 
 @Serializable
 data class ChartQuote(
     val close: List<Double?>? = null
+)
+
+@Serializable
+data class ChartAdjClose(
+    val adjclose: List<Double?>? = null
 )
 
 @Serializable
