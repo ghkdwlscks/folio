@@ -58,4 +58,12 @@ class PreferenceKeysTest {
         assertThat(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING).isEqualTo("fire_target_monthly_spending")
         assertThat(PreferenceKeys.FIRE_SHOW_IN_KRW).isEqualTo("fire_show_in_krw")
     }
+
+    @Test
+    fun `household sharing preference keys - have expected values`() {
+        assertThat(PreferenceKeys.HOUSEHOLD_CODE).isEqualTo("household_code")
+        assertThat(PreferenceKeys.HOUSEHOLD_MY_UID).isEqualTo("household_my_uid")
+        assertThat(PreferenceKeys.HOUSEHOLD_MY_LABEL).isEqualTo("household_my_label")
+        assertThat(PreferenceKeys.HOUSEHOLD_PARTNER_SNAPSHOT_JSON).isEqualTo("household_partner_snapshot_json")
+    }
 }

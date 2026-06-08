@@ -45,4 +45,10 @@ object PreferenceKeys {
     const val FIRE_TARGET_MONTHLY_SPENDING = "fire_target_monthly_spending"
     const val FIRE_TARGET_SPENDING_IN_KRW = "fire_target_spending_in_krw"
     const val FIRE_SHOW_IN_KRW = "fire_show_in_krw"
+
+    // Household sharing preferences
+    const val HOUSEHOLD_CODE = "household_code"
+    const val HOUSEHOLD_MY_UID = "household_my_uid"
+    const val HOUSEHOLD_MY_LABEL = "household_my_label"
+    const val HOUSEHOLD_PARTNER_SNAPSHOT_JSON = "household_partner_snapshot_json"
 }
