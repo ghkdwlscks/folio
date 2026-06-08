@@ -21,6 +21,12 @@ object ErrorMessages {
     const val LOAD_PRICES_FAILED = "Failed to load prices"
     const val NO_PORTFOLIO_DATA = "No portfolio data. Please refresh the dashboard first."
 
+    // Household sharing
+    const val HOUSEHOLD_LABEL_REQUIRED = "Please enter a display name"
+    const val HOUSEHOLD_CODE_INVALID = "Invalid household code"
+    const val HOUSEHOLD_SIGN_IN_FAILED = "Could not connect. Check your network and try again."
+    const val HOUSEHOLD_PUBLISH_FAILED = "Paired, but failed to upload your data. Pull to refresh to retry."
+
     // Helper functions for formatted messages
     fun invalidQuantity(min: Int, max: Int): String = INVALID_QUANTITY.format(min, max)
     fun invalidPrice(min: Double, max: Double): String = INVALID_PRICE.format(min, max)
