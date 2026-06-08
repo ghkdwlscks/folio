@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -163,6 +164,7 @@ fun DashboardScreen(
     onEditHolding: (Long) -> Unit,
     onEditCash: (Long) -> Unit,
     onNavigateToFIRE: () -> Unit,
+    onNavigateToHousehold: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
@@ -211,6 +213,7 @@ fun DashboardScreen(
                 viewModel = viewModel,
                 listState = listState,
                 onNavigateToFIRE = onNavigateToFIRE,
+                onNavigateToHousehold = onNavigateToHousehold,
                 onManageAccounts = onManageAccounts
             )
         },
@@ -633,6 +636,7 @@ private fun DashboardTopBarWrapper(
     viewModel: DashboardViewModel,
     listState: LazyListState,
     onNavigateToFIRE: () -> Unit,
+    onNavigateToHousehold: () -> Unit,
     onManageAccounts: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -659,6 +663,7 @@ private fun DashboardTopBarWrapper(
         showCompactValue = showCompactValue,
         compactTitle = compactTitle,
         onNavigateToFIRE = onNavigateToFIRE,
+        onNavigateToHousehold = onNavigateToHousehold,
         onManageAccounts = onManageAccounts,
         onRefresh = { viewModel.refresh() }
     )
@@ -729,6 +734,7 @@ private fun DashboardTopBar(
     showCompactValue: Boolean = false,
     compactTitle: String? = null,
     onNavigateToFIRE: () -> Unit,
+    onNavigateToHousehold: () -> Unit,
     onManageAccounts: () -> Unit,
     onRefresh: () -> Unit
 ) {
@@ -761,6 +767,12 @@ private fun DashboardTopBar(
                 Icon(
                     imageVector = Icons.Outlined.LocalFireDepartment,
                     contentDescription = "FIRE Calculator"
+                )
+            }
+            IconButton(onClick = onNavigateToHousehold) {
+                Icon(
+                    imageVector = Icons.Outlined.People,
+                    contentDescription = "Household"
                 )
             }
             IconButton(onClick = onRefresh, enabled = !isRefreshing) {

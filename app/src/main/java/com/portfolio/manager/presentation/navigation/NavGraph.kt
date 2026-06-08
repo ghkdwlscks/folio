@@ -18,6 +18,7 @@ import com.portfolio.manager.presentation.screen.AddCashScreen
 import com.portfolio.manager.presentation.screen.AddHoldingScreen
 import com.portfolio.manager.presentation.screen.DashboardScreen
 import com.portfolio.manager.presentation.screen.FIRECalculatorScreen
+import com.portfolio.manager.presentation.screen.HouseholdScreen
 
 object Routes {
     const val DASHBOARD = "dashboard"
@@ -27,6 +28,7 @@ object Routes {
     const val EDIT_CASH = "edit_cash/{cashItemId}"
     const val ACCOUNTS = "accounts"
     const val FIRE_CALCULATOR = "fire_calculator"
+    const val HOUSEHOLD = "household"
 
     fun addHolding(accountId: Long) = "add_holding/$accountId"
     fun editHolding(holdingId: Long) = "edit_holding/$holdingId"
@@ -99,6 +101,9 @@ fun NavGraph(
                 },
                 onNavigateToFIRE = {
                     navController.navigate(Routes.FIRE_CALCULATOR)
+                },
+                onNavigateToHousehold = {
+                    navController.navigate(Routes.HOUSEHOLD)
                 }
             )
         }
@@ -146,6 +151,12 @@ fun NavGraph(
         }
         composable(Routes.FIRE_CALCULATOR) {
             FIRECalculatorScreen(
+                viewModel = hiltViewModel(),
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.HOUSEHOLD) {
+            HouseholdScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() }
             )
