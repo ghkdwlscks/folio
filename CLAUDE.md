@@ -451,7 +451,7 @@ export ANDROID_HOME=/home/jinchan/android-sdk
 
 # Install to device (requires ADB setup above)
 export ADB_SERVER_SOCKET=tcp:$(ip route | grep default | awk '{print $3}'):5037
-$ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
+$ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/folio-debug.apk
 ```
 
 ## Testing Strategy (100% Coverage)
