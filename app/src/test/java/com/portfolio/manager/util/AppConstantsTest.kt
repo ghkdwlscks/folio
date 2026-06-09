@@ -40,6 +40,7 @@ class PreferenceKeysTest {
     @Test
     fun `app preference keys - have expected values`() {
         assertThat(PreferenceKeys.APP_LANGUAGE).isEqualTo("app_language")
+        assertThat(PreferenceKeys.APP_THEME).isEqualTo("app_theme")
     }
 
     @Test

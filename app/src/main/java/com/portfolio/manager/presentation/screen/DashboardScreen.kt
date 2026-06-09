@@ -46,6 +46,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
@@ -57,6 +58,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -67,9 +69,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -95,6 +99,7 @@ import com.portfolio.manager.presentation.component.SectionHeader
 import com.portfolio.manager.presentation.component.SkeletonDashboard
 import com.portfolio.manager.presentation.component.StockCard
 import com.portfolio.manager.presentation.theme.AppLanguage
+import com.portfolio.manager.presentation.theme.AppTheme
 import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
@@ -117,6 +122,7 @@ private data class CashDeleteConfirmation(
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     appLanguage: AppLanguage,
+    appTheme: AppTheme,
     onAddHolding: () -> Unit,
     onAddCash: () -> Unit,
     onManageAccounts: () -> Unit,
@@ -125,6 +131,7 @@ fun DashboardScreen(
     onNavigateToFIRE: () -> Unit,
     onNavigateToHousehold: () -> Unit,
     onLanguageSelected: (AppLanguage) -> Unit,
+    onThemeSelected: (AppTheme) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalAppStrings.current
@@ -365,17 +372,22 @@ fun DashboardScreen(
     if (showSettingsDialog) {
         SettingsDialog(
             appLanguage = appLanguage,
+            appTheme = appTheme,
             onLanguageSelected = onLanguageSelected,
+            onThemeSelected = onThemeSelected,
             onDismiss = { showSettingsDialog = false }
         )
     }
 
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsDialog(
     appLanguage: AppLanguage,
+    appTheme: AppTheme,
     onLanguageSelected: (AppLanguage) -> Unit,
+    onThemeSelected: (AppTheme) -> Unit,
     onDismiss: () -> Unit
 ) {
     val strings = LocalAppStrings.current
@@ -384,26 +396,40 @@ private fun SettingsDialog(
         onDismissRequest = onDismiss,
         title = { Text(strings.settings) },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = strings.language,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                LanguageOption(
-                    language = AppLanguage.ENGLISH,
-                    label = strings.english,
-                    selectedLanguage = appLanguage,
-                    onLanguageSelected = onLanguageSelected
-                )
-                LanguageOption(
-                    language = AppLanguage.KOREAN,
-                    label = strings.korean,
-                    selectedLanguage = appLanguage,
-                    onLanguageSelected = onLanguageSelected
-                )
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    SettingsSection(title = strings.language) {
+                        SettingOption(
+                            label = strings.english,
+                            selected = appLanguage == AppLanguage.ENGLISH,
+                            onClick = { onLanguageSelected(AppLanguage.ENGLISH) }
+                        )
+                        SettingOption(
+                            label = strings.korean,
+                            selected = appLanguage == AppLanguage.KOREAN,
+                            onClick = { onLanguageSelected(AppLanguage.KOREAN) }
+                        )
+                    }
+                    SettingsSection(title = strings.theme) {
+                        SettingOption(
+                            label = strings.themeLight,
+                            selected = appTheme == AppTheme.LIGHT,
+                            onClick = { onThemeSelected(AppTheme.LIGHT) }
+                        )
+                        SettingOption(
+                            label = strings.themeDark,
+                            selected = appTheme == AppTheme.DARK,
+                            onClick = { onThemeSelected(AppTheme.DARK) }
+                        )
+                        SettingOption(
+                            label = strings.themeSystem,
+                            selected = appTheme == AppTheme.SYSTEM,
+                            onClick = { onThemeSelected(AppTheme.SYSTEM) }
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -415,27 +441,43 @@ private fun SettingsDialog(
 }
 
 @Composable
-private fun LanguageOption(
-    language: AppLanguage,
+private fun SettingsSection(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        content()
+    }
+}
+
+@Composable
+private fun SettingOption(
     label: String,
-    selectedLanguage: AppLanguage,
-    onLanguageSelected: (AppLanguage) -> Unit
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onLanguageSelected(language) }
-            .padding(vertical = 6.dp),
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(
-            selected = selectedLanguage == language,
-            onClick = { onLanguageSelected(language) }
+            selected = selected,
+            onClick = onClick
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 8.dp)
+            modifier = Modifier.padding(start = 12.dp)
         )
     }
 }

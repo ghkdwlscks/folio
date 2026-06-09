@@ -23,6 +23,7 @@ object AppConstants {
 object PreferenceKeys {
     // App preferences
     const val APP_LANGUAGE = "app_language"
+    const val APP_THEME = "app_theme"
 
     // Dashboard preferences
     const val DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"

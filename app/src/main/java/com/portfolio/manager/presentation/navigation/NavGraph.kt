@@ -22,6 +22,7 @@ import com.portfolio.manager.presentation.screen.FIRECalculatorScreen
 import com.portfolio.manager.presentation.screen.HouseholdScreen
 import com.portfolio.manager.presentation.screen.HouseholdShareScreen
 import com.portfolio.manager.presentation.theme.AppLanguage
+import com.portfolio.manager.presentation.theme.AppTheme
 
 object Routes {
     const val DASHBOARD = "dashboard"
@@ -45,7 +46,9 @@ object Routes {
 fun NavGraph(
     navController: NavHostController,
     appLanguage: AppLanguage,
+    appTheme: AppTheme,
     onLanguageSelected: (AppLanguage) -> Unit,
+    onThemeSelected: (AppTheme) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val transitionDuration = 300
@@ -90,6 +93,7 @@ fun NavGraph(
             DashboardScreen(
                 viewModel = viewModel,
                 appLanguage = appLanguage,
+                appTheme = appTheme,
                 onAddHolding = {
                     val accountId = viewModel.getSelectedAccountId()
                     navController.navigate(Routes.addHolding(accountId))
@@ -113,7 +117,8 @@ fun NavGraph(
                 onNavigateToHousehold = {
                     navController.navigate(Routes.HOUSEHOLD)
                 },
-                onLanguageSelected = onLanguageSelected
+                onLanguageSelected = onLanguageSelected,
+                onThemeSelected = onThemeSelected
             )
         }
         composable(

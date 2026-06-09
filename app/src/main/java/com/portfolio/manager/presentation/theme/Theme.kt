@@ -9,12 +9,30 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+enum class AppTheme(val code: String) {
+    LIGHT("light"),
+    DARK("dark"),
+    SYSTEM("system");
+
+    companion object {
+        fun fromCode(code: String?): AppTheme? = entries.find { it.code == code }
+    }
+
+    fun isDark(systemInDarkTheme: Boolean): Boolean = when (this) {
+        LIGHT -> false
+        DARK -> true
+        SYSTEM -> systemInDarkTheme
+    }
+}
 
 private val DarkColorScheme = darkColorScheme(
     primary = Primary80,
@@ -90,7 +108,16 @@ fun FolioTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography,
-        content = content
-    )
+        typography = AppTypography
+    ) {
+        CompositionLocalProvider(LocalIsDarkTheme provides darkTheme, content = content)
+    }
 }
+
+/**
+ * The dark/light state actually applied by [FolioTheme]. Reflects the in-app theme
+ * selection (Light/Dark/System), unlike [isSystemInDarkTheme] which only tracks the
+ * OS-level setting. Components that branch on dark mode must read this so their styling
+ * stays consistent with the rest of the themed UI.
+ */
+val LocalIsDarkTheme = staticCompositionLocalOf { false }

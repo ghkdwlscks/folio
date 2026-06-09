@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -16,6 +17,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
 import com.portfolio.manager.presentation.navigation.NavGraph
 import com.portfolio.manager.presentation.theme.AppLanguage
+import com.portfolio.manager.presentation.theme.AppTheme
 import com.portfolio.manager.presentation.theme.FolioLocalization
 import com.portfolio.manager.presentation.theme.FolioTheme
 import com.portfolio.manager.util.PreferenceKeys
@@ -42,17 +44,30 @@ class MainActivity : ComponentActivity() {
                         ?: AppLanguage.fromLocale(Locale.getDefault())
                 )
             }
+            var theme by remember {
+                mutableStateOf(
+                    AppTheme.fromCode(sharedPreferences.getString(PreferenceKeys.APP_THEME, null))
+                        ?: AppTheme.SYSTEM
+                )
+            }
 
-            FolioTheme {
+            FolioTheme(darkTheme = theme.isDark(isSystemInDarkTheme())) {
                 FolioLocalization(language = language) {
                     val navController = rememberNavController()
                     NavGraph(
                         navController = navController,
                         appLanguage = language,
+                        appTheme = theme,
                         onLanguageSelected = { selectedLanguage ->
                             language = selectedLanguage
                             sharedPreferences.edit()
                                 .putString(PreferenceKeys.APP_LANGUAGE, selectedLanguage.code)
+                                .apply()
+                        },
+                        onThemeSelected = { selectedTheme ->
+                            theme = selectedTheme
+                            sharedPreferences.edit()
+                                .putString(PreferenceKeys.APP_THEME, selectedTheme.code)
                                 .apply()
                         }
                     )

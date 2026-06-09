@@ -12,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +54,7 @@ import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.theme.GainGreenPastel
 import com.portfolio.manager.presentation.theme.LocalAppStrings
+import com.portfolio.manager.presentation.theme.LocalIsDarkTheme
 import com.portfolio.manager.presentation.theme.LossRedPastel
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
@@ -128,7 +128,7 @@ fun PortfolioSummary(
 
     val strings = LocalAppStrings.current
     val formatValue = CurrencyFormatter.createFormatter(showInKrw)
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = LocalIsDarkTheme.current
     val summaryGradientColors = if (isDarkTheme) {
         listOf(
             MaterialTheme.colorScheme.primaryContainer,
