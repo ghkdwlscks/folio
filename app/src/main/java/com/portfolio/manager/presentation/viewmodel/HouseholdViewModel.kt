@@ -37,6 +37,7 @@ import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
 import com.portfolio.manager.util.ErrorMessages
 import com.portfolio.manager.util.PreferenceKeys
 import com.portfolio.manager.util.boolean
+import com.portfolio.manager.util.enum
 
 /**
  * Drives the dedicated household (combined-portfolio) screen.
@@ -62,11 +63,11 @@ class HouseholdViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        private val PERIOD = TimePeriod.ONE_YEAR
         private const val DEFAULT_LABEL = "Me"
     }
 
     private var showInKrw by sharedPreferences.boolean(PreferenceKeys.DASHBOARD_SHOW_IN_KRW, true)
+    private var summaryPeriod by sharedPreferences.enum(PreferenceKeys.HOUSEHOLD_SUMMARY_PERIOD, TimePeriod.ONE_YEAR)
     private var currentExchangeRate = KRW_TO_USD_RATE
 
     private val cacheManager = CacheManager(sharedPreferences)
@@ -91,6 +92,21 @@ class HouseholdViewModel @Inject constructor(
     fun toggleCurrency() {
         showInKrw = !showInKrw
         load()
+    }
+
+    /**
+     * Switches the portfolio-summary period and recomputes the period-dependent
+     * analytics (portfolio sparkline + benchmark) for it. Period returns are
+     * already loaded for every period, so they don't need a refetch. Mirrors the
+     * dashboard's period switching without re-syncing the household.
+     */
+    fun selectPeriod(period: TimePeriod) {
+        summaryPeriod = period
+        val current = _uiState.value
+        if (current is DashboardUiState.Success) {
+            _uiState.value = current.copy(selectedPeriod = period)
+            reloadPeriodAnalytics(current.stocks, current.cashItems, period)
+        }
     }
 
     private fun load() {
@@ -123,7 +139,7 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
-            val priceHistoryMap = stockRepository.getPriceHistory(symbols, PERIOD.range)
+            val priceHistoryMap = stockRepository.getPriceHistory(symbols, summaryPeriod.range)
             val stocks = PortfolioSorter.sortStocks(
                 merged.holdings.groupBy { it.symbol }.map { (symbol, group) ->
                     StockMapper.aggregateHoldings(
@@ -170,10 +186,10 @@ class HouseholdViewModel @Inject constructor(
     ) = DashboardUiState.Success(
         stocks = stocks,
         cashItems = cashItems,
-        selectedPeriod = PERIOD,
+        selectedPeriod = summaryPeriod,
         exchangeRate = currentExchangeRate,
         showInKrw = showInKrw,
-        sparklinePeriod = PERIOD,
+        sparklinePeriod = summaryPeriod,
         isRefreshing = false,
         ownerLabels = ownerLabels
     )
@@ -183,18 +199,36 @@ class HouseholdViewModel @Inject constructor(
         stocks: List<Stock>,
         cashItems: List<CashItem>
     ): DashboardUiState.Success {
-        val sparkline = SparklineService.calculateSparkline(
-            stockRepository, stocks, cashItems, PERIOD, showInKrw, currentExchangeRate
-        )
         val periodReturns = PeriodReturnsService.calculateAllPeriodReturns(
             stockRepository, stocks, cashItems, showInKrw, currentExchangeRate
         )
+        return applyPeriodAnalytics(base.copy(periodReturns = periodReturns), stocks, cashItems, summaryPeriod)
+    }
+
+    private fun reloadPeriodAnalytics(stocks: List<Stock>, cashItems: List<CashItem>, period: TimePeriod) {
+        viewModelScope.launch {
+            val current = _uiState.value
+            if (current is DashboardUiState.Success) {
+                _uiState.value = applyPeriodAnalytics(current, stocks, cashItems, period)
+            }
+        }
+    }
+
+    /** Recomputes the period-dependent analytics (sparkline + benchmark) for [period]. */
+    private suspend fun applyPeriodAnalytics(
+        base: DashboardUiState.Success,
+        stocks: List<Stock>,
+        cashItems: List<CashItem>,
+        period: TimePeriod
+    ): DashboardUiState.Success {
+        val sparkline = SparklineService.calculateSparkline(
+            stockRepository, stocks, cashItems, period, showInKrw, currentExchangeRate
+        )
         val benchmark = BenchmarkDataService.loadBenchmarkData(
-            stockRepository, PERIOD, showInKrw, currentExchangeRate
+            stockRepository, period, showInKrw, currentExchangeRate
         )
         return base.copy(
-            periodReturns = periodReturns,
-            benchmarkReturns = mapOf(PERIOD to benchmark.returns),
+            benchmarkReturns = mapOf(period to benchmark.returns),
             portfolioSparkline = sparkline.sparkline,
             portfolioSparklineTimestamps = sparkline.timestamps,
             benchmarkSparklines = benchmark.sparklines,

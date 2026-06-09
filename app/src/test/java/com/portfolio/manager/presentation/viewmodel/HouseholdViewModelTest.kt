@@ -10,6 +10,7 @@ import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.PortfolioSnapshot
 import com.portfolio.manager.domain.model.SnapshotAccount
 import com.portfolio.manager.domain.model.SnapshotHolding
+import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
 import com.portfolio.manager.domain.repository.HoldingsRepository
@@ -96,6 +97,8 @@ class HouseholdViewModelTest {
         every { sharedPreferences.getString("household_my_label", null) } answers {
             prefValues["household_my_label"] as? String
         }
+        // Enum/int-backed prefs (e.g. summary period) fall back to their default ordinal
+        every { sharedPreferences.getInt(any(), any()) } answers { secondArg() }
 
         // Default empty data
         every { holdingsRepository.getAllHoldings() } returns flowOf(emptyList())
@@ -143,6 +146,32 @@ class HouseholdViewModelTest {
         assertThat(state.stocks).hasSize(1)
         assertThat(state.stocks.first().symbol).isEqualTo("AAPL")
         assertThat(state.stocks.first().currentPrice).isEqualTo(150.0)
+    }
+
+    @Test
+    fun `selectPeriod - updates selected period and recomputes analytics`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(listOf(myHolding))
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(myAccount))
+        coEvery { stockRepository.getQuotes(listOf("AAPL")) } returns Result.success(listOf(aaplQuote))
+        val vm = createViewModel()
+
+        vm.selectPeriod(TimePeriod.ONE_WEEK)
+
+        val state = vm.uiState.value as DashboardUiState.Success
+        assertThat(state.selectedPeriod).isEqualTo(TimePeriod.ONE_WEEK)
+        assertThat(state.benchmarkReturns.keys).containsExactly(TimePeriod.ONE_WEEK)
+    }
+
+    @Test
+    fun `selectPeriod - ignored when state is not success`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(listOf(myHolding))
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(myAccount))
+        coEvery { stockRepository.getQuotes(any()) } returns Result.failure(RuntimeException("boom"))
+        val vm = createViewModel()
+
+        vm.selectPeriod(TimePeriod.ONE_WEEK)
+
+        assertThat(vm.uiState.value).isInstanceOf(DashboardUiState.Error::class.java)
     }
 
     @Test

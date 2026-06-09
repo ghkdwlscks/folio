@@ -78,7 +78,7 @@ fun HouseholdScreen(
                         benchmarkReturns = state.benchmarkReturns,
                         selectedPeriod = state.selectedPeriod,
                         isLoadingPeriodReturns = state.isLoadingPeriodReturns,
-                        onPeriodSelected = {},
+                        onPeriodSelected = { viewModel.selectPeriod(it) },
                         showInKrw = state.showInKrw,
                         onCurrencyToggle = { viewModel.toggleCurrency() },
                         portfolioSparkline = state.portfolioSparkline,

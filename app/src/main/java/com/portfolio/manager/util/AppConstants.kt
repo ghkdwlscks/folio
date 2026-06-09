@@ -53,4 +53,5 @@ object PreferenceKeys {
     // Partner's holding symbols, persisted so the cache pruner keeps their
     // price history while paired (the snapshot itself is fetched live).
     const val HOUSEHOLD_PARTNER_SYMBOLS_JSON = "household_partner_symbols_json"
+    const val HOUSEHOLD_SUMMARY_PERIOD = "household_summary_period"
 }

@@ -65,5 +65,6 @@ class PreferenceKeysTest {
         assertThat(PreferenceKeys.HOUSEHOLD_MY_UID).isEqualTo("household_my_uid")
         assertThat(PreferenceKeys.HOUSEHOLD_MY_LABEL).isEqualTo("household_my_label")
         assertThat(PreferenceKeys.HOUSEHOLD_PARTNER_SYMBOLS_JSON).isEqualTo("household_partner_symbols_json")
+        assertThat(PreferenceKeys.HOUSEHOLD_SUMMARY_PERIOD).isEqualTo("household_summary_period")
     }
 }
