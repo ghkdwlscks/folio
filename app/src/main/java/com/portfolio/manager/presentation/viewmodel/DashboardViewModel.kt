@@ -35,6 +35,7 @@ import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.domain.service.BenchmarkDataService
 import com.portfolio.manager.domain.service.CacheManager
 import com.portfolio.manager.domain.service.CashItemMapper
+import com.portfolio.manager.domain.service.HouseholdPublisher
 import com.portfolio.manager.domain.service.PeriodReturnsService
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.service.PortfolioSorter
@@ -58,7 +59,8 @@ class DashboardViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
     private val cashRepository: CashRepository,
     private val sharedPreferences: SharedPreferences,
-    private val portfolioCache: PortfolioCache
+    private val portfolioCache: PortfolioCache,
+    private val householdPublisher: HouseholdPublisher
 ) : ViewModel() {
 
     companion object {
@@ -189,6 +191,26 @@ class DashboardViewModel @Inject constructor(
             loadAndObserveHoldings()
         }
         pruneStaleCache()
+        publishHouseholdOnChange()
+    }
+
+    /**
+     * Publishes my snapshot to the paired household whenever my holdings,
+     * accounts, or cash change (observing ALL of them, unfiltered), so the
+     * partner gets my latest data without me opening the household screen.
+     * No-op when not paired (handled inside [HouseholdPublisher]).
+     */
+    private fun publishHouseholdOnChange() {
+        viewModelScope.launch {
+            combine(
+                holdingsRepository.getAllHoldings(),
+                accountRepository.getAllAccounts(),
+                cashRepository.getAllCashItems()
+            ) { holdings, accounts, cashItems -> Triple(holdings, accounts, cashItems) }
+                .collectLatest { (holdings, accounts, cashItems) ->
+                    householdPublisher.publish(accounts, holdings, cashItems)
+                }
+        }
     }
 
     /**
