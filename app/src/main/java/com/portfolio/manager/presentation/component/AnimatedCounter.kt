@@ -11,13 +11,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import kotlin.math.abs
@@ -45,7 +49,9 @@ fun AnimatedCurrencyCounter(
     fontWeight: FontWeight = FontWeight.Bold,
     color: Color = Color.White,
     durationMillis: Int = 800,
-    enablePulse: Boolean = true
+    enablePulse: Boolean = true,
+    autoSize: Boolean = false,
+    minFontSize: TextUnit = 16.sp
 ) {
     var previousValue by remember { mutableDoubleStateOf(targetValue) }
     // Use Double directly to preserve precision for large values (especially KRW)
@@ -94,11 +100,13 @@ fun AnimatedCurrencyCounter(
         CurrencyFormatter.formatUsd(displayValue)
     }
 
-    Text(
+    CounterText(
         text = formattedValue,
         style = style,
         fontWeight = fontWeight,
         color = color,
+        autoSize = autoSize,
+        minFontSize = minFontSize,
         modifier = modifier.scale(scaleAnimatable.value)
     )
 }
@@ -113,7 +121,9 @@ fun AnimatedPercentCounter(
     prefix: String = "",
     suffix: String = "%",
     durationMillis: Int = 600,
-    enablePulse: Boolean = true
+    enablePulse: Boolean = true,
+    autoSize: Boolean = false,
+    minFontSize: TextUnit = 9.sp
 ) {
     var previousValue by remember { mutableDoubleStateOf(targetValue) }
     // Use Double directly to preserve precision
@@ -154,11 +164,60 @@ fun AnimatedPercentCounter(
     val displayValue = animatable.value
     val sign = if (displayValue >= 0 && prefix.isEmpty()) "+" else prefix
 
-    Text(
+    CounterText(
         text = "$sign${CurrencyFormatter.formatPercent(displayValue)}$suffix",
         style = style,
         fontWeight = fontWeight,
         color = color,
+        autoSize = autoSize,
+        minFontSize = minFontSize,
         modifier = modifier.scale(scaleAnimatable.value)
+    )
+}
+
+/**
+ * Renders the counter text, optionally shrinking the font so it always stays on
+ * a single line instead of wrapping. Keyed on [style] (not text) so the resized
+ * font persists across the per-frame value changes during count animations.
+ */
+@Composable
+private fun CounterText(
+    text: String,
+    style: TextStyle,
+    fontWeight: FontWeight,
+    color: Color,
+    autoSize: Boolean,
+    minFontSize: TextUnit,
+    modifier: Modifier = Modifier
+) {
+    if (!autoSize) {
+        Text(
+            text = text,
+            style = style,
+            fontWeight = fontWeight,
+            color = color,
+            modifier = modifier
+        )
+        return
+    }
+
+    var resizedStyle by remember(style) { mutableStateOf(style) }
+    var readyToDraw by remember(style) { mutableStateOf(false) }
+
+    Text(
+        text = text,
+        style = resizedStyle,
+        fontWeight = fontWeight,
+        color = color,
+        maxLines = 1,
+        softWrap = false,
+        modifier = modifier.drawWithContent { if (readyToDraw) drawContent() },
+        onTextLayout = { result ->
+            if (result.didOverflowWidth && resizedStyle.fontSize.value > minFontSize.value) {
+                resizedStyle = resizedStyle.copy(fontSize = resizedStyle.fontSize * 0.9f)
+            } else {
+                readyToDraw = true
+            }
+        }
     )
 }

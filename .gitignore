@@ -27,3 +27,6 @@ app/release/
 # Firebase config (sensitive — do not commit)
 app/google-services.json
 google-services.json
+
+# Android Studio analytics/local tooling state
+.android/

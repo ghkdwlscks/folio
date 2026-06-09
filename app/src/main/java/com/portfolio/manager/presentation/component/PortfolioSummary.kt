@@ -170,8 +170,9 @@ fun PortfolioSummary(
         ) {
             // Total Value with return badge inline
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
             ) {
                 AnimatedCurrencyCounter(
                     targetValue = totalValue,
@@ -180,7 +181,9 @@ fun PortfolioSummary(
                         letterSpacing = (-1.5).sp
                     ),
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color.White,
+                    autoSize = true,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Surface(
                     shape = RoundedCornerShape(8.dp),
@@ -202,7 +205,8 @@ fun PortfolioSummary(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
-                            prefix = if (trend.isGain) "+" else ""
+                            prefix = if (trend.isGain) "+" else "",
+                            autoSize = true
                         )
                     }
                 }
@@ -417,18 +421,18 @@ private fun DividendInfoRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
+            AutoSizeText(
                 text = "Annual Dividends",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.7f)
             )
-            Text(
+            AutoSizeText(
                 text = formatValue(annualDividend),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = GainGreenPastel
             )
-            Text(
+            AutoSizeText(
                 text = "(${CurrencyFormatter.formatPercent(dividendYield)}%)",
                 style = MaterialTheme.typography.labelSmall,
                 color = GainGreenPastel.copy(alpha = 0.8f)
@@ -453,31 +457,36 @@ private fun StatsRow(stats: PortfolioStats) {
             CompactStatItem(
                 label = "MDD",
                 value = "-${CurrencyFormatter.formatPercent(stats.maxDrawdown)}%",
-                color = LossRedPastel
+                color = LossRedPastel,
+                modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
                 label = "Vol",
                 value = "${CurrencyFormatter.formatPercent(stats.volatility)}%",
-                color = Color.White.copy(alpha = 0.8f)
+                color = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
                 label = "Sharpe",
                 value = String.format("%.2f", stats.sharpeRatio),
-                color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel
+                color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel,
+                modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
                 label = "Best",
                 value = "+${CurrencyFormatter.formatPercent(stats.bestDay)}%",
-                color = GainGreenPastel
+                color = GainGreenPastel,
+                modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
                 label = "Worst",
                 value = "${CurrencyFormatter.formatPercent(stats.worstDay)}%",
-                color = LossRedPastel
+                color = LossRedPastel,
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -497,21 +506,22 @@ private fun StatDivider() {
 private fun CompactStatItem(
     label: String,
     value: String,
-    color: Color
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
     ) {
-        Text(
+        AutoSizeText(
             text = value,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             color = color
         )
-        Text(
+        AutoSizeText(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 9.sp,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             color = Color.White.copy(alpha = 0.5f)
         )
     }
