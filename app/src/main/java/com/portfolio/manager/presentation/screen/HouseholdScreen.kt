@@ -3,10 +3,13 @@ package com.portfolio.manager.presentation.screen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.GroupAdd
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 
 import com.portfolio.manager.presentation.component.PortfolioContent
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
@@ -33,10 +37,12 @@ fun HouseholdScreen(
     viewModel: HouseholdViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToShare: () -> Unit,
+    onNavigateToFIRE: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val isRefreshing = (uiState as? DashboardUiState.Success)?.isRefreshing == true
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -54,6 +60,25 @@ fun HouseholdScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToFIRE) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocalFireDepartment,
+                            contentDescription = "FIRE Calculator"
+                        )
+                    }
+                    IconButton(onClick = { viewModel.refresh() }, enabled = !isRefreshing) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Outlined.Refresh,
+                                contentDescription = "Refresh"
+                            )
+                        }
+                    }
                     IconButton(onClick = onNavigateToShare) {
                         Icon(
                             imageVector = Icons.Outlined.GroupAdd,

@@ -28,7 +28,7 @@ object Routes {
     const val ADD_CASH = "add_cash/{accountId}"
     const val EDIT_CASH = "edit_cash/{cashItemId}"
     const val ACCOUNTS = "accounts"
-    const val FIRE_CALCULATOR = "fire_calculator"
+    const val FIRE_CALCULATOR = "fire_calculator?group={group}"
     const val HOUSEHOLD = "household"
     const val HOUSEHOLD_SHARE = "household_share"
 
@@ -36,6 +36,7 @@ object Routes {
     fun editHolding(holdingId: Long) = "edit_holding/$holdingId"
     fun addCash(accountId: Long) = "add_cash/$accountId"
     fun editCash(cashItemId: Long) = "edit_cash/$cashItemId"
+    fun fireCalculator(group: Boolean = false) = "fire_calculator?group=$group"
 }
 
 @Composable
@@ -102,7 +103,7 @@ fun NavGraph(
                     navController.navigate(Routes.editCash(cashItemId))
                 },
                 onNavigateToFIRE = {
-                    navController.navigate(Routes.FIRE_CALCULATOR)
+                    navController.navigate(Routes.fireCalculator(group = false))
                 },
                 onNavigateToHousehold = {
                     navController.navigate(Routes.HOUSEHOLD)
@@ -151,7 +152,13 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable(Routes.FIRE_CALCULATOR) {
+        composable(
+            route = Routes.FIRE_CALCULATOR,
+            arguments = listOf(navArgument("group") {
+                type = NavType.BoolType
+                defaultValue = false
+            })
+        ) {
             FIRECalculatorScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() }
@@ -161,7 +168,8 @@ fun NavGraph(
             HouseholdScreen(
                 viewModel = hiltViewModel(),
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToShare = { navController.navigate(Routes.HOUSEHOLD_SHARE) }
+                onNavigateToShare = { navController.navigate(Routes.HOUSEHOLD_SHARE) },
+                onNavigateToFIRE = { navController.navigate(Routes.fireCalculator(group = true)) }
             )
         }
         composable(Routes.HOUSEHOLD_SHARE) {

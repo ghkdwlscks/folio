@@ -19,6 +19,7 @@ import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.domain.repository.SyncRepository
 import com.portfolio.manager.domain.service.HouseholdMerger
+import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.service.SnapshotMapper
 import io.mockk.coEvery
 import io.mockk.every
@@ -46,6 +47,7 @@ class HouseholdViewModelTest {
     private lateinit var editor: SharedPreferences.Editor
     private val merger = HouseholdMerger()
     private val snapshotMapper = SnapshotMapper()
+    private val portfolioCache = PortfolioCache()
     private val testDispatcher = UnconfinedTestDispatcher()
 
     private val prefValues = mutableMapOf<String, Any?>("dashboard_show_in_krw" to true)
@@ -122,7 +124,7 @@ class HouseholdViewModelTest {
 
     private fun createViewModel() = HouseholdViewModel(
         stockRepository, holdingsRepository, accountRepository, cashRepository,
-        syncRepository, merger, snapshotMapper, sharedPreferences
+        syncRepository, merger, snapshotMapper, portfolioCache, sharedPreferences
     )
 
     private fun successState() = createViewModel().uiState.value as DashboardUiState.Success

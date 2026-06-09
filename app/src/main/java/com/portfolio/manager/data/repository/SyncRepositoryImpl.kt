@@ -2,6 +2,7 @@ package com.portfolio.manager.data.repository
 
 import javax.inject.Inject
 
+import com.portfolio.manager.domain.model.GroupFireSettings
 import com.portfolio.manager.domain.model.PortfolioSnapshot
 import com.portfolio.manager.domain.repository.SyncDataSource
 import com.portfolio.manager.domain.repository.SyncRepository
@@ -29,4 +30,15 @@ class SyncRepositoryImpl @Inject constructor(
         uid: String
     ): Result<PortfolioSnapshot?> =
         runCatching { dataSource.getOtherMembers(householdCode, uid).firstOrNull() }
+
+    override suspend fun saveGroupFireSettings(
+        householdCode: String,
+        settings: GroupFireSettings
+    ): Result<Unit> =
+        runCatching { dataSource.putGroupFireSettings(householdCode, settings) }
+
+    override suspend fun fetchGroupFireSettings(
+        householdCode: String
+    ): Result<GroupFireSettings?> =
+        runCatching { dataSource.getGroupFireSettings(householdCode) }
 }

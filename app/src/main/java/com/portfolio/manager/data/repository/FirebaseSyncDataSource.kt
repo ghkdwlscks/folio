@@ -7,6 +7,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 import kotlinx.coroutines.tasks.await
 
+import com.portfolio.manager.domain.model.GroupFireSettings
 import com.portfolio.manager.domain.model.PortfolioSnapshot
 import com.portfolio.manager.domain.repository.SyncDataSource
 import com.portfolio.manager.util.JsonSerializer
@@ -46,6 +47,21 @@ class FirebaseSyncDataSource @Inject constructor(
             .map { json.decodeFromString(PortfolioSnapshot.serializer(), it) }
     }
 
+    override suspend fun putGroupFireSettings(householdCode: String, settings: GroupFireSettings) {
+        val data = mapOf("groupFireSettings" to json.encodeToString(GroupFireSettings.serializer(), settings))
+        settingsDocument(householdCode).set(data).await()
+    }
+
+    override suspend fun getGroupFireSettings(householdCode: String): GroupFireSettings? {
+        val doc = settingsDocument(householdCode).get().await()
+        return doc.getString("groupFireSettings")
+            ?.let { json.decodeFromString(GroupFireSettings.serializer(), it) }
+    }
+
     private fun membersCollection(householdCode: String) =
         firestore.collection("households").document(householdCode).collection("members")
+
+    private fun settingsDocument(householdCode: String) =
+        firestore.collection("households").document(householdCode)
+            .collection("settings").document("fire")
 }

@@ -1,6 +1,7 @@
 package com.portfolio.manager.data.repository
 
 import com.google.common.truth.Truth.assertThat
+import com.portfolio.manager.domain.model.GroupFireSettings
 import com.portfolio.manager.domain.model.PortfolioSnapshot
 import com.portfolio.manager.domain.repository.SyncDataSource
 import io.mockk.coEvery
@@ -88,6 +89,56 @@ class SyncRepositoryImplTest {
         coEvery { dataSource.getOtherMembers(any(), any()) } throws IOException("read failed")
 
         val result = repository.fetchPartnerSnapshot("ABCD-2345", "uid-1")
+
+        assertThat(result.isFailure).isTrue()
+    }
+
+    @Test
+    fun `saveGroupFireSettings - success - delegates to data source`() = runTest {
+        val settings = GroupFireSettings(7.0, 2.0, 3000.0, false)
+        coEvery { dataSource.putGroupFireSettings("ABCD-2345", settings) } returns Unit
+
+        val result = repository.saveGroupFireSettings("ABCD-2345", settings)
+
+        assertThat(result.isSuccess).isTrue()
+        coVerify { dataSource.putGroupFireSettings("ABCD-2345", settings) }
+    }
+
+    @Test
+    fun `saveGroupFireSettings - failure - returns failure`() = runTest {
+        coEvery { dataSource.putGroupFireSettings(any(), any()) } throws IOException("write failed")
+
+        val result = repository.saveGroupFireSettings("ABCD-2345", GroupFireSettings(7.0, 2.0, 3000.0, false))
+
+        assertThat(result.isFailure).isTrue()
+    }
+
+    @Test
+    fun `fetchGroupFireSettings - returns settings`() = runTest {
+        val settings = GroupFireSettings(8.0, 3.0, 4000.0, true)
+        coEvery { dataSource.getGroupFireSettings("ABCD-2345") } returns settings
+
+        val result = repository.fetchGroupFireSettings("ABCD-2345")
+
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).isEqualTo(settings)
+    }
+
+    @Test
+    fun `fetchGroupFireSettings - none - returns null`() = runTest {
+        coEvery { dataSource.getGroupFireSettings(any()) } returns null
+
+        val result = repository.fetchGroupFireSettings("ABCD-2345")
+
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).isNull()
+    }
+
+    @Test
+    fun `fetchGroupFireSettings - failure - returns failure`() = runTest {
+        coEvery { dataSource.getGroupFireSettings(any()) } throws IOException("read failed")
+
+        val result = repository.fetchGroupFireSettings("ABCD-2345")
 
         assertThat(result.isFailure).isTrue()
     }

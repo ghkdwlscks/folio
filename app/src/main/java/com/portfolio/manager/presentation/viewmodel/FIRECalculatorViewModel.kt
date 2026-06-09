@@ -2,7 +2,9 @@ package com.portfolio.manager.presentation.viewmodel
 
 import android.content.SharedPreferences
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -10,9 +12,12 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 import com.portfolio.manager.domain.model.FIRECalculation
 import com.portfolio.manager.domain.model.FIRETargetCalculation
+import com.portfolio.manager.domain.model.GroupFireSettings
+import com.portfolio.manager.domain.repository.SyncRepository
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
@@ -39,41 +44,68 @@ sealed interface FIRECalculatorUiState {
 @HiltViewModel
 class FIRECalculatorViewModel @Inject constructor(
     private val portfolioCache: PortfolioCache,
-    private val sharedPreferences: SharedPreferences
+    private val syncRepository: SyncRepository,
+    private val sharedPreferences: SharedPreferences,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    companion object {
+        const val DEFAULT_ANNUAL_RETURN = 7.0
+        const val DEFAULT_ANNUAL_INFLATION = 2.0
+        const val DEFAULT_TARGET_MONTHLY_SPENDING = 3000.0
+        const val ARG_GROUP = "group"
+    }
+
+    // Group mode (opened from the household screen) shares its settings via
+    // Firebase; personal mode (from the dashboard) keeps them in local prefs.
+    private val isGroup: Boolean = savedStateHandle.get<Boolean>(ARG_GROUP) ?: false
+
+    private val householdCode: String?
+        get() = sharedPreferences.getString(PreferenceKeys.HOUSEHOLD_CODE, null)
 
     private val _uiState = MutableStateFlow<FIRECalculatorUiState>(FIRECalculatorUiState.Loading)
     val uiState: StateFlow<FIRECalculatorUiState> = _uiState.asStateFlow()
 
     private var currentExchangeRate: Double = KRW_TO_USD_RATE
 
-    private var annualReturn by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_RETURN, DEFAULT_ANNUAL_RETURN)
+    // Personal settings persisted locally; also seed the group settings.
+    private var localAnnualReturn by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_RETURN, DEFAULT_ANNUAL_RETURN)
+    private var localAnnualInflation by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION)
+    private var localTargetMonthlySpending by sharedPreferences.double(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
+    private var localTargetSpendingInKrw by sharedPreferences.boolean(PreferenceKeys.FIRE_TARGET_SPENDING_IN_KRW, false)
 
-    private var annualInflation by sharedPreferences.double(PreferenceKeys.FIRE_ANNUAL_INFLATION, DEFAULT_ANNUAL_INFLATION)
-
+    // Effective settings used in calculations (diverge from local in group mode).
+    private var annualReturn = localAnnualReturn
+    private var annualInflation = localAnnualInflation
     // Target spending stored in the currency user entered it
-    private var targetMonthlySpending by sharedPreferences.double(PreferenceKeys.FIRE_TARGET_MONTHLY_SPENDING, DEFAULT_TARGET_MONTHLY_SPENDING)
-    private var targetSpendingInKrw by sharedPreferences.boolean(PreferenceKeys.FIRE_TARGET_SPENDING_IN_KRW, false)
+    private var targetMonthlySpending = localTargetMonthlySpending
+    private var targetSpendingInKrw = localTargetSpendingInKrw
 
+    // Display currency is always a per-viewer local preference.
     private var showInKrw by sharedPreferences.boolean(PreferenceKeys.FIRE_SHOW_IN_KRW, false)
-
-    companion object {
-        const val DEFAULT_ANNUAL_RETURN = 7.0
-        const val DEFAULT_ANNUAL_INFLATION = 2.0
-        const val DEFAULT_TARGET_MONTHLY_SPENDING = 3000.0
-    }
 
     init {
         loadData()
     }
 
     private fun loadData() {
-        // Read from shared cache (populated by DashboardViewModel)
+        // Read from shared cache (populated by Dashboard/Household)
         if (!portfolioCache.hasData()) {
             _uiState.value = FIRECalculatorUiState.Error(ErrorMessages.NO_PORTFOLIO_DATA)
             return
         }
 
+        if (isGroup) {
+            viewModelScope.launch {
+                loadGroupSettings()
+                emitFromCache()
+            }
+        } else {
+            emitFromCache()
+        }
+    }
+
+    private fun emitFromCache() {
         currentExchangeRate = portfolioCache.exchangeRate
 
         val stocks = portfolioCache.stocks
@@ -89,6 +121,43 @@ class FIRECalculatorViewModel @Inject constructor(
         val totalValueUsd = stocksValueUsd + cashValueUsd
 
         updateState(totalValueUsd)
+    }
+
+    /**
+     * Loads the household's shared FIRE settings from Firebase, seeding them
+     * from the local values the first time (when none exist yet).
+     */
+    private suspend fun loadGroupSettings() {
+        val code = householdCode ?: return
+        val remote = syncRepository.fetchGroupFireSettings(code).getOrNull()
+        if (remote != null) {
+            annualReturn = remote.annualReturn
+            annualInflation = remote.annualInflation
+            targetMonthlySpending = remote.targetMonthlySpending
+            targetSpendingInKrw = remote.targetSpendingInKrw
+        } else {
+            syncRepository.saveGroupFireSettings(code, currentGroupSettings())
+        }
+    }
+
+    private fun currentGroupSettings() = GroupFireSettings(
+        annualReturn = annualReturn,
+        annualInflation = annualInflation,
+        targetMonthlySpending = targetMonthlySpending,
+        targetSpendingInKrw = targetSpendingInKrw
+    )
+
+    /** Persists the current settings to the active store (Firebase or local prefs). */
+    private fun persistSettings() {
+        if (isGroup) {
+            val code = householdCode ?: return
+            viewModelScope.launch { syncRepository.saveGroupFireSettings(code, currentGroupSettings()) }
+        } else {
+            localAnnualReturn = annualReturn
+            localAnnualInflation = annualInflation
+            localTargetMonthlySpending = targetMonthlySpending
+            localTargetSpendingInKrw = targetSpendingInKrw
+        }
     }
 
     private fun updateState(totalPortfolioValueUsd: Double) {
@@ -125,11 +194,13 @@ class FIRECalculatorViewModel @Inject constructor(
 
     fun updateAnnualReturn(value: Double) {
         annualReturn = value
+        persistSettings()
         recalculate()
     }
 
     fun updateAnnualInflation(value: Double) {
         annualInflation = value
+        persistSettings()
         recalculate()
     }
 
@@ -137,6 +208,7 @@ class FIRECalculatorViewModel @Inject constructor(
         // Store in the currency user entered it
         targetMonthlySpending = value
         targetSpendingInKrw = showInKrw
+        persistSettings()
         recalculate()
     }
 

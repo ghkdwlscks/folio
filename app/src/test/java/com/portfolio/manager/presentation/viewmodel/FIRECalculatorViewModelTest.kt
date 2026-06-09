@@ -1,12 +1,17 @@
 package com.portfolio.manager.presentation.viewmodel
 
 import android.content.SharedPreferences
+import androidx.lifecycle.SavedStateHandle
 import com.google.common.truth.Truth.assertThat
 import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.Currency
+import com.portfolio.manager.domain.model.GroupFireSettings
 import com.portfolio.manager.domain.model.Stock
+import com.portfolio.manager.domain.repository.SyncRepository
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.util.AppConstants.KRW_TO_USD_RATE
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +28,7 @@ import org.junit.Test
 class FIRECalculatorViewModelTest {
 
     private lateinit var portfolioCache: PortfolioCache
+    private lateinit var syncRepository: SyncRepository
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var editor: SharedPreferences.Editor
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -40,8 +46,10 @@ class FIRECalculatorViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         portfolioCache = PortfolioCache()
+        syncRepository = mockk()
         sharedPreferences = mockk()
         editor = mockk(relaxed = true)
+        every { sharedPreferences.getString("household_code", null) } returns null
 
         every { sharedPreferences.edit() } returns editor
         every { editor.putString(any(), any()) } answers {
@@ -117,8 +125,9 @@ class FIRECalculatorViewModelTest {
         createdAt = 0L
     )
 
-    private fun createViewModel(): FIRECalculatorViewModel {
-        return FIRECalculatorViewModel(portfolioCache, sharedPreferences)
+    private fun createViewModel(group: Boolean = false): FIRECalculatorViewModel {
+        val savedStateHandle = SavedStateHandle(mapOf("group" to group))
+        return FIRECalculatorViewModel(portfolioCache, syncRepository, sharedPreferences, savedStateHandle)
     }
 
     @Test
@@ -399,5 +408,60 @@ class FIRECalculatorViewModelTest {
 
         state = viewModel.uiState.value as FIRECalculatorUiState.Success
         assertThat(state.totalPortfolioValue).isEqualTo(1500.0) // 10 * 150
+    }
+
+    @Test
+    fun `group mode - loads shared settings from firebase`() = runTest {
+        every { sharedPreferences.getString("household_code", null) } returns "ABCD-2345"
+        coEvery { syncRepository.fetchGroupFireSettings("ABCD-2345") } returns
+            Result.success(GroupFireSettings(10.0, 3.0, 5000.0, false))
+        portfolioCache.update(listOf(createStock("AAPL", "Apple", 100, 100.0, 100.0)), emptyList(), KRW_TO_USD_RATE)
+
+        val viewModel = createViewModel(group = true)
+
+        val state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        assertThat(state.annualReturn).isEqualTo(10.0)
+        assertThat(state.annualInflation).isEqualTo(3.0)
+    }
+
+    @Test
+    fun `group mode - no shared settings yet - seeds firebase from local`() = runTest {
+        every { sharedPreferences.getString("household_code", null) } returns "ABCD-2345"
+        coEvery { syncRepository.fetchGroupFireSettings("ABCD-2345") } returns Result.success(null)
+        coEvery { syncRepository.saveGroupFireSettings(any(), any()) } returns Result.success(Unit)
+        portfolioCache.update(listOf(createStock("AAPL", "Apple", 100, 100.0, 100.0)), emptyList(), KRW_TO_USD_RATE)
+
+        createViewModel(group = true)
+
+        coVerify { syncRepository.saveGroupFireSettings("ABCD-2345", any()) }
+    }
+
+    @Test
+    fun `group mode - updateAnnualReturn saves to firebase`() = runTest {
+        every { sharedPreferences.getString("household_code", null) } returns "ABCD-2345"
+        coEvery { syncRepository.fetchGroupFireSettings(any()) } returns
+            Result.success(GroupFireSettings(7.0, 2.0, 3000.0, false))
+        coEvery { syncRepository.saveGroupFireSettings(any(), any()) } returns Result.success(Unit)
+        portfolioCache.update(listOf(createStock("AAPL", "Apple", 100, 100.0, 100.0)), emptyList(), KRW_TO_USD_RATE)
+        val viewModel = createViewModel(group = true)
+
+        viewModel.updateAnnualReturn(12.0)
+
+        val state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        assertThat(state.annualReturn).isEqualTo(12.0)
+        coVerify { syncRepository.saveGroupFireSettings("ABCD-2345", GroupFireSettings(12.0, 2.0, 3000.0, false)) }
+    }
+
+    @Test
+    fun `group mode - not paired - keeps changes locally without firebase`() = runTest {
+        // household_code stays null (not paired)
+        portfolioCache.update(listOf(createStock("AAPL", "Apple", 100, 100.0, 100.0)), emptyList(), KRW_TO_USD_RATE)
+        val viewModel = createViewModel(group = true)
+
+        viewModel.updateAnnualReturn(9.0)
+
+        val state = viewModel.uiState.value as FIRECalculatorUiState.Success
+        assertThat(state.annualReturn).isEqualTo(9.0)
+        coVerify(exactly = 0) { syncRepository.saveGroupFireSettings(any(), any()) }
     }
 }

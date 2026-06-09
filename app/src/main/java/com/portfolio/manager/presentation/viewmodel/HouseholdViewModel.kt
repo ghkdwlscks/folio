@@ -29,6 +29,7 @@ import com.portfolio.manager.domain.service.CacheManager
 import com.portfolio.manager.domain.service.CashItemMapper
 import com.portfolio.manager.domain.service.HouseholdMerger
 import com.portfolio.manager.domain.service.PeriodReturnsService
+import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.domain.service.PortfolioSorter
 import com.portfolio.manager.domain.service.SnapshotMapper
 import com.portfolio.manager.domain.service.SparklineService
@@ -59,6 +60,7 @@ class HouseholdViewModel @Inject constructor(
     private val syncRepository: SyncRepository,
     private val merger: HouseholdMerger,
     private val snapshotMapper: SnapshotMapper,
+    private val portfolioCache: PortfolioCache,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -180,6 +182,8 @@ class HouseholdViewModel @Inject constructor(
             val symbols = merged.holdings.map { it.symbol }.distinct()
 
             if (symbols.isEmpty()) {
+                // Share the combined portfolio with the FIRE calculator.
+                portfolioCache.update(emptyList(), cashItems, currentExchangeRate)
                 val base = successOf(emptyList(), cashItems, merged.ownerLabels)
                 _uiState.value = base
                 if (cashItems.isNotEmpty()) {
@@ -204,6 +208,8 @@ class HouseholdViewModel @Inject constructor(
                 currentExchangeRate
             )
 
+            // Share the combined portfolio with the FIRE calculator.
+            portfolioCache.update(stocks, cashItems, currentExchangeRate)
             val base = successOf(stocks, cashItems, merged.ownerLabels)
             _uiState.value = base
             _uiState.value = withAnalytics(base, stocks, cashItems)
