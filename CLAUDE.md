@@ -44,6 +44,20 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 - **FIRE Target Tracking**: Target monthly spending input with required portfolio calculation
 - **Progress Visualization**: Progress bar showing percentage toward FIRE goal with remaining amount
 - **Persisted Settings**: Annual return, inflation, and target spending saved across restarts
+- **Personal vs Group Mode**: When opened from a paired household, runs on the combined portfolio with group FIRE assumptions (return/inflation/target) synced via Firebase; personal mode keeps settings in local preferences
+
+### Household Sharing
+- **Pairing Codes**: Create or join a household with an unambiguous XXXX-XXXX code (no 0/O/1/I/L)
+- **Combined Portfolio View**: Aggregates my holdings with a partner's read-only snapshot into one dashboard
+- **Live Partner Snapshot**: Only the portfolio *definition* (accounts/holdings/cash) is synced via Firestore; each device fetches prices/returns/history from Yahoo Finance locally
+- **Auto-Publish**: My snapshot is republished automatically whenever my holdings/cash change, so the partner always sees current values
+- **Owner Labels & Read-Only Partner Data**: Partner accounts are namespaced into negative ID space, marked read-only, and labeled by owner in the aggregated view
+- **Shared FIRE Settings**: Group FIRE assumptions are stored remotely and editable by both members
+- **Anonymous Auth**: Firebase anonymous sign-in identifies each member; no account required
+
+### Settings
+- **Language**: English / Korean toggle (in-app, persisted); falls back to the system locale on first launch
+- **Theme**: Light / Dark / System selection (in-app, persisted), independent of the OS dark-mode setting
 
 ### Stock Data
 - **Real-time Prices**: Fetched from Yahoo Finance API (parallel async requests)
@@ -73,27 +87,33 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 - **Horizontal FABs**: Rebalance button (left) and Add button (right) side by side
 - **Crossfade Transitions**: Smooth transitions between loading and content states
 - **Colored Gain/Loss**: Green for gains, red for losses throughout the UI
+- **Localization**: Full English/Korean string sets via `AppStrings` and `LocalAppStrings` composition local
+- **In-App Dark Mode**: Light/Dark/System theme honored by the applied color scheme; components branch on `LocalIsDarkTheme` (the resolved in-app state), not `isSystemInDarkTheme()`
 - **Heatmap Intensity**: Stock card colors based on gain/loss percentage
 - **Error Handling**: Snackbar notifications for operation failures
 
 ## Tech Stack
 
 - **Language**: Kotlin 1.9.25
+- **App Version**: 1.0.1 (versionCode 2)
 - **Target SDK**: 35 (Android 15)
 - **Min SDK**: 26 (Android 8.0)
 - **UI**: Jetpack Compose (Compiler 1.5.15, BOM 2024.12.01) + Material 3
 - **Architecture**: MVVM + Clean Architecture
 - **DI**: Hilt 2.51.1 (with KSP)
-- **Database**: Room 2.6.1 (version 1, fallbackToDestructiveMigration)
+- **Database**: Room 2.6.1 (version 2, explicit migrations + fallbackToDestructiveMigration safety net — see [Database Migrations](#database-migrations))
 - **Networking**: Retrofit 2.9.0 + OkHttp 4.12.0 + Kotlin Serialization 1.6.0
+- **Cloud Sync**: Firebase BoM 33.7.0 (Firestore + Anonymous Auth) + kotlinx-coroutines-play-services, for household sharing
 - **Navigation**: Navigation Compose 2.8.5
 - **Async**: Coroutines + Flow
-- **Build**: Gradle Kotlin DSL, Java 17
+- **Build**: Gradle Kotlin DSL, Java 17, `com.google.gms.google-services` plugin (requires `app/google-services.json`)
 
 ## Architecture
 
 ```
 app/src/main/java/com/portfolio/manager/
+├── MainActivity.kt          # Single activity; hosts theme/localization + NavGraph
+├── PortfolioApplication.kt  # @HiltAndroidApp Application
 ├── data/
 │   ├── local/              # Room DB, DAOs, Entities
 │   │   ├── AppDatabase.kt
@@ -109,15 +129,21 @@ app/src/main/java/com/portfolio/manager/
 │       ├── AccountRepositoryImpl.kt
 │       ├── HoldingsRepositoryImpl.kt
 │       ├── CashRepositoryImpl.kt
-│       └── StockRepositoryImpl.kt
+│       ├── StockRepositoryImpl.kt
+│       ├── SyncRepositoryImpl.kt        # Household sync orchestration (unit-tested)
+│       └── FirebaseSyncDataSource.kt    # Firestore/Auth SDK boundary (excluded from coverage)
 ├── domain/
 │   ├── model/              # Domain models
-│   │   ├── Stock.kt, CashItem.kt, StockAccountDetail.kt
+│   │   ├── Stock.kt            # Stock + StockAccountDetail
+│   │   ├── CashItem.kt
 │   │   ├── PortfolioItem.kt, StockHolding.kt  # Common interface and holding model
 │   │   ├── Currency.kt                        # Type-safe USD/KRW enum
-│   │   ├── PeriodReturn.kt, BenchmarkReturns.kt, TimePeriod.kt
+│   │   ├── PeriodReturn.kt    # PeriodReturn + BenchmarkReturns + TimePeriod
 │   │   ├── SortOption.kt, PortfolioStats.kt
-│   │   └── FIRECalculation.kt, FIRETargetCalculation.kt
+│   │   ├── FIRECalculation.kt # FIRECalculation + FIRETargetCalculation
+│   │   ├── PortfolioSnapshot.kt    # Wire-format member snapshot (accounts/holdings/cash)
+│   │   ├── GroupFireSettings.kt    # Shared FIRE assumptions for a household
+│   │   └── HouseholdMergeResult.kt # Combined my + partner entities (negative-id namespacing)
 │   ├── service/            # Domain services
 │   │   ├── PortfolioCalculationService.kt # Portfolio values, period returns, cash returns
 │   │   ├── PortfolioStatsCalculator.kt  # MDD, Sharpe, Volatility calculations
@@ -133,19 +159,26 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── BenchmarkDataService.kt      # Benchmark data loading and calculation
 │   │   ├── SparklineService.kt          # Portfolio sparkline computation
 │   │   ├── PeriodReturnsService.kt      # Period returns calculation (parallel loading)
-│   │   └── RebalanceCalculator.kt       # Rebalance detection and item calculation
+│   │   ├── RebalanceCalculator.kt       # Rebalance detection and item calculation
+│   │   ├── HouseholdMerger.kt           # Merge my + partner snapshot into combined view
+│   │   ├── HouseholdPublisher.kt        # Auto-publish my snapshot on data change
+│   │   ├── HouseholdCodeGenerator.kt    # Generate/validate XXXX-XXXX pairing codes
+│   │   └── SnapshotMapper.kt            # Local entities → PortfolioSnapshot
 │   ├── util/               # Domain utilities
 │   │   ├── CurrencyConverter.kt         # USD/KRW conversion
 │   │   └── ReturnCalculator.kt          # Return percentage calculations
-│   └── repository/         # Repository interfaces
+│   └── repository/         # Repository interfaces (incl. SyncRepository, SyncDataSource)
 ├── presentation/
 │   ├── screen/             # Screen composables
-│   │   ├── DashboardScreen.kt
+│   │   ├── DashboardScreen.kt           # Also hosts the Settings dialog (language/theme)
 │   │   ├── AddHoldingScreen.kt, AddCashScreen.kt
 │   │   ├── AccountsScreen.kt
-│   │   └── FIRECalculatorScreen.kt
+│   │   ├── FIRECalculatorScreen.kt
+│   │   ├── HouseholdScreen.kt           # Combined household portfolio view
+│   │   └── HouseholdShareScreen.kt      # Pairing UI (create/join household)
 │   ├── component/          # Reusable UI components
-│   │   ├── GlassSurface.kt, GlassCard.kt     # Glassmorphism surfaces
+│   │   ├── GlassSurface.kt                   # GlassSurface + GlassCard glassmorphism
+│   │   ├── PortfolioContent.kt               # Shared dashboard/household content body
 │   │   ├── PortfolioSummary.kt               # Header with total value
 │   │   ├── StockCard.kt, CashCard.kt         # List item cards
 │   │   ├── Sparkline.kt                      # Mini line charts
@@ -154,6 +187,7 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── AllocationPieChart.kt             # Animated donut chart
 │   │   ├── CurrencyToggle.kt                 # USD/KRW switcher
 │   │   ├── AnimatedCounter.kt                # Value transition animations
+│   │   ├── AutoSizeText.kt                   # Text that shrinks to fit
 │   │   ├── AccountDropdown.kt                # Account filter dropdown
 │   │   ├── AccountFilterDialog.kt            # Multi-account filter selection
 │   │   ├── SectionHeader.kt                  # Holdings section with sort options
@@ -170,22 +204,27 @@ app/src/main/java/com/portfolio/manager/
 │   │   ├── DashboardViewModel.kt, DashboardUiState.kt
 │   │   ├── AddHoldingViewModel.kt, AddCashViewModel.kt
 │   │   ├── AccountsViewModel.kt
-│   │   ├── FIRECalculatorViewModel.kt
+│   │   ├── FIRECalculatorViewModel.kt        # Personal + group (household) FIRE modes
+│   │   ├── HouseholdViewModel.kt             # Combined household portfolio state
+│   │   ├── HouseholdShareViewModel.kt        # Pairing/sign-in state
 │   │   └── base/                          # Base classes and interfaces
 │   │       └── FormUiState.kt             # Common interface for form states
 │   ├── navigation/         # NavGraph, Routes
-│   ├── theme/              # Color, Theme, Type
+│   ├── theme/              # Color, Type, Animation, Theme (FolioTheme + AppTheme + LocalIsDarkTheme),
+│   │                       #   Localization (AppStrings, AppLanguage, LocalAppStrings)
 │   └── util/               # Presentation utilities
 │       ├── CurrencyFormatter.kt    # Format currency values
 │       ├── InputUtils.kt           # Input filtering and formatting
 │       ├── TrendIndicator.kt       # Up/down/neutral indicators
+│       ├── HapticFeedback.kt       # Haptic feedback helpers
 │       └── PresentationConstants.kt
 ├── di/                     # Hilt modules
-│   ├── DatabaseModule.kt
-│   ├── NetworkModule.kt
-│   └── RepositoryModule.kt
+│   ├── DatabaseModule.kt   # Provides AppDatabase + DAOs + SharedPreferences (owns migrations)
+│   ├── NetworkModule.kt    # Retrofit/OkHttp (adds User-Agent + Accept headers)
+│   ├── RepositoryModule.kt
+│   └── SyncModule.kt       # Binds SyncRepository/SyncDataSource (Firebase)
 └── util/                   # App-wide utilities
-    ├── AppConstants.kt          # Global constants
+    ├── AppConstants.kt          # Global constants + PreferenceKeys
     ├── ErrorMessages.kt         # Centralized error message strings
     ├── StockExtensions.kt       # Symbol formatting helpers
     ├── JsonSerializer.kt        # Kotlinx serialization config
@@ -198,7 +237,10 @@ app/src/main/java/com/portfolio/manager/
 2. **Add/Edit Holding**: Form for symbol, quantity, average price, currency selection with validation, account chips (add mode), symbol lock (edit mode)
 3. **Add/Edit Cash**: Form for name, value, annual yield rate, currency selection (USD/KRW)
 4. **Accounts**: Manage accounts with add, edit, delete, reorder (up/down buttons), and error snackbar
-5. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking
+5. **FIRE Calculator**: Portfolio-based FIRE planning with sustainable spending and target tracking (personal or shared household mode)
+6. **Household Share**: Create or join a household via pairing code (anonymous Firebase auth)
+7. **Household**: Combined view of my portfolio plus the paired partner's read-only snapshot
+8. **Settings dialog** (from Dashboard): language (English/Korean) and theme (Light/Dark/System)
 
 ## Data Flow
 
@@ -210,7 +252,37 @@ Yahoo Finance API → StockRepository → DashboardViewModel → DashboardScreen
 Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIRECalculatorScreen
              → AccountRepository
              → CashRepository
+
+Household sharing:
+Room (my entities) → SnapshotMapper → HouseholdPublisher ──┐
+                                                           ↓
+                              SyncRepository → SyncDataSource → FirebaseSyncDataSource → Firestore
+                                                           ↑
+HouseholdViewModel ← HouseholdMerger(my entities + partner snapshot) ←┘
+  (prices/returns still computed locally from Yahoo Finance per device)
 ```
+
+## Database Migrations
+
+**⚠️ The Room database is built in `di/DatabaseModule.provideAppDatabase` — that is the ONLY builder the app uses (Hilt-provided).** The `AppDatabase.getDatabase()` companion method is **dead code** (nothing calls it); its `addMigrations(...)` list has no effect at runtime.
+
+When changing the schema (bumping `@Database(version=...)`, adding an entity column, etc.):
+
+1. **Add the `Migration` to `DatabaseModule.provideAppDatabase`'s `addMigrations(...)`** — not to the dead companion.
+2. Bumping the version without a matching registered migration triggers `fallbackToDestructiveMigration()`, which **silently wipes all user data** (accounts, holdings, cash). The fallback is a safety net, not a migration strategy.
+3. Use additive SQL (`ALTER TABLE … ADD COLUMN …`) and match the entity's column type/nullability exactly so Room's post-migration schema validation passes.
+4. `data.local` and `di` are excluded from Kover, so **migrations have no unit-test coverage** — verify on a device/emulator that real data survives.
+5. **Back up the on-device DB before installing a schema-changing build:**
+   ```bash
+   # pull db + WAL + shm
+   for f in portfolio_database portfolio_database-wal portfolio_database-shm; do
+     adb exec-out run-as com.portfolio.manager cat databases/$f > /tmp/$f
+   done
+   # consolidate the WAL into the main file (python sqlite3): PRAGMA wal_checkpoint(TRUNCATE)
+   # restore: push to /data/local/tmp, chmod 644, then `run-as … cp` into databases/
+   ```
+
+Note: `DatabaseModule` historically carries a stale `MIGRATION_10_11` even though `@Database` is on version 2 — ignore the mismatched numbering and follow the steps above.
 
 ## Code Conventions
 
@@ -222,11 +294,14 @@ Room Database → HoldingsRepository ──→ FIRECalculatorViewModel → FIREC
 - Error handling with try-catch in ViewModel operations
 - Batch queries to avoid N+1 problems (e.g., `getHoldingsCountByAccountFlow`)
 - Room `@Transaction` for atomic operations
-- Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, DateTimeConverter, TimeSeriesProcessor, ExchangeRateAdjuster, PerAccountCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
+- Domain services for complex calculations (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, DateTimeConverter, TimeSeriesProcessor, ExchangeRateAdjuster, PerAccountCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator, HouseholdMerger, HouseholdPublisher, HouseholdCodeGenerator, SnapshotMapper)
 - SharedPreferences delegates for clean preference access
 - CacheManager for JSON-based caching with type safety
 - Currency enum for type-safe currency handling (never use "USD"/"KRW" strings in domain/presentation)
 - ErrorMessages constants for consistent user-facing error strings
+- User-facing strings come from `AppStrings`/`LocalAppStrings` (English + Korean) — never hardcode display text in composables
+- Dark-mode branching reads `LocalIsDarkTheme.current` (the applied in-app theme), never `isSystemInDarkTheme()`, so Light/Dark/System selection stays consistent
+- Firebase access is isolated behind `SyncDataSource`; `FirebaseSyncDataSource` is the only class touching the SDK (excluded from coverage), so all sync orchestration in `SyncRepositoryImpl` stays unit-testable
 
 ### Import Order
 
@@ -396,6 +471,10 @@ object AppConstants {
 }
 
 object PreferenceKeys {
+    // App preferences
+    const val APP_LANGUAGE = "app_language"   // "en" | "ko"
+    const val APP_THEME = "app_theme"         // "light" | "dark" | "system"
+
     // Dashboard preferences
     const val DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
     const val DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"
@@ -420,6 +499,15 @@ object PreferenceKeys {
     const val FIRE_TARGET_MONTHLY_SPENDING = "fire_target_monthly_spending"
     const val FIRE_TARGET_SPENDING_IN_KRW = "fire_target_spending_in_krw"
     const val FIRE_SHOW_IN_KRW = "fire_show_in_krw"
+
+    // Household sharing preferences
+    const val HOUSEHOLD_CODE = "household_code"
+    const val HOUSEHOLD_MY_UID = "household_my_uid"
+    const val HOUSEHOLD_MY_LABEL = "household_my_label"
+    const val HOUSEHOLD_PARTNER_SYMBOLS_JSON = "household_partner_symbols_json"
+    const val HOUSEHOLD_SUMMARY_PERIOD = "household_summary_period"
+    const val HOUSEHOLD_SPARKLINE_PERIOD = "household_sparkline_period"
+    const val HOUSEHOLD_SORT_OPTION = "household_sort_option"
 }
 ```
 
@@ -462,13 +550,13 @@ $ANDROID_HOME/platform-tools/adb install -r app/build/outputs/apk/debug/folio-de
 app/src/test/java/com/portfolio/manager/
 ├── data/
 │   ├── remote/               # YahooFinanceApiTest
-│   └── repository/           # Repository tests (Holdings, Account, Cash, Stock)
+│   └── repository/           # Repository tests (Holdings, Account, Cash, Stock, Sync)
 ├── domain/
-│   ├── model/                # Model tests (Stock, CashItem, StockHolding, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns)
-│   ├── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, DateTimeConverter, TimeSeriesProcessor, ExchangeRateAdjuster, PerAccountCache, PortfolioSorter, StockMapper, CashItemMapper, CacheManager, PortfolioCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator)
+│   ├── model/                # Model tests (Stock, CashItem, StockHolding, PortfolioStats, FIRECalculation, SortOption, BenchmarkReturns, PortfolioSnapshot, GroupFireSettings)
+│   ├── service/              # Service tests (PortfolioCalculationService, PortfolioStatsCalculator, PriceHistoryProcessor, DateTimeConverter, TimeSeriesProcessor, ExchangeRateAdjuster, PerAccountCache, PortfolioSorter, StockMapper, CashItemMapper, CacheManager, PortfolioCache, BenchmarkDataService, SparklineService, PeriodReturnsService, RebalanceCalculator, HouseholdMerger, HouseholdPublisher, HouseholdCodeGenerator, SnapshotMapper)
 │   └── util/                 # Domain utility tests (CurrencyConverter, ReturnCalculator)
 ├── presentation/
-│   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator)
+│   ├── viewmodel/            # ViewModel tests (Dashboard, AddHolding, AddCash, Accounts, FIRECalculator, Household, HouseholdShare)
 │   └── util/                 # Presentation utility tests (CurrencyFormatter, InputUtils, TrendIndicator)
 └── util/                     # App utility tests (StockExtensions, AppConstants, SharedPreferencesDelegate, ErrorMessages)
 ```
@@ -508,6 +596,7 @@ Use backticks: `` `subject - scenario - expected result` ``
 - Navigation (`*.presentation.navigation.*`)
 - MainActivity (`*.MainActivity*`)
 - Room/Local data (`*.data.local.*`)
+- Firebase SDK boundary (`*FirebaseSyncDataSource*`)
 
 ## Claude Instructions
 
