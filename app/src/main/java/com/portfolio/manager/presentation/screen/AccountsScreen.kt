@@ -116,7 +116,7 @@ fun AccountsScreen(
                 )
             }
         },
-        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         when (val state = uiState) {
             is AccountsUiState.Loading -> {

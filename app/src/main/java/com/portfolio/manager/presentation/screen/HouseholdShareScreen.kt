@@ -48,6 +48,7 @@ fun HouseholdShareScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { Text(text = "Household Sharing", fontWeight = FontWeight.Bold) },

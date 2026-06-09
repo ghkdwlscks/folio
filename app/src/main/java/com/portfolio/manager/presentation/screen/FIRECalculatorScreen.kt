@@ -2,6 +2,7 @@ package com.portfolio.manager.presentation.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,6 +69,7 @@ fun FIRECalculatorScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -84,7 +87,10 @@ fun FIRECalculatorScreen(
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { paddingValues ->
@@ -178,16 +184,26 @@ private fun PortfolioSummaryCard(
     onCurrencyToggle: () -> Unit,
     formatValue: (Double) -> String
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val gradientColors = if (isDarkTheme) {
+        listOf(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.tertiaryContainer
+        )
+    } else {
+        listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(
                 brush = Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.tertiary
-                    )
+                    colors = gradientColors
                 )
             )
     ) {
@@ -236,7 +252,8 @@ private fun SettingsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Column(
@@ -296,7 +313,8 @@ private fun SustainableSpendingCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Column(
@@ -379,7 +397,8 @@ private fun TargetFIRECard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+            contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
         Column(

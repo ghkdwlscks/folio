@@ -228,7 +228,7 @@ fun DashboardScreen(
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             AccountDropdownWrapper(
@@ -592,4 +592,3 @@ private fun DashboardTopBar(
         )
     )
 }
-

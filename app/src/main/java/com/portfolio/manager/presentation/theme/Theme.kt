@@ -17,12 +17,12 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Primary60,
-    onPrimary = Color.White,
+    primary = Primary80,
+    onPrimary = Color(0xFF1E1B4B),
     primaryContainer = Primary20,
     onPrimaryContainer = Primary80,
-    secondary = Secondary60,
-    onSecondary = Color.White,
+    secondary = Secondary80,
+    onSecondary = Color(0xFF042F2E),
     secondaryContainer = Secondary20,
     onSecondaryContainer = Secondary80,
     tertiary = Accent80,
