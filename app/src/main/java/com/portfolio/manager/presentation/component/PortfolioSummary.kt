@@ -29,7 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -149,11 +148,13 @@ fun PortfolioSummary(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
+            AutoSizeText(
                 text = "USD/KRW = ${String.format("%,.2f", exchangeRate)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.6f),
-                modifier = Modifier.padding(end = 8.dp)
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(end = 8.dp)
             )
             CurrencyToggle(
                 showInKrw = showInKrw,
@@ -337,7 +338,7 @@ private fun InfoCard(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
+            AutoSizeText(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.6f)
@@ -604,7 +605,7 @@ private fun PeriodSelector(
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
+                            AutoSizeText(
                                 text = period.label,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
