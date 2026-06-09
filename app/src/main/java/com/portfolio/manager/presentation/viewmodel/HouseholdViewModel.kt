@@ -90,6 +90,10 @@ class HouseholdViewModel @Inject constructor(
     }
 
     fun refresh() {
+        val current = _uiState.value
+        if (current is DashboardUiState.Success) {
+            _uiState.value = current.copy(isRefreshing = true)
+        }
         load()
     }
 

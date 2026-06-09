@@ -26,6 +26,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -299,5 +300,24 @@ class HouseholdViewModelTest {
         vm.refresh()
 
         assertThat((vm.uiState.value as DashboardUiState.Success).stocks).hasSize(1)
+    }
+
+    @Test
+    fun `refresh - existing success - marks refreshing while reload is running`() = runTest {
+        val vm = createViewModel()
+        val refreshingHoldings = MutableSharedFlow<List<HoldingEntity>>()
+        every { holdingsRepository.getAllHoldings() } returns refreshingHoldings
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(myAccount))
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(listOf(aaplQuote))
+
+        vm.refresh()
+
+        assertThat((vm.uiState.value as DashboardUiState.Success).isRefreshing).isTrue()
+
+        refreshingHoldings.emit(listOf(myHolding))
+
+        val state = vm.uiState.value as DashboardUiState.Success
+        assertThat(state.isRefreshing).isFalse()
+        assertThat(state.stocks).hasSize(1)
     }
 }
