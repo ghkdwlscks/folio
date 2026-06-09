@@ -68,6 +68,8 @@ class HouseholdViewModel @Inject constructor(
 
     private var showInKrw by sharedPreferences.boolean(PreferenceKeys.DASHBOARD_SHOW_IN_KRW, true)
     private var summaryPeriod by sharedPreferences.enum(PreferenceKeys.HOUSEHOLD_SUMMARY_PERIOD, TimePeriod.ONE_YEAR)
+    private var sparklinePeriod by sharedPreferences.enum(PreferenceKeys.HOUSEHOLD_SPARKLINE_PERIOD, TimePeriod.ONE_YEAR)
+    private var sortOption by sharedPreferences.enum(PreferenceKeys.HOUSEHOLD_SORT_OPTION, SortOption.WEIGHT)
     private var currentExchangeRate = KRW_TO_USD_RATE
 
     private val cacheManager = CacheManager(sharedPreferences)
@@ -89,9 +91,21 @@ class HouseholdViewModel @Inject constructor(
         load()
     }
 
+    /**
+     * Flips the display currency immediately (the summary/cards recompute from
+     * [showInKrw] locally) and recomputes the currency-dependent analytics in the
+     * background, instead of triggering a full household re-sync.
+     */
     fun toggleCurrency() {
-        showInKrw = !showInKrw
-        load()
+        val current = _uiState.value
+        if (current is DashboardUiState.Success) {
+            showInKrw = !showInKrw
+            val flipped = current.copy(showInKrw = showInKrw)
+            _uiState.value = flipped
+            viewModelScope.launch {
+                _uiState.value = withAnalytics(flipped, flipped.stocks, flipped.cashItems)
+            }
+        }
     }
 
     /**
@@ -109,6 +123,46 @@ class HouseholdViewModel @Inject constructor(
         }
     }
 
+    /** Re-sorts the merged holdings/cash in place — purely client-side. */
+    fun selectSortOption(option: SortOption) {
+        sortOption = option
+        val current = _uiState.value
+        if (current is DashboardUiState.Success) {
+            _uiState.value = current.copy(
+                stocks = PortfolioSorter.sortStocks(current.stocks, option, currentExchangeRate),
+                cashItems = PortfolioSorter.sortCashItems(current.cashItems, option, currentExchangeRate),
+                sortOption = option
+            )
+        }
+    }
+
+    /** Switches the per-stock sparkline period and refetches their price history. */
+    fun selectSparklinePeriod(period: TimePeriod) {
+        sparklinePeriod = period
+        val current = _uiState.value
+        if (current is DashboardUiState.Success) {
+            _uiState.value = current.copy(sparklinePeriod = period, isRefreshing = true)
+            reloadStockSparklines(current.stocks, period)
+        }
+    }
+
+    private fun reloadStockSparklines(stocks: List<Stock>, period: TimePeriod) {
+        viewModelScope.launch {
+            val symbols = stocks.map { it.symbol }.distinct()
+            val priceHistoryMap = stockRepository.getPriceHistory(symbols, period.range)
+            val updated = stocks.map { stock ->
+                stock.copy(
+                    priceHistory = priceHistoryMap[stock.symbol]?.prices ?: emptyList(),
+                    priceHistoryTimestamps = priceHistoryMap[stock.symbol]?.timestamps ?: emptyList()
+                )
+            }
+            val current = _uiState.value
+            if (current is DashboardUiState.Success) {
+                _uiState.value = current.copy(stocks = updated, isRefreshing = false)
+            }
+        }
+    }
+
     private fun load() {
         viewModelScope.launch {
             stockRepository.getExchangeRate("USD", "KRW").onSuccess { currentExchangeRate = it }
@@ -121,7 +175,7 @@ class HouseholdViewModel @Inject constructor(
             val merged = merger.merge(myAccounts, myHoldings, myCash, myLabel, partner)
 
             val cashItems = PortfolioSorter.sortCashItems(
-                CashItemMapper.fromEntities(merged.cashItems), SortOption.WEIGHT, currentExchangeRate
+                CashItemMapper.fromEntities(merged.cashItems), sortOption, currentExchangeRate
             )
             val symbols = merged.holdings.map { it.symbol }.distinct()
 
@@ -139,14 +193,14 @@ class HouseholdViewModel @Inject constructor(
                 return@launch
             }
 
-            val priceHistoryMap = stockRepository.getPriceHistory(symbols, summaryPeriod.range)
+            val priceHistoryMap = stockRepository.getPriceHistory(symbols, sparklinePeriod.range)
             val stocks = PortfolioSorter.sortStocks(
                 merged.holdings.groupBy { it.symbol }.map { (symbol, group) ->
                     StockMapper.aggregateHoldings(
                         group, quotes.find { it.symbol == symbol }, merged.accounts, priceHistoryMap[symbol]
                     )
                 },
-                SortOption.WEIGHT,
+                sortOption,
                 currentExchangeRate
             )
 
@@ -189,7 +243,8 @@ class HouseholdViewModel @Inject constructor(
         selectedPeriod = summaryPeriod,
         exchangeRate = currentExchangeRate,
         showInKrw = showInKrw,
-        sparklinePeriod = summaryPeriod,
+        sparklinePeriod = sparklinePeriod,
+        sortOption = sortOption,
         isRefreshing = false,
         ownerLabels = ownerLabels
     )

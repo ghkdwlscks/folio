@@ -10,6 +10,7 @@ import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.PortfolioSnapshot
 import com.portfolio.manager.domain.model.SnapshotAccount
 import com.portfolio.manager.domain.model.SnapshotHolding
+import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.AccountRepository
 import com.portfolio.manager.domain.repository.CashRepository
@@ -254,6 +255,35 @@ class HouseholdViewModelTest {
 
         assertThat((vm.uiState.value as DashboardUiState.Success).showInKrw).isFalse()
         assertThat(prefValues["dashboard_show_in_krw"]).isEqualTo(false)
+    }
+
+    @Test
+    fun `selectSortOption - re-sorts and persists`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(listOf(myHolding))
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(myAccount))
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(listOf(aaplQuote))
+        val vm = createViewModel()
+
+        vm.selectSortOption(SortOption.NAME)
+
+        assertThat((vm.uiState.value as DashboardUiState.Success).sortOption).isEqualTo(SortOption.NAME)
+    }
+
+    @Test
+    fun `selectSparklinePeriod - refetches stock price history for the period`() = runTest {
+        every { holdingsRepository.getAllHoldings() } returns flowOf(listOf(myHolding))
+        every { accountRepository.getAllAccounts() } returns flowOf(listOf(myAccount))
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(listOf(aaplQuote))
+        coEvery { stockRepository.getPriceHistory(listOf("AAPL"), TimePeriod.ONE_WEEK.range) } returns
+            mapOf("AAPL" to PriceHistoryData(listOf(1.0, 2.0), listOf(100L, 200L)))
+        val vm = createViewModel()
+
+        vm.selectSparklinePeriod(TimePeriod.ONE_WEEK)
+
+        val state = vm.uiState.value as DashboardUiState.Success
+        assertThat(state.sparklinePeriod).isEqualTo(TimePeriod.ONE_WEEK)
+        assertThat(state.stocks.first().priceHistory).containsExactly(1.0, 2.0).inOrder()
+        assertThat(state.isRefreshing).isFalse()
     }
 
     @Test

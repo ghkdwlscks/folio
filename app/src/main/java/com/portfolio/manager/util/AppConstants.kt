@@ -54,4 +54,6 @@ object PreferenceKeys {
     // price history while paired (the snapshot itself is fetched live).
     const val HOUSEHOLD_PARTNER_SYMBOLS_JSON = "household_partner_symbols_json"
     const val HOUSEHOLD_SUMMARY_PERIOD = "household_summary_period"
+    const val HOUSEHOLD_SPARKLINE_PERIOD = "household_sparkline_period"
+    const val HOUSEHOLD_SORT_OPTION = "household_sort_option"
 }

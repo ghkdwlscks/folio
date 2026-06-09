@@ -87,9 +87,9 @@ fun HouseholdScreen(
                         benchmarkTimestamps = state.benchmarkTimestamps,
                         portfolioStats = state.portfolioStats,
                         sortOption = state.sortOption,
-                        onSortOptionSelected = {},
+                        onSortOptionSelected = { viewModel.selectSortOption(it) },
                         sparklinePeriod = state.sparklinePeriod,
-                        onSparklinePeriodSelected = {},
+                        onSparklinePeriodSelected = { viewModel.selectSparklinePeriod(it) },
                         onDeleteHolding = { _, _, _ -> },
                         onEditHolding = {},
                         onDeleteCash = { _, _ -> },
@@ -97,7 +97,8 @@ fun HouseholdScreen(
                         listState = listState,
                         isRefreshing = state.isRefreshing,
                         onRefresh = { viewModel.refresh() },
-                        accountOwnerLabels = state.ownerLabels
+                        accountOwnerLabels = state.ownerLabels,
+                        readOnly = true
                     )
                 }
 

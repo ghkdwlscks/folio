@@ -61,6 +61,7 @@ fun PortfolioContent(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     accountOwnerLabels: Map<Long, String> = emptyMap(),
+    readOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val totalStocksValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
@@ -137,15 +138,15 @@ fun PortfolioContent(
                         stock = stock,
                         weightPercent = calculateWeightPercent(stock, totalPortfolioValue, exchangeRate),
                         accountOwnerLabels = accountOwnerLabels,
-                        onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated },
+                        onDelete = { onDeleteHolding(stock.id, stock.symbol, stock.quantity) }.takeIf { !isAggregated && !readOnly },
                         onDeleteAccountHolding = { holdingId: Long ->
                             val detail = stock.accountDetails.find { it.holdingId == holdingId }
                             if (detail != null) {
                                 onDeleteHolding(holdingId, stock.symbol, detail.quantity)
                             }
-                        }.takeIf { isAggregated },
-                        onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated },
-                        onEditAccountHolding = onEditHolding.takeIf { isAggregated },
+                        }.takeIf { isAggregated && !readOnly },
+                        onEdit = { onEditHolding(stock.id) }.takeIf { !isAggregated && !readOnly },
+                        onEditAccountHolding = onEditHolding.takeIf { isAggregated && !readOnly },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(
                                 durationMillis = 300,
@@ -176,8 +177,8 @@ fun PortfolioContent(
                         cashItem = cashItem,
                         showInKrw = showInKrw,
                         exchangeRate = exchangeRate,
-                        onEdit = { onEditCash(cashItem.id) },
-                        onDelete = { onDeleteCash(cashItem.id, cashItem.name) },
+                        onEdit = { onEditCash(cashItem.id) }.takeIf { !readOnly },
+                        onDelete = { onDeleteCash(cashItem.id, cashItem.name) }.takeIf { !readOnly },
                         modifier = Modifier.animateItem(
                             fadeInSpec = tween(
                                 durationMillis = 300,
