@@ -188,6 +188,28 @@ class DashboardViewModel @Inject constructor(
             }
             loadAndObserveHoldings()
         }
+        pruneStaleCache()
+    }
+
+    /**
+     * Keeps the local price-history/stock-name cache from growing unbounded by
+     * evicting entries for symbols no longer held whenever holdings change.
+     * Observes ALL holdings (ignoring the account filter) so that filtering the
+     * view never evicts other accounts' cached data. The paired partner's
+     * symbols are also kept (persisted by the household feature) so their
+     * sparklines survive; benchmark and FX-rate series are preserved inside the
+     * repository.
+     */
+    private fun pruneStaleCache() {
+        viewModelScope.launch {
+            holdingsRepository.getAllHoldings().collectLatest { holdings ->
+                val mySymbols = holdings.map { it.symbol }
+                val partnerSymbols = cacheManager.loadOrDefault(
+                    PreferenceKeys.HOUSEHOLD_PARTNER_SYMBOLS_JSON, emptyList<String>()
+                )
+                stockRepository.pruneCache((mySymbols + partnerSymbols).distinct())
+            }
+        }
     }
 
     private fun saveStateToCache(stocks: List<Stock>, cashItems: List<CashItem>, accounts: List<AccountWithCount>, exchangeRate: Double) {

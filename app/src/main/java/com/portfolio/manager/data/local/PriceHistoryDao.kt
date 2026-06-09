@@ -22,6 +22,9 @@ interface PriceHistoryDao {
     @Query("DELETE FROM price_history WHERE symbol = :symbol")
     suspend fun deletePriceHistoryForSymbol(symbol: String)
 
+    @Query("DELETE FROM price_history WHERE symbol NOT IN (:symbols)")
+    suspend fun deletePriceHistoryNotIn(symbols: List<String>)
+
     @Query("DELETE FROM price_history")
     suspend fun deleteAll()
 }

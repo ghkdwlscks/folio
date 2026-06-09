@@ -85,6 +85,7 @@ class HouseholdShareViewModel @Inject constructor(
             .remove(PreferenceKeys.HOUSEHOLD_CODE)
             .remove(PreferenceKeys.HOUSEHOLD_MY_UID)
             .remove(PreferenceKeys.HOUSEHOLD_MY_LABEL)
+            .remove(PreferenceKeys.HOUSEHOLD_PARTNER_SYMBOLS_JSON)
             .apply()
         _uiState.value = HouseholdShareUiState()
     }

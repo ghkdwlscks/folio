@@ -25,6 +25,7 @@ import com.portfolio.manager.domain.repository.HoldingsRepository
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.domain.repository.SyncRepository
 import com.portfolio.manager.domain.service.BenchmarkDataService
+import com.portfolio.manager.domain.service.CacheManager
 import com.portfolio.manager.domain.service.CashItemMapper
 import com.portfolio.manager.domain.service.HouseholdMerger
 import com.portfolio.manager.domain.service.PeriodReturnsService
@@ -67,6 +68,8 @@ class HouseholdViewModel @Inject constructor(
 
     private var showInKrw by sharedPreferences.boolean(PreferenceKeys.DASHBOARD_SHOW_IN_KRW, true)
     private var currentExchangeRate = KRW_TO_USD_RATE
+
+    private val cacheManager = CacheManager(sharedPreferences)
 
     private val householdCode: String?
         get() = sharedPreferences.getString(PreferenceKeys.HOUSEHOLD_CODE, null)
@@ -150,7 +153,14 @@ class HouseholdViewModel @Inject constructor(
         val uid = syncRepository.ensureSignedIn().getOrNull() ?: return null
         val mine = snapshotMapper.toSnapshot(myLabel, System.currentTimeMillis(), myAccounts, myHoldings, myCash)
         syncRepository.publishSnapshot(code, uid, mine)
-        return syncRepository.fetchPartnerSnapshot(code, uid).getOrNull()
+        val partner = syncRepository.fetchPartnerSnapshot(code, uid).getOrNull()
+        // Persist partner symbols so the dashboard cache pruner keeps their
+        // price history while paired.
+        cacheManager.save(
+            PreferenceKeys.HOUSEHOLD_PARTNER_SYMBOLS_JSON,
+            partner?.holdings?.map { it.symbol }?.distinct() ?: emptyList()
+        )
+        return partner
     }
 
     private fun successOf(

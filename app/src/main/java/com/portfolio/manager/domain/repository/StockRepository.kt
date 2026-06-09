@@ -20,4 +20,11 @@ interface StockRepository {
     suspend fun getPriceHistory(symbols: List<String>, range: String = "1mo"): Map<String, PriceHistoryData>
     suspend fun getCachedStockName(symbol: String): String?
     suspend fun getCachedStockNames(symbols: List<String>): Map<String, String>
+
+    /**
+     * Evicts cached price history and stock names for any symbol not in
+     * [keepSymbols], preventing the local database from growing unbounded as
+     * holdings change. Benchmark and FX-rate series are always preserved.
+     */
+    suspend fun pruneCache(keepSymbols: List<String>)
 }

@@ -19,6 +19,7 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.domain.util.ReturnCalculator
+import com.portfolio.manager.util.AppConstants
 import com.portfolio.manager.util.JsonSerializer
 
 import java.time.LocalDate
@@ -30,6 +31,17 @@ class StockRepositoryImpl(
 ) : StockRepository {
 
     private val json = JsonSerializer.instance
+
+    companion object {
+        // Series stored in price_history that are not user holdings but are
+        // always required (market benchmarks and the USD/KRW rate). They must
+        // survive cache pruning, otherwise they would be re-fetched constantly.
+        private val PROTECTED_SYMBOLS = listOf(
+            AppConstants.BENCHMARK_SP500,
+            AppConstants.BENCHMARK_KOSPI,
+            "USDKRW=X"
+        )
+    }
 
     // Exchange rate cache with thread-safe access
     private val exchangeRateMutex = Mutex()
@@ -340,5 +352,12 @@ class StockRepositoryImpl(
 
     override suspend fun getCachedStockNames(symbols: List<String>): Map<String, String> {
         return stockNameDao.getStockNames(symbols).associate { it.symbol to it.name }
+    }
+
+    override suspend fun pruneCache(keepSymbols: List<String>) {
+        // Always keep benchmark/FX series; deleting them would only force a refetch.
+        val keep = (keepSymbols + PROTECTED_SYMBOLS).distinct()
+        priceHistoryDao.deletePriceHistoryNotIn(keep)
+        stockNameDao.deleteStockNamesNotIn(keep)
     }
 }

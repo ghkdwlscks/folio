@@ -50,5 +50,7 @@ object PreferenceKeys {
     const val HOUSEHOLD_CODE = "household_code"
     const val HOUSEHOLD_MY_UID = "household_my_uid"
     const val HOUSEHOLD_MY_LABEL = "household_my_label"
-    const val HOUSEHOLD_PARTNER_SNAPSHOT_JSON = "household_partner_snapshot_json"
+    // Partner's holding symbols, persisted so the cache pruner keeps their
+    // price history while paired (the snapshot itself is fetched live).
+    const val HOUSEHOLD_PARTNER_SYMBOLS_JSON = "household_partner_symbols_json"
 }

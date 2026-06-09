@@ -64,6 +64,6 @@ class PreferenceKeysTest {
         assertThat(PreferenceKeys.HOUSEHOLD_CODE).isEqualTo("household_code")
         assertThat(PreferenceKeys.HOUSEHOLD_MY_UID).isEqualTo("household_my_uid")
         assertThat(PreferenceKeys.HOUSEHOLD_MY_LABEL).isEqualTo("household_my_label")
-        assertThat(PreferenceKeys.HOUSEHOLD_PARTNER_SNAPSHOT_JSON).isEqualTo("household_partner_snapshot_json")
+        assertThat(PreferenceKeys.HOUSEHOLD_PARTNER_SYMBOLS_JSON).isEqualTo("household_partner_symbols_json")
     }
 }

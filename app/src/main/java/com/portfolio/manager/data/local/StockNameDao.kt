@@ -18,4 +18,7 @@ interface StockNameDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStockNames(stockNames: List<StockNameEntity>)
+
+    @Query("DELETE FROM stock_names WHERE symbol NOT IN (:symbols)")
+    suspend fun deleteStockNamesNotIn(symbols: List<String>)
 }

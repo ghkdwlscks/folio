@@ -20,11 +20,13 @@ import com.portfolio.manager.domain.repository.PriceHistoryData
 import com.portfolio.manager.domain.repository.StockRepository
 import com.portfolio.manager.domain.service.PortfolioCache
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
+import com.portfolio.manager.util.PreferenceKeys
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
+import io.mockk.slot
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -101,6 +103,8 @@ class DashboardViewModelTest {
         )
         // Default price history mock (empty - graceful handling)
         coEvery { stockRepository.getPriceHistory(any(), any()) } returns emptyMap<String, PriceHistoryData>()
+        // Default cache prune mock (no-op)
+        coEvery { stockRepository.pruneCache(any()) } returns Unit
         // Default period returns mock
         coEvery { stockRepository.getPeriodReturn(any(), any()) } answers {
             val symbol = firstArg<String>()
@@ -155,6 +159,25 @@ class DashboardViewModelTest {
         assertThat(appleStock?.currentPrice).isEqualTo(180.00)
         assertThat(appleStock?.dayChange).isEqualTo(5.00)
         assertThat(appleStock?.dayChangePercent).isEqualTo(2.86)
+    }
+
+    @Test
+    fun `init - prunes cache keeping held symbols and persisted partner symbols`() = runTest {
+        val holdings = listOf(
+            HoldingEntity(1, 1L, "AAPL", "Apple Inc.", 10, 150.0, "USD")
+        )
+        every { holdingsRepository.getAllHoldings() } returns flowOf(holdings)
+        every {
+            sharedPreferences.getString(PreferenceKeys.HOUSEHOLD_PARTNER_SYMBOLS_JSON, null)
+        } returns "[\"TSLA\"]"
+        coEvery { stockRepository.getQuotes(any()) } returns Result.success(emptyList())
+        val keep = slot<List<String>>()
+        coEvery { stockRepository.pruneCache(capture(keep)) } returns Unit
+
+        DashboardViewModel(stockRepository, holdingsRepository, accountRepository, cashRepository, sharedPreferences, portfolioCache)
+
+        coVerify { stockRepository.pruneCache(any()) }
+        assertThat(keep.captured).containsAtLeast("AAPL", "TSLA")
     }
 
     @Test

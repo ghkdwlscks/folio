@@ -18,6 +18,7 @@ import com.portfolio.manager.domain.repository.PriceHistoryData
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -1078,5 +1079,33 @@ class StockRepositoryImplTest {
 
         assertThat(result).containsEntry("AAPL", "Apple Inc.")
         assertThat(result).doesNotContainKey("GOOGL")
+    }
+
+    @Test
+    fun `pruneCache - keeps given symbols plus benchmark and fx symbols`() = runTest {
+        coEvery { priceHistoryDao.deletePriceHistoryNotIn(any()) } returns Unit
+        coEvery { stockNameDao.deleteStockNamesNotIn(any()) } returns Unit
+        val priceKeep = slot<List<String>>()
+        val nameKeep = slot<List<String>>()
+
+        repository.pruneCache(listOf("AAPL", "GOOGL"))
+
+        coVerify { priceHistoryDao.deletePriceHistoryNotIn(capture(priceKeep)) }
+        coVerify { stockNameDao.deleteStockNamesNotIn(capture(nameKeep)) }
+        assertThat(priceKeep.captured).containsAtLeast("AAPL", "GOOGL", "^GSPC", "^KS11", "USDKRW=X")
+        assertThat(nameKeep.captured).containsAtLeast("AAPL", "GOOGL", "^GSPC", "^KS11", "USDKRW=X")
+    }
+
+    @Test
+    fun `pruneCache - deduplicates symbols overlapping protected set`() = runTest {
+        coEvery { priceHistoryDao.deletePriceHistoryNotIn(any()) } returns Unit
+        coEvery { stockNameDao.deleteStockNamesNotIn(any()) } returns Unit
+        val priceKeep = slot<List<String>>()
+
+        repository.pruneCache(listOf("AAPL", "^GSPC", "AAPL"))
+
+        coVerify { priceHistoryDao.deletePriceHistoryNotIn(capture(priceKeep)) }
+        assertThat(priceKeep.captured.count { it == "AAPL" }).isEqualTo(1)
+        assertThat(priceKeep.captured.count { it == "^GSPC" }).isEqualTo(1)
     }
 }

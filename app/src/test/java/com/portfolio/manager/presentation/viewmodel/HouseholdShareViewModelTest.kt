@@ -167,6 +167,7 @@ class HouseholdShareViewModelTest {
         prefValues["household_code"] = "ABCD-2345"
         prefValues["household_my_uid"] = "uid-1"
         prefValues["household_my_label"] = "남편"
+        prefValues["household_partner_symbols_json"] = "[\"TSLA\"]"
         val vm = createViewModel()
 
         vm.leave()
@@ -174,6 +175,7 @@ class HouseholdShareViewModelTest {
         assertThat(vm.uiState.value.householdCode).isNull()
         assertThat(prefValues).doesNotContainKey("household_code")
         assertThat(prefValues).doesNotContainKey("household_my_uid")
+        assertThat(prefValues).doesNotContainKey("household_partner_symbols_json")
     }
 
     @Test
