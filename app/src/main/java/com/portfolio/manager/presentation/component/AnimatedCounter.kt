@@ -11,11 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -176,9 +174,9 @@ fun AnimatedPercentCounter(
 }
 
 /**
- * Renders the counter text, optionally shrinking the font so it always stays on
- * a single line instead of wrapping. Keyed on [style] (not text) so the resized
- * font persists across the per-frame value changes during count animations.
+ * Renders the counter text, optionally scaling the font so it always stays on a
+ * single line instead of wrapping. Delegates to [AutoSizeText], which recomputes
+ * the fit on every value change so the font grows back when space reopens.
  */
 @Composable
 private fun CounterText(
@@ -190,7 +188,16 @@ private fun CounterText(
     minFontSize: TextUnit,
     modifier: Modifier = Modifier
 ) {
-    if (!autoSize) {
+    if (autoSize) {
+        AutoSizeText(
+            text = text,
+            style = style,
+            color = color,
+            fontWeight = fontWeight,
+            minFontSize = minFontSize,
+            modifier = modifier
+        )
+    } else {
         Text(
             text = text,
             style = style,
@@ -198,26 +205,5 @@ private fun CounterText(
             color = color,
             modifier = modifier
         )
-        return
     }
-
-    var resizedStyle by remember(style) { mutableStateOf(style) }
-    var readyToDraw by remember(style) { mutableStateOf(false) }
-
-    Text(
-        text = text,
-        style = resizedStyle,
-        fontWeight = fontWeight,
-        color = color,
-        maxLines = 1,
-        softWrap = false,
-        modifier = modifier.drawWithContent { if (readyToDraw) drawContent() },
-        onTextLayout = { result ->
-            if (result.didOverflowWidth && resizedStyle.fontSize.value > minFontSize.value) {
-                resizedStyle = resizedStyle.copy(fontSize = resizedStyle.fontSize * 0.9f)
-            } else {
-                readyToDraw = true
-            }
-        }
-    )
 }
