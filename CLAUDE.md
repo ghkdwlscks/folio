@@ -95,7 +95,7 @@ A personal Android app for manually tracking your stock portfolio and cash savin
 ## Tech Stack
 
 - **Language**: Kotlin 1.9.25
-- **App Version**: 1.0.1 (versionCode 2)
+- **App Version**: 1.0.2 (versionCode 3)
 - **Target SDK**: 35 (Android 15)
 - **Min SDK**: 26 (Android 8.0)
 - **UI**: Jetpack Compose (Compiler 1.5.15, BOM 2024.12.01) + Material 3
