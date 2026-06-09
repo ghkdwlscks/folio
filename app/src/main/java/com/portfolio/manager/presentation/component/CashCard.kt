@@ -18,9 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
 import com.portfolio.manager.domain.model.CashItem
 import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.presentation.theme.GainGreen
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.getTrendColor
 
@@ -33,6 +35,7 @@ fun CashCard(
     onDelete: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val currentValue = if (showInKrw) {
         cashItem.valueInKrw(exchangeRate)
     } else {
@@ -68,7 +71,7 @@ fun CashCard(
                 )
                 val displayedYield = Math.round(cashItem.annualYieldRate * 100) / 100.0
                 Text(
-                    text = "Yield: ${String.format("%.2f", displayedYield)}%",
+                    text = "${strings.yield}: ${String.format("%.2f", displayedYield)}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = getTrendColor(displayedYield)
                 )
@@ -81,7 +84,7 @@ fun CashCard(
                         IconButton(onClick = onEdit) {
                             Icon(
                                 imageVector = Icons.Filled.Edit,
-                                contentDescription = "Edit",
+                                contentDescription = strings.edit,
                                 modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -91,7 +94,7 @@ fun CashCard(
                         IconButton(onClick = onDelete) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = "Delete",
+                                contentDescription = strings.delete,
                                 modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.error
                             )

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.theme.GainGreen
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.rememberHapticFeedback
@@ -92,6 +93,7 @@ fun RebalanceDialog(
         return
     }
 
+    val strings = LocalAppStrings.current
     val haptic = rememberHapticFeedback()
 
     var percentageTexts by remember {
@@ -142,7 +144,7 @@ fun RebalanceDialog(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Rebalance Portfolio",
+                    text = strings.rebalancePortfolio,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -158,13 +160,13 @@ fun RebalanceDialog(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Tolerance band",
+                        text = strings.toleranceBand,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Empty = per-share rule",
+                        text = strings.emptyPerShareRule,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -192,7 +194,7 @@ fun RebalanceDialog(
 
             // Percentage input section
             Text(
-                text = "Set Target Percentages",
+                text = strings.setTargetPercentages,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -229,7 +231,7 @@ fun RebalanceDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Total: ",
+                            text = "${strings.total}: ",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -259,7 +261,7 @@ fun RebalanceDialog(
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Recommendations",
+                            text = strings.recommendations,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -291,7 +293,7 @@ fun RebalanceDialog(
                     enabled = items.any { it.currentPercentage != null } || initialToleranceBandPercent != null,
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Reset")
+                    Text(strings.reset)
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 FilledTonalButton(
@@ -301,7 +303,7 @@ fun RebalanceDialog(
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
                 Button(
                     onClick = {
@@ -311,7 +313,7 @@ fun RebalanceDialog(
                     enabled = totalPercentage == 100,
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Save")
+                    Text(strings.save)
                 }
             }
         }
@@ -378,9 +380,10 @@ private fun RecommendationRow(
     recommendation: RebalanceRecommendation,
     showInKrw: Boolean
 ) {
+    val strings = LocalAppStrings.current
     val isBuy = recommendation.diffAmount > 0
     val actionColor = if (isBuy) GainGreen else LossRed
-    val actionText = if (isBuy) "Buy" else "Sell"
+    val actionText = if (isBuy) strings.buy else strings.sell
     val absAmount = abs(recommendation.diffAmount)
 
     Surface(
@@ -408,7 +411,12 @@ private fun RecommendationRow(
                     lineHeight = 18.sp
                 )
                 Text(
-                    text = "${CurrencyFormatter.formatPercent(recommendation.currentPercent)}% → ${CurrencyFormatter.formatPercent(recommendation.targetPercent)}% (${recommendation.currentShares} → ${"%.2f".format(recommendation.idealShares)} shares)",
+                    text = strings.recommendationShares(
+                        CurrencyFormatter.formatPercent(recommendation.currentPercent),
+                        CurrencyFormatter.formatPercent(recommendation.targetPercent),
+                        recommendation.currentShares,
+                        recommendation.idealShares
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -445,7 +453,7 @@ private fun RecommendationRow(
                 }
             } else {
                 Text(
-                    text = "OK",
+                    text = strings.ok,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

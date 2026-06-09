@@ -24,6 +24,7 @@ import com.portfolio.manager.domain.model.PortfolioStats
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 
 /**
  * Shared scrollable portfolio body (summary, allocation chart, holdings, cash).
@@ -64,6 +65,7 @@ fun PortfolioContent(
     readOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val totalStocksValue = stocks.sumOf { it.totalValueInUsd(exchangeRate) }
     val totalCashValue = cashItems.sumOf { it.valueInUsd(exchangeRate) }
     val totalPortfolioValue = totalStocksValue + totalCashValue
@@ -120,7 +122,7 @@ fun PortfolioContent(
             if (stocks.isNotEmpty()) {
                 item {
                     SectionHeader(
-                        title = "My Holdings",
+                        title = strings.myHoldings,
                         count = stocks.size,
                         sortOption = sortOption,
                         onSortOptionSelected = onSortOptionSelected,
@@ -161,7 +163,7 @@ fun PortfolioContent(
             if (cashItems.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Cash (${cashItems.size})",
+                        text = "${strings.cash} (${cashItems.size})",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,

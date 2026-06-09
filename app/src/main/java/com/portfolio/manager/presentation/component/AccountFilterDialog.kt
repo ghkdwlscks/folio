@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.rememberHapticFeedback
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
 
@@ -42,6 +43,7 @@ fun AccountFilterDialog(
     onApply: (Set<Long>) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val haptic = rememberHapticFeedback()
 
     val allAccountIds = remember(accounts) { accounts.map { it.account.id }.toSet() }
@@ -74,7 +76,7 @@ fun AccountFilterDialog(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Filter Accounts",
+                text = strings.filterAccounts,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -85,7 +87,7 @@ fun AccountFilterDialog(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Select accounts to include in the aggregated view",
+                text = strings.filterAccountsDescription,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -112,7 +114,7 @@ fun AccountFilterDialog(
                     }
                 )
                 Text(
-                    text = "Select All",
+                    text = strings.selectAll,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
@@ -164,7 +166,7 @@ fun AccountFilterDialog(
                             )
                         }
                         Text(
-                            text = "${accountWithCount.holdingsCount} items",
+                            text = strings.items(accountWithCount.holdingsCount),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(end = 8.dp)
@@ -187,7 +189,7 @@ fun AccountFilterDialog(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel")
+                    Text(strings.cancel)
                 }
 
                 Button(
@@ -204,7 +206,7 @@ fun AccountFilterDialog(
                     shape = RoundedCornerShape(12.dp),
                     enabled = hasSelection
                 ) {
-                    Text("Apply")
+                    Text(strings.apply)
                 }
             }
         }

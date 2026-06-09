@@ -54,6 +54,7 @@ import com.portfolio.manager.domain.model.TimePeriod
 import com.portfolio.manager.domain.util.CurrencyConverter
 import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.theme.GainGreenPastel
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.theme.LossRedPastel
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
@@ -125,6 +126,7 @@ fun PortfolioSummary(
     val trend = createTrendIndicator(totalGainLoss, usePastel = true)
     val dayTrend = createTrendIndicator(dayChange, usePastel = true)
 
+    val strings = LocalAppStrings.current
     val formatValue = CurrencyFormatter.createFormatter(showInKrw)
     val isDarkTheme = isSystemInDarkTheme()
     val summaryGradientColors = if (isDarkTheme) {
@@ -229,21 +231,21 @@ fun PortfolioSummary(
             ) {
                 // Gain/Loss card
                 InfoCard(
-                    label = "Gain/Loss",
+                    label = strings.gainLoss,
                     value = "${if (trend.isGain) "+" else ""}${formatValue(totalGainLoss)}",
                     valueColor = trend.color,
                     modifier = Modifier.weight(1f)
                 )
                 // Today's change card
                 InfoCard(
-                    label = "Today",
+                    label = strings.today,
                     value = "${if (dayTrend.isGain) "+" else ""}${formatValue(dayChange)}",
                     valueColor = dayTrend.color,
                     modifier = Modifier.weight(1f)
                 )
                 // Today's change % card
                 InfoCard(
-                    label = "Today %",
+                    label = strings.todayPercent,
                     value = "${if (dayTrend.isGain) "+" else ""}${CurrencyFormatter.formatPercent(dayChangePercent)}%",
                     valueColor = dayTrend.color,
                     modifier = Modifier.weight(1f)
@@ -314,7 +316,7 @@ fun PortfolioSummary(
         FullScreenChartDialog(
             data = FullScreenChartData(
                 symbol = selectedPeriod.label,
-                name = "Portfolio",
+                name = strings.portfolio,
                 currentPrice = totalValue,
                 dayChange = dayChange.takeIf { it != 0.0 },
                 dayChangePercent = dayChangePercent.takeIf { dayChange != 0.0 },
@@ -383,6 +385,7 @@ private fun DividendInfoRow(
     dividendYield: Double,
     showInKrw: Boolean
 ) {
+    val strings = LocalAppStrings.current
     val formatValue = CurrencyFormatter.createFormatter(showInKrw)
 
     Surface(
@@ -395,7 +398,7 @@ private fun DividendInfoRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AutoSizeText(
-                text = "Annual Dividends",
+                text = strings.annualDividends,
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.7f)
             )
@@ -416,6 +419,8 @@ private fun DividendInfoRow(
 
 @Composable
 private fun StatsRow(stats: PortfolioStats) {
+    val strings = LocalAppStrings.current
+
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = Color.White.copy(alpha = 0.08f),
@@ -428,35 +433,35 @@ private fun StatsRow(stats: PortfolioStats) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             CompactStatItem(
-                label = "MDD",
+                label = strings.mdd,
                 value = "-${CurrencyFormatter.formatPercent(stats.maxDrawdown)}%",
                 color = LossRedPastel,
                 modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
-                label = "Vol",
+                label = strings.volatility,
                 value = "${CurrencyFormatter.formatPercent(stats.volatility)}%",
                 color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
-                label = "Sharpe",
+                label = strings.sharpe,
                 value = String.format("%.2f", stats.sharpeRatio),
                 color = if (stats.sharpeRatio >= 0) GainGreenPastel else LossRedPastel,
                 modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
-                label = "Best",
+                label = strings.best,
                 value = "+${CurrencyFormatter.formatPercent(stats.bestDay)}%",
                 color = GainGreenPastel,
                 modifier = Modifier.weight(1f)
             )
             StatDivider()
             CompactStatItem(
-                label = "Worst",
+                label = strings.worst,
                 value = "${CurrencyFormatter.formatPercent(stats.worstDay)}%",
                 color = LossRedPastel,
                 modifier = Modifier.weight(1f)

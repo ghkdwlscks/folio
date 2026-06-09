@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import com.portfolio.manager.presentation.component.form.AccountSelectionSection
 import com.portfolio.manager.presentation.component.form.CurrencySegmentedButton
 import com.portfolio.manager.presentation.component.form.FormScaffold
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.viewmodel.AddCashViewModel
 
 @Composable
@@ -34,11 +35,12 @@ fun AddCashScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState()
 
     FormScaffold(
-        title = if (uiState.isEditMode) "Edit Cash" else "Add Cash",
+        title = if (uiState.isEditMode) strings.editCash else strings.addCash,
         onNavigateBack = onNavigateBack,
         modifier = modifier
     ) { paddingValues ->
@@ -51,7 +53,7 @@ fun AddCashScreen(
         ) {
             if (uiState.needsAccountSelection) {
                 Text(
-                    text = "Account",
+                    text = strings.account,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -66,8 +68,8 @@ fun AddCashScreen(
             OutlinedTextField(
                 value = uiState.name,
                 onValueChange = { viewModel.updateName(it) },
-                label = { Text("Name") },
-                placeholder = { Text("e.g., Emergency Fund, CD") },
+                label = { Text(strings.name) },
+                placeholder = { Text(strings.cashNamePlaceholder) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 isError = uiState.errorMessage != null,
@@ -77,8 +79,8 @@ fun AddCashScreen(
             OutlinedTextField(
                 value = uiState.value,
                 onValueChange = { viewModel.updateValue(it) },
-                label = { Text("Value") },
-                placeholder = { Text("e.g., 10000") },
+                label = { Text(strings.value) },
+                placeholder = { Text(strings.valuePlaceholder) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true
@@ -87,15 +89,15 @@ fun AddCashScreen(
             OutlinedTextField(
                 value = uiState.yieldRate,
                 onValueChange = { viewModel.updateYieldRate(it) },
-                label = { Text("Annual Yield (%)") },
-                placeholder = { Text("e.g., 4.5") },
+                label = { Text(strings.annualYield) },
+                placeholder = { Text(strings.annualYieldPlaceholder) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true
             )
 
             Text(
-                text = "Currency",
+                text = strings.currency,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
@@ -118,7 +120,7 @@ fun AddCashScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isSaving
             ) {
-                Text(if (uiState.isEditMode) "Update" else "Add Cash")
+                Text(if (uiState.isEditMode) strings.update else strings.addCash)
             }
         }
     }

@@ -15,6 +15,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
+import com.portfolio.manager.presentation.theme.LocalAppStrings
+
 /**
  * Common scaffold for form screens with back navigation.
  * Extracted from AddHoldingScreen and AddCashScreen to eliminate duplication.
@@ -27,6 +29,8 @@ fun FormScaffold(
     modifier: Modifier = Modifier,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    val strings = LocalAppStrings.current
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -37,7 +41,7 @@ fun FormScaffold(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = strings.back
                         )
                     }
                 },

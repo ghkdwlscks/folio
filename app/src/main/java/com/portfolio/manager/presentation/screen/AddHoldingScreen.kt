@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import com.portfolio.manager.presentation.component.form.AccountSelectionSection
 import com.portfolio.manager.presentation.component.form.CurrencySegmentedButton
 import com.portfolio.manager.presentation.component.form.FormScaffold
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.viewmodel.AddHoldingViewModel
 
 @Composable
@@ -35,11 +36,12 @@ fun AddHoldingScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState()
 
     FormScaffold(
-        title = if (uiState.isEditMode) "Edit Holding" else "Add Holding",
+        title = if (uiState.isEditMode) strings.editHolding else strings.addHolding,
         onNavigateBack = onNavigateBack,
         modifier = modifier
     ) { paddingValues ->
@@ -52,7 +54,7 @@ fun AddHoldingScreen(
         ) {
             if (uiState.needsAccountSelection) {
                 Text(
-                    text = "Account",
+                    text = strings.account,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -67,8 +69,8 @@ fun AddHoldingScreen(
             OutlinedTextField(
                 value = uiState.symbol,
                 onValueChange = { viewModel.updateSymbol(it) },
-                label = { Text("Symbol") },
-                placeholder = { Text("e.g., AAPL or 005930") },
+                label = { Text(strings.symbol) },
+                placeholder = { Text(strings.symbolPlaceholder) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .onFocusChanged { focusState ->
@@ -85,8 +87,8 @@ fun AddHoldingScreen(
             OutlinedTextField(
                 value = uiState.quantity,
                 onValueChange = { viewModel.updateQuantity(it) },
-                label = { Text("Quantity") },
-                placeholder = { Text("e.g., 10") },
+                label = { Text(strings.quantity) },
+                placeholder = { Text(strings.quantityPlaceholder) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true
@@ -95,15 +97,15 @@ fun AddHoldingScreen(
             OutlinedTextField(
                 value = uiState.averagePrice,
                 onValueChange = { viewModel.updateAveragePrice(it) },
-                label = { Text("Average Price") },
-                placeholder = { Text("e.g., 150.00") },
+                label = { Text(strings.averagePrice) },
+                placeholder = { Text(strings.averagePricePlaceholder) },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true
             )
 
             Text(
-                text = "Currency",
+                text = strings.currency,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
@@ -126,7 +128,7 @@ fun AddHoldingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isSaving
             ) {
-                Text(if (uiState.isEditMode) "Update" else "Add Holding")
+                Text(if (uiState.isEditMode) strings.update else strings.addHolding)
             }
         }
     }

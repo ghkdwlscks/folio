@@ -17,14 +17,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+import com.portfolio.manager.presentation.theme.LocalAppStrings
+
 @Composable
 fun ErrorContent(
     message: String,
-    modifier: Modifier = Modifier,
     title: String? = null,
+    retryLabel: String? = null,
     onRetry: (() -> Unit)? = null,
-    retryLabel: String = "Retry"
+    modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -55,7 +59,7 @@ fun ErrorContent(
             if (onRetry != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = onRetry) {
-                    Text(retryLabel)
+                    Text(retryLabel ?: strings.retry)
                 }
             }
         }

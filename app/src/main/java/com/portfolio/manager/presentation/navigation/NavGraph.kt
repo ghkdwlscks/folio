@@ -13,6 +13,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+
 import com.portfolio.manager.presentation.screen.AccountsScreen
 import com.portfolio.manager.presentation.screen.AddCashScreen
 import com.portfolio.manager.presentation.screen.AddHoldingScreen
@@ -20,6 +21,7 @@ import com.portfolio.manager.presentation.screen.DashboardScreen
 import com.portfolio.manager.presentation.screen.FIRECalculatorScreen
 import com.portfolio.manager.presentation.screen.HouseholdScreen
 import com.portfolio.manager.presentation.screen.HouseholdShareScreen
+import com.portfolio.manager.presentation.theme.AppLanguage
 
 object Routes {
     const val DASHBOARD = "dashboard"
@@ -42,6 +44,8 @@ object Routes {
 @Composable
 fun NavGraph(
     navController: NavHostController,
+    appLanguage: AppLanguage,
+    onLanguageSelected: (AppLanguage) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val transitionDuration = 300
@@ -85,6 +89,7 @@ fun NavGraph(
             val viewModel = hiltViewModel<com.portfolio.manager.presentation.viewmodel.DashboardViewModel>()
             DashboardScreen(
                 viewModel = viewModel,
+                appLanguage = appLanguage,
                 onAddHolding = {
                     val accountId = viewModel.getSelectedAccountId()
                     navController.navigate(Routes.addHolding(accountId))
@@ -107,7 +112,8 @@ fun NavGraph(
                 },
                 onNavigateToHousehold = {
                     navController.navigate(Routes.HOUSEHOLD)
-                }
+                },
+                onLanguageSelected = onLanguageSelected
             )
         }
         composable(

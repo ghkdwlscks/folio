@@ -38,6 +38,11 @@ class AppConstantsTest {
 class PreferenceKeysTest {
 
     @Test
+    fun `app preference keys - have expected values`() {
+        assertThat(PreferenceKeys.APP_LANGUAGE).isEqualTo("app_language")
+    }
+
+    @Test
     fun `dashboard preference keys - have expected values`() {
         assertThat(PreferenceKeys.DASHBOARD_SHOW_IN_KRW).isEqualTo("dashboard_show_in_krw")
         assertThat(PreferenceKeys.DASHBOARD_CACHED_STOCKS_JSON).isEqualTo("dashboard_cached_stocks_json")

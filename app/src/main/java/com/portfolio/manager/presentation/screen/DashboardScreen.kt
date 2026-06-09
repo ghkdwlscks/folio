@@ -12,6 +12,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.AccountBalance
@@ -34,8 +36,9 @@ import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ShowChart
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,8 +48,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -89,6 +94,8 @@ import com.portfolio.manager.presentation.component.RebalanceItem
 import com.portfolio.manager.presentation.component.SectionHeader
 import com.portfolio.manager.presentation.component.SkeletonDashboard
 import com.portfolio.manager.presentation.component.StockCard
+import com.portfolio.manager.presentation.theme.AppLanguage
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
 import com.portfolio.manager.presentation.viewmodel.DashboardViewModel
@@ -109,6 +116,7 @@ private data class CashDeleteConfirmation(
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
+    appLanguage: AppLanguage,
     onAddHolding: () -> Unit,
     onAddCash: () -> Unit,
     onManageAccounts: () -> Unit,
@@ -116,12 +124,15 @@ fun DashboardScreen(
     onEditCash: (Long) -> Unit,
     onNavigateToFIRE: () -> Unit,
     onNavigateToHousehold: () -> Unit,
+    onLanguageSelected: (AppLanguage) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     var deleteConfirmation by remember { mutableStateOf<DeleteConfirmation?>(null) }
     var cashDeleteConfirmation by remember { mutableStateOf<CashDeleteConfirmation?>(null) }
     var showRebalanceDialog by remember { mutableStateOf(false) }
     var showAddChoiceDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
     var rebalanceItems by remember { mutableStateOf<List<RebalanceItem>>(emptyList()) }
     var rebalanceInitialBand by remember { mutableStateOf<Int?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -165,7 +176,8 @@ fun DashboardScreen(
                 listState = listState,
                 onNavigateToFIRE = onNavigateToFIRE,
                 onNavigateToHousehold = onNavigateToHousehold,
-                onManageAccounts = onManageAccounts
+                onManageAccounts = onManageAccounts,
+                onOpenSettings = { showSettingsDialog = true }
             )
         },
         floatingActionButton = {
@@ -213,7 +225,7 @@ fun DashboardScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Balance,
-                                contentDescription = "Rebalance"
+                                contentDescription = strings.rebalance
                             )
                         }
                     }
@@ -222,7 +234,7 @@ fun DashboardScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Add,
-                            contentDescription = "Add"
+                            contentDescription = strings.add
                         )
                     }
                 }
@@ -252,8 +264,8 @@ fun DashboardScreen(
 
     deleteConfirmation?.let { confirmation ->
         DeleteConfirmationDialog(
-            title = "Delete Holding",
-            message = "Are you sure you want to delete ${confirmation.symbol} (${confirmation.quantity} shares)?",
+            title = strings.deleteHolding,
+            message = strings.deleteHoldingMessage(confirmation.symbol, confirmation.quantity),
             onConfirm = {
                 viewModel.deleteHolding(confirmation.holdingId)
                 deleteConfirmation = null
@@ -264,8 +276,8 @@ fun DashboardScreen(
 
     cashDeleteConfirmation?.let { confirmation ->
         DeleteConfirmationDialog(
-            title = "Delete Cash",
-            message = "Are you sure you want to delete \"${confirmation.name}\"?",
+            title = strings.deleteCash,
+            message = strings.deleteCashMessage(confirmation.name),
             onConfirm = {
                 viewModel.deleteCashItem(confirmation.cashItemId)
                 cashDeleteConfirmation = null
@@ -306,7 +318,7 @@ fun DashboardScreen(
                     .padding(bottom = 16.dp)
             ) {
                 Text(
-                    text = "Add to Portfolio",
+                    text = strings.addToPortfolio,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 20.dp)
@@ -326,7 +338,7 @@ fun DashboardScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text("Add Stock Holding")
+                    Text(strings.addStockHolding)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 FilledTonalButton(
@@ -344,12 +356,88 @@ fun DashboardScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text("Add Cash / Savings")
+                    Text(strings.addCashSavings)
                 }
             }
         }
     }
 
+    if (showSettingsDialog) {
+        SettingsDialog(
+            appLanguage = appLanguage,
+            onLanguageSelected = onLanguageSelected,
+            onDismiss = { showSettingsDialog = false }
+        )
+    }
+
+}
+
+@Composable
+private fun SettingsDialog(
+    appLanguage: AppLanguage,
+    onLanguageSelected: (AppLanguage) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalAppStrings.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.settings) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = strings.language,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                LanguageOption(
+                    language = AppLanguage.ENGLISH,
+                    label = strings.english,
+                    selectedLanguage = appLanguage,
+                    onLanguageSelected = onLanguageSelected
+                )
+                LanguageOption(
+                    language = AppLanguage.KOREAN,
+                    label = strings.korean,
+                    selectedLanguage = appLanguage,
+                    onLanguageSelected = onLanguageSelected
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(strings.close)
+            }
+        }
+    )
+}
+
+@Composable
+private fun LanguageOption(
+    language: AppLanguage,
+    label: String,
+    selectedLanguage: AppLanguage,
+    onLanguageSelected: (AppLanguage) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onLanguageSelected(language) }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selectedLanguage == language,
+            onClick = { onLanguageSelected(language) }
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 8.dp)
+        )
+    }
 }
 
 private enum class DashboardStateType { Loading, Success, Error }
@@ -364,6 +452,7 @@ private fun DashboardStateContent(
     onEditCash: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val strings = LocalAppStrings.current
 
     // Only animate transitions between different state types, not data updates within Success
     val stateType = when (uiState) {
@@ -415,7 +504,7 @@ private fun DashboardStateContent(
                 val state = uiState as? DashboardUiState.Error ?: return@Crossfade
                 ErrorContent(
                     message = state.message,
-                    title = "Failed to load prices",
+                    title = strings.failedToLoadPrices,
                     onRetry = { viewModel.refresh() }
                 )
             }
@@ -429,7 +518,8 @@ private fun DashboardTopBarWrapper(
     listState: LazyListState,
     onNavigateToFIRE: () -> Unit,
     onNavigateToHousehold: () -> Unit,
-    onManageAccounts: () -> Unit
+    onManageAccounts: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isRefreshing = (uiState as? DashboardUiState.Success)?.isRefreshing ?: false
@@ -457,6 +547,7 @@ private fun DashboardTopBarWrapper(
         onNavigateToFIRE = onNavigateToFIRE,
         onNavigateToHousehold = onNavigateToHousehold,
         onManageAccounts = onManageAccounts,
+        onOpenSettings = onOpenSettings,
         onRefresh = { viewModel.refresh() }
     )
 }
@@ -528,13 +619,16 @@ private fun DashboardTopBar(
     onNavigateToFIRE: () -> Unit,
     onNavigateToHousehold: () -> Unit,
     onManageAccounts: () -> Unit,
+    onOpenSettings: () -> Unit,
     onRefresh: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
+
     TopAppBar(
         title = {
             Column {
                 Text(
-                    text = "Folio",
+                    text = strings.folio,
                     fontWeight = FontWeight.Bold,
                     style = if (showCompactValue && compactTitle != null) {
                         MaterialTheme.typography.titleMedium
@@ -558,13 +652,13 @@ private fun DashboardTopBar(
             IconButton(onClick = onNavigateToFIRE) {
                 Icon(
                     imageVector = Icons.Outlined.LocalFireDepartment,
-                    contentDescription = "FIRE Calculator"
+                    contentDescription = strings.fireCalculator
                 )
             }
             IconButton(onClick = onNavigateToHousehold) {
                 Icon(
                     imageVector = Icons.Outlined.People,
-                    contentDescription = "Household"
+                    contentDescription = strings.household
                 )
             }
             IconButton(onClick = onRefresh, enabled = !isRefreshing) {
@@ -576,14 +670,20 @@ private fun DashboardTopBar(
                 } else {
                     Icon(
                         imageVector = Icons.Outlined.Refresh,
-                        contentDescription = "Refresh"
+                        contentDescription = strings.refresh
                     )
                 }
             }
             IconButton(onClick = onManageAccounts) {
                 Icon(
                     imageVector = Icons.Outlined.ManageAccounts,
-                    contentDescription = "Manage Accounts"
+                    contentDescription = strings.manageAccounts
+                )
+            }
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = strings.settings
                 )
             }
         },

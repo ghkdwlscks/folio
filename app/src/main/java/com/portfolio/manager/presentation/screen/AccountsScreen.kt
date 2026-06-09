@@ -49,8 +49,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
 import com.portfolio.manager.data.local.AccountEntity
 import com.portfolio.manager.presentation.component.ErrorContent
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.rememberHapticFeedback
 import com.portfolio.manager.presentation.viewmodel.AccountsUiState
 import com.portfolio.manager.presentation.viewmodel.AccountsViewModel
@@ -62,6 +64,7 @@ fun AccountsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<AccountEntity?>(null) }
@@ -91,7 +94,7 @@ fun AccountsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Accounts",
+                        text = strings.accounts,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -99,7 +102,7 @@ fun AccountsScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = strings.back
                         )
                     }
                 },
@@ -112,7 +115,7 @@ fun AccountsScreen(
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "Add Account"
+                    contentDescription = strings.addAccount
                 )
             }
         },
@@ -126,7 +129,7 @@ fun AccountsScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Loading...")
+                    Text(strings.loading)
                 }
             }
             is AccountsUiState.Success -> {
@@ -165,7 +168,7 @@ fun AccountsScreen(
                 ErrorContent(
                     message = state.message,
                     onRetry = onNavigateBack,
-                    retryLabel = "Go Back",
+                    retryLabel = strings.goBack,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
@@ -198,6 +201,8 @@ fun AccountsScreen(
 
 @Composable
 private fun EmptyAccountsContent(modifier: Modifier = Modifier) {
+    val strings = LocalAppStrings.current
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -207,12 +212,12 @@ private fun EmptyAccountsContent(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "No accounts yet",
+                text = strings.noAccountsYet,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Tap + to create your first account",
+                text = strings.tapToCreateAccount,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
@@ -258,6 +263,7 @@ private fun AccountCard(
     onMoveDown: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val haptic = rememberHapticFeedback()
 
     Card(
@@ -286,7 +292,7 @@ private fun AccountCard(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowUp,
-                        contentDescription = "Move up",
+                        contentDescription = strings.moveUp,
                         tint = if (onMoveUp != null)
                             MaterialTheme.colorScheme.onSurfaceVariant
                         else
@@ -303,7 +309,7 @@ private fun AccountCard(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "Move down",
+                        contentDescription = strings.moveDown,
                         tint = if (onMoveDown != null)
                             MaterialTheme.colorScheme.onSurfaceVariant
                         else
@@ -326,14 +332,14 @@ private fun AccountCard(
                 IconButton(onClick = onEdit) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
-                        contentDescription = "Edit",
+                        contentDescription = strings.edit,
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = strings.delete,
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -351,17 +357,18 @@ private fun AccountDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var name by remember { mutableStateOf(initialName) }
     val isAddMode = mode == AccountDialogMode.ADD
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isAddMode) "New Account" else "Edit Account") },
+        title = { Text(if (isAddMode) strings.newAccount else strings.editAccount) },
         text = {
             Column {
                 if (isAddMode) {
                     Text(
-                        text = "Enter a name for your new account",
+                        text = strings.enterAccountName,
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -369,7 +376,7 @@ private fun AccountDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Account Name") },
+                    label = { Text(strings.accountName) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -380,12 +387,12 @@ private fun AccountDialog(
                 onClick = { onConfirm(name) },
                 enabled = name.isNotBlank()
             ) {
-                Text(if (isAddMode) "Create" else "Save")
+                Text(if (isAddMode) strings.create else strings.save)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(strings.cancel)
             }
         }
     )

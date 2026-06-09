@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 import com.portfolio.manager.presentation.component.PortfolioContent
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.viewmodel.DashboardUiState
 import com.portfolio.manager.presentation.viewmodel.HouseholdViewModel
 
@@ -40,6 +41,7 @@ fun HouseholdScreen(
     onNavigateToFIRE: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val isRefreshing = (uiState as? DashboardUiState.Success)?.isRefreshing == true
@@ -50,13 +52,13 @@ fun HouseholdScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(text = "Household", fontWeight = FontWeight.Bold)
+                    Text(text = strings.household, fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = strings.back
                         )
                     }
                 },
@@ -64,7 +66,7 @@ fun HouseholdScreen(
                     IconButton(onClick = onNavigateToFIRE) {
                         Icon(
                             imageVector = Icons.Outlined.LocalFireDepartment,
-                            contentDescription = "FIRE Calculator"
+                            contentDescription = strings.fireCalculator
                         )
                     }
                     IconButton(onClick = { viewModel.refresh() }, enabled = !isRefreshing) {
@@ -76,14 +78,14 @@ fun HouseholdScreen(
                         } else {
                             Icon(
                                 imageVector = Icons.Outlined.Refresh,
-                                contentDescription = "Refresh"
+                                contentDescription = strings.refresh
                             )
                         }
                     }
                     IconButton(onClick = onNavigateToShare) {
                         Icon(
                             imageVector = Icons.Outlined.GroupAdd,
-                            contentDescription = "Household sharing"
+                            contentDescription = strings.householdSharing
                         )
                     }
                 },

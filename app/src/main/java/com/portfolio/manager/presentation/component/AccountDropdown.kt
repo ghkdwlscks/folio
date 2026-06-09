@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.viewmodel.AccountWithCount
 import com.portfolio.manager.util.AppConstants.ALL_ACCOUNTS_ID
 
@@ -44,6 +46,7 @@ fun AccountDropdown(
     onFilterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     var expanded by remember { mutableStateOf(false) }
     val totalHoldings = accounts.sumOf { it.holdingsCount }
     val isFilterActive = filteredAccountIds.isNotEmpty()
@@ -57,10 +60,10 @@ fun AccountDropdown(
         selectedAccountId != ALL_ACCOUNTS_ID -> {
             accounts.find { it.account.id == selectedAccountId }?.let {
                 "${it.account.name} (${it.holdingsCount})"
-            } ?: "All ($totalHoldings)"
+            } ?: strings.allWithCount(totalHoldings)
         }
-        isFilterActive -> "${filteredAccountIds.size} of ${accounts.size} ($filteredCount)"
-        else -> "All ($totalHoldings)"
+        isFilterActive -> strings.filteredAccounts(filteredAccountIds.size, accounts.size, filteredCount)
+        else -> strings.allWithCount(totalHoldings)
     }
 
     val anyNeedsRebalance = accounts.any { it.needsRebalance }
@@ -87,14 +90,14 @@ fun AccountDropdown(
                 if (selectedAccountId == ALL_ACCOUNTS_ID && anyNeedsRebalance) {
                     Icon(
                         imageVector = Icons.Outlined.Balance,
-                        contentDescription = "Needs rebalancing",
+                        contentDescription = strings.needsRebalancing,
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
                 Icon(
                     imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = "Select account",
+                    contentDescription = strings.selectAccount,
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -105,7 +108,7 @@ fun AccountDropdown(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = "All ($totalHoldings)",
+                            text = strings.allWithCount(totalHoldings),
                             fontWeight = if (selectedAccountId == ALL_ACCOUNTS_ID) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -129,7 +132,7 @@ fun AccountDropdown(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Icon(
                                         imageVector = Icons.Outlined.Balance,
-                                        contentDescription = "Needs rebalancing",
+                                        contentDescription = strings.needsRebalancing,
                                         modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.error
                                     )
@@ -151,7 +154,7 @@ fun AccountDropdown(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.FilterList,
-                    contentDescription = "Filter accounts",
+                    contentDescription = strings.filterAccounts,
                     modifier = Modifier.size(20.dp),
                     tint = if (isFilterActive) {
                         MaterialTheme.colorScheme.primary

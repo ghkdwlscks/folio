@@ -56,6 +56,7 @@ import com.portfolio.manager.domain.model.FIRETargetCalculation
 import com.portfolio.manager.presentation.component.CurrencyToggle
 import com.portfolio.manager.presentation.component.ErrorContent
 import com.portfolio.manager.presentation.theme.GainGreen
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.viewmodel.FIRECalculatorUiState
 import com.portfolio.manager.presentation.viewmodel.FIRECalculatorViewModel
@@ -66,6 +67,7 @@ fun FIRECalculatorScreen(
     viewModel: FIRECalculatorViewModel,
     onNavigateBack: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -76,15 +78,15 @@ fun FIRECalculatorScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = strings.back
                         )
                     }
                 },
-                title = { Text("FIRE Calculator", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.fireCalculator, fontWeight = FontWeight.Bold) },
                 actions = {
                     if (uiState is FIRECalculatorUiState.Success) {
                         IconButton(onClick = { viewModel.refresh() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = strings.refresh)
                         }
                     }
                 },
@@ -184,6 +186,7 @@ private fun PortfolioSummaryCard(
     onCurrencyToggle: () -> Unit,
     formatValue: (Double) -> String
 ) {
+    val strings = LocalAppStrings.current
     val isDarkTheme = isSystemInDarkTheme()
     val gradientColors = if (isDarkTheme) {
         listOf(
@@ -222,7 +225,7 @@ private fun PortfolioSummaryCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Total Portfolio",
+                text = strings.totalPortfolio,
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.White.copy(alpha = 0.7f)
             )
@@ -246,6 +249,7 @@ private fun SettingsCard(
     onAnnualReturnChange: (Double) -> Unit,
     onAnnualInflationChange: (Double) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     var returnText by remember(annualReturn) { mutableStateOf(annualReturn.toString()) }
     var inflationText by remember(annualInflation) { mutableStateOf(annualInflation.toString()) }
 
@@ -261,7 +265,7 @@ private fun SettingsCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Settings",
+                text = strings.settings,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -276,7 +280,7 @@ private fun SettingsCard(
                         returnText = newValue
                         newValue.toDoubleOrNull()?.let { onAnnualReturnChange(it) }
                     },
-                    label = { Text("Annual Return (%)") },
+                    label = { Text(strings.annualReturn) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.weight(1f)
@@ -288,7 +292,7 @@ private fun SettingsCard(
                         inflationText = newValue
                         newValue.toDoubleOrNull()?.let { onAnnualInflationChange(it) }
                     },
-                    label = { Text("Annual Inflation (%)") },
+                    label = { Text(strings.annualInflation) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.weight(1f)
@@ -297,7 +301,7 @@ private fun SettingsCard(
 
             val realReturn = annualReturn - annualInflation
             Text(
-                text = "Real Return: ${String.format("%.1f", realReturn)}%",
+                text = "${strings.realReturn}: ${String.format("%.1f", realReturn)}%",
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (realReturn >= 0) GainGreen else MaterialTheme.colorScheme.error
             )
@@ -310,6 +314,8 @@ private fun SustainableSpendingCard(
     calculation: FIRECalculation,
     formatValue: (Double) -> String
 ) {
+    val strings = LocalAppStrings.current
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -322,13 +328,13 @@ private fun SustainableSpendingCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Sustainable Spending",
+                text = strings.sustainableSpending,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
 
             Text(
-                text = "Based on your portfolio and expected real return, you can sustainably spend:",
+                text = strings.sustainableSpendingDescription,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -340,11 +346,11 @@ private fun SustainableSpendingCard(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 SpendingItem(
-                    label = "Monthly",
+                    label = strings.monthly,
                     value = formatValue(calculation.sustainableMonthlySpending)
                 )
                 SpendingItem(
-                    label = "Annually",
+                    label = strings.annually,
                     value = formatValue(calculation.sustainableAnnualSpending)
                 )
             }
@@ -352,7 +358,7 @@ private fun SustainableSpendingCard(
             if (calculation.realReturn <= 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "With current settings (real return <= 0%), sustainable spending is zero to maintain portfolio value.",
+                    text = strings.realReturnWarning,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -366,6 +372,8 @@ private fun SpendingItem(
     label: String,
     value: String
 ) {
+    val strings = LocalAppStrings.current
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -390,6 +398,7 @@ private fun TargetFIRECard(
     onTargetSpendingChange: (Double) -> Unit,
     formatValue: (Double) -> String
 ) {
+    val strings = LocalAppStrings.current
     var targetText by remember(calculation.targetMonthlySpending) {
         mutableStateOf(calculation.targetMonthlySpending.toLong().toString())
     }
@@ -406,7 +415,7 @@ private fun TargetFIRECard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "FIRE Target",
+                text = strings.fireTarget,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -417,7 +426,7 @@ private fun TargetFIRECard(
                     targetText = newValue
                     newValue.toDoubleOrNull()?.let { onTargetSpendingChange(it) }
                 },
-                label = { Text("Target Monthly Spending (${if (showInKrw) "KRW" else "USD"})") },
+                label = { Text(strings.targetMonthlySpendingLabel(showInKrw)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -426,7 +435,7 @@ private fun TargetFIRECard(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Required Portfolio",
+                text = strings.requiredPortfolio,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -435,7 +444,7 @@ private fun TargetFIRECard(
                 text = if (calculation.requiredPortfolio.isFinite()) {
                     formatValue(calculation.requiredPortfolio)
                 } else {
-                    "N/A (real return <= 0%)"
+                    strings.notAvailableRealReturn
                 },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
@@ -450,7 +459,7 @@ private fun TargetFIRECard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Progress",
+                        text = strings.progress,
                         style = MaterialTheme.typography.labelMedium
                     )
                     Text(
@@ -475,7 +484,7 @@ private fun TargetFIRECard(
             if (calculation.remainingAmount > 0 && calculation.requiredPortfolio.isFinite()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Remaining: ${formatValue(calculation.remainingAmount)}",
+                    text = "${strings.remaining}: ${formatValue(calculation.remainingAmount)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

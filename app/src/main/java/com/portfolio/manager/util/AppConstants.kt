@@ -21,6 +21,9 @@ object AppConstants {
 }
 
 object PreferenceKeys {
+    // App preferences
+    const val APP_LANGUAGE = "app_language"
+
     // Dashboard preferences
     const val DASHBOARD_SHOW_IN_KRW = "dashboard_show_in_krw"
     const val DASHBOARD_CACHED_STOCKS_JSON = "dashboard_cached_stocks_json"

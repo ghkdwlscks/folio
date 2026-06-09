@@ -39,8 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+
 import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.getTrendColor
 
@@ -65,6 +67,7 @@ fun FullScreenChartDialog(
     onPeriodChange: ((TimePeriod) -> Unit)? = null,
     currentPeriod: TimePeriod = TimePeriod.ONE_YEAR
 ) {
+    val strings = LocalAppStrings.current
     var selectedPeriod by remember { mutableStateOf(currentPeriod) }
 
     Dialog(
@@ -112,7 +115,7 @@ fun FullScreenChartDialog(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Close",
+                            contentDescription = strings.close,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -175,7 +178,7 @@ fun FullScreenChartDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No chart data available",
+                                text = strings.noChartData,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -195,7 +198,7 @@ fun FullScreenChartDialog(
                             color = getTrendColor(
                                 (data.priceHistory.lastOrNull() ?: 0.0) - (data.priceHistory.firstOrNull() ?: 0.0)
                             ),
-                            label = "Portfolio"
+                            label = strings.portfolio
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         // S&P 500 legend
@@ -223,7 +226,7 @@ fun FullScreenChartDialog(
                 // Statistics
                 if (data.priceHistory.size >= 2) {
                     Text(
-                        text = "${selectedPeriod.label} Statistics",
+                        text = "${selectedPeriod.label} ${strings.statistics}",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -271,7 +274,7 @@ fun FullScreenChartDialog(
 
                 // Hint text
                 Text(
-                    text = "Tap on chart to see price details",
+                    text = strings.tapChartDetails,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -287,6 +290,7 @@ private fun ChartStatistics(
     currency: Currency,
     periodReturn: Double? = null
 ) {
+    val strings = LocalAppStrings.current
     val high = priceHistory.maxOrNull() ?: 0.0
     val low = priceHistory.minOrNull() ?: 0.0
     val startPrice = priceHistory.firstOrNull() ?: 0.0
@@ -309,12 +313,12 @@ private fun ChartStatistics(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 StatItem(
-                    label = "High",
+                    label = strings.high,
                     value = CurrencyFormatter.format(high, currency),
                     modifier = Modifier.weight(1f)
                 )
                 StatItem(
-                    label = "Low",
+                    label = strings.low,
                     value = CurrencyFormatter.format(low, currency),
                     modifier = Modifier.weight(1f)
                 )
@@ -324,12 +328,12 @@ private fun ChartStatistics(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 StatItem(
-                    label = "Average",
+                    label = strings.average,
                     value = CurrencyFormatter.format(average, currency),
                     modifier = Modifier.weight(1f)
                 )
                 StatItem(
-                    label = "Period Return",
+                    label = strings.periodReturn,
                     value = "${if (displayPeriodReturn >= 0) "+" else ""}${String.format("%.2f", displayPeriodReturn)}%",
                     valueColor = getTrendColor(displayPeriodReturn),
                     modifier = Modifier.weight(1f)

@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
 /**
@@ -54,7 +55,10 @@ fun ConfirmationDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val haptic = rememberHapticFeedback()
+    val resolvedConfirmText = if (confirmText == "Confirm") strings.ok else confirmText
+    val resolvedDismissText = if (dismissText == "Cancel") strings.cancel else dismissText
 
     BaseDialog(onDismiss = onDismiss) {
         Column(
@@ -107,7 +111,7 @@ fun ConfirmationDialog(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(dismissText)
+                    Text(resolvedDismissText)
                 }
 
                 // Confirm button (filled)
@@ -122,7 +126,7 @@ fun ConfirmationDialog(
                         containerColor = confirmColor
                     )
                 ) {
-                    Text(confirmText)
+                    Text(resolvedConfirmText)
                 }
             }
         }
@@ -140,12 +144,14 @@ fun DeleteConfirmationDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
+
     ConfirmationDialog(
         title = title,
         message = message,
         icon = Icons.Outlined.Delete,
         iconTint = MaterialTheme.colorScheme.error,
-        confirmText = "Delete",
+        confirmText = strings.delete,
         confirmColor = MaterialTheme.colorScheme.error,
         onConfirm = onConfirm,
         onDismiss = onDismiss
@@ -164,12 +170,14 @@ fun WarningConfirmationDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val strings = LocalAppStrings.current
+
     ConfirmationDialog(
         title = title,
         message = message,
         icon = Icons.Outlined.Warning,
         iconTint = MaterialTheme.colorScheme.tertiary,
-        confirmText = confirmText,
+        confirmText = if (confirmText == "Continue") strings.ok else confirmText,
         confirmColor = MaterialTheme.colorScheme.tertiary,
         onConfirm = onConfirm,
         onDismiss = onDismiss

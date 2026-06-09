@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.viewmodel.HouseholdShareViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +43,7 @@ fun HouseholdShareScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val state by viewModel.uiState.collectAsState()
     var label by remember { mutableStateOf(state.myLabel) }
     var joinCode by remember { mutableStateOf("") }
@@ -51,12 +53,12 @@ fun HouseholdShareScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(text = "Household Sharing", fontWeight = FontWeight.Bold) },
+                title = { Text(text = strings.householdSharing, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = strings.back
                         )
                     }
                 },
@@ -76,7 +78,7 @@ fun HouseholdShareScreen(
         ) {
             val code = state.householdCode
             if (code != null) {
-                Text(text = "Your household code", style = MaterialTheme.typography.labelMedium)
+                Text(text = strings.householdCode, style = MaterialTheme.typography.labelMedium)
                 Text(
                     text = code,
                     style = MaterialTheme.typography.headlineMedium,
@@ -85,7 +87,7 @@ fun HouseholdShareScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Share this code with your partner. They enter it under \"Join a household\".",
+                    text = strings.householdCodeInstructions,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -94,13 +96,13 @@ fun HouseholdShareScreen(
                     enabled = !state.isBusy,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Leave household")
+                    Text(strings.leaveHousehold)
                 }
             } else {
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
-                    label = { Text("Your display name") },
+                    label = { Text(strings.displayName) },
                     singleLine = true,
                     enabled = !state.isBusy,
                     modifier = Modifier.fillMaxWidth()
@@ -110,16 +112,16 @@ fun HouseholdShareScreen(
                     enabled = !state.isBusy,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Create a household")
+                    Text(strings.createHousehold)
                 }
 
                 HorizontalDivider()
 
-                Text(text = "Join a household", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(text = strings.joinHousehold, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(
                     value = joinCode,
                     onValueChange = { joinCode = it },
-                    label = { Text("Household code (e.g. ABCD-2345)") },
+                    label = { Text(strings.householdCodePlaceholder) },
                     singleLine = true,
                     enabled = !state.isBusy,
                     modifier = Modifier.fillMaxWidth()
@@ -129,7 +131,7 @@ fun HouseholdShareScreen(
                     enabled = !state.isBusy,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Join with code")
+                    Text(strings.joinWithCode)
                 }
             }
 

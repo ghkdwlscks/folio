@@ -29,8 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
 import com.portfolio.manager.domain.model.SortOption
 import com.portfolio.manager.domain.model.TimePeriod
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
 /**
@@ -97,6 +99,7 @@ private fun SortDropdown(
     onExpandedChange: (Boolean) -> Unit,
     onSortOptionSelected: (SortOption) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val haptic = rememberHapticFeedback()
 
     Box {
@@ -120,12 +123,12 @@ private fun SortDropdown(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.Sort,
-                    contentDescription = "Sort",
+                    contentDescription = strings.sort,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
                 Text(
-                    text = sortOption.label,
+                    text = strings.sortOptionLabel(sortOption),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -146,7 +149,7 @@ private fun SortDropdown(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = option.label,
+                            text = strings.sortOptionLabel(option),
                             fontWeight = if (option == sortOption) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -167,6 +170,7 @@ private fun SparklinePeriodDropdown(
     onExpandedChange: (Boolean) -> Unit,
     onPeriodSelected: (TimePeriod) -> Unit
 ) {
+    val strings = LocalAppStrings.current
     val haptic = rememberHapticFeedback()
 
     Box {
@@ -190,7 +194,7 @@ private fun SparklinePeriodDropdown(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ShowChart,
-                    contentDescription = "Sparkline Period",
+                    contentDescription = strings.sparklinePeriod,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                 )

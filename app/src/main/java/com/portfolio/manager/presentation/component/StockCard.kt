@@ -49,6 +49,7 @@ import com.portfolio.manager.domain.model.Currency
 import com.portfolio.manager.domain.model.Stock
 import com.portfolio.manager.presentation.theme.AppAnimations
 import com.portfolio.manager.presentation.theme.GainGreen
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.theme.LossRed
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.createTrendIndicator
@@ -69,6 +70,7 @@ fun StockCard(
     onEditAccountHolding: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalAppStrings.current
     val trend = createTrendIndicator(stock.gainLoss)
     var expanded by remember { mutableStateOf(false) }
     var showFullScreenChart by remember { mutableStateOf(false) }
@@ -180,7 +182,7 @@ fun StockCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${stock.quantity} shares @ ${CurrencyFormatter.format(stock.averagePrice, stock.currency)}",
+                                text = strings.sharesAt(stock.quantity, CurrencyFormatter.format(stock.averagePrice, stock.currency)),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -191,7 +193,7 @@ fun StockCard(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Div ${CurrencyFormatter.formatPercent(stock.dividendYield)}%",
+                                    text = "${strings.dividend} ${CurrencyFormatter.formatPercent(stock.dividendYield)}%",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.tertiary
                                 )
@@ -200,7 +202,7 @@ fun StockCard(
                         // Row 4: weight
                         if (weightPercent != null) {
                             Text(
-                                text = "Weight ${CurrencyFormatter.formatPercent(weightPercent)}%",
+                                text = "${strings.weight} ${CurrencyFormatter.formatPercent(weightPercent)}%",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -220,7 +222,7 @@ fun StockCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Total ${CurrencyFormatter.format(stock.totalValue, stock.currency)}",
+                        text = "${strings.total} ${CurrencyFormatter.format(stock.totalValue, stock.currency)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -232,7 +234,7 @@ fun StockCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Today",
+                                text = strings.today,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -265,7 +267,7 @@ fun StockCard(
                             ) {
                                 Icon(
                                     imageVector = trend.icon,
-                                    contentDescription = if (trend.isGain) "Trending up" else "Trending down",
+                                    contentDescription = if (trend.isGain) strings.trendingUp else strings.trendingDown,
                                     modifier = Modifier.size(14.dp),
                                     tint = trend.color
                                 )
@@ -280,7 +282,7 @@ fun StockCard(
                         if (canExpand) {
                             Icon(
                                 imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                                contentDescription = if (expanded) "Collapse" else "Expand",
+                                contentDescription = if (expanded) strings.collapse else strings.expand,
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -370,6 +372,8 @@ private fun AccountDetailsSection(
     onEditAccountHolding: ((Long) -> Unit)?,
     onDeleteAccountHolding: ((Long) -> Unit)?
 ) {
+    val strings = LocalAppStrings.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -377,7 +381,7 @@ private fun AccountDetailsSection(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Per Account",
+            text = strings.perAccount,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -402,6 +406,8 @@ private fun AccountDetailRow(
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?
 ) {
+    val strings = LocalAppStrings.current
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -425,7 +431,7 @@ private fun AccountDetailRow(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Edit,
-                    contentDescription = "Edit in ${detail.accountName}",
+                    contentDescription = strings.editInAccount(detail.accountName),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                 )
@@ -438,7 +444,7 @@ private fun AccountDetailRow(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
-                    contentDescription = "Delete from ${detail.accountName}",
+                    contentDescription = strings.deleteFromAccount(detail.accountName),
                     modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                 )
@@ -452,6 +458,8 @@ private fun ActionButtonsRow(
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?
 ) {
+    val strings = LocalAppStrings.current
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -462,7 +470,7 @@ private fun ActionButtonsRow(
             IconButton(onClick = onEdit) {
                 Icon(
                     imageVector = Icons.Filled.Edit,
-                    contentDescription = "Edit",
+                    contentDescription = strings.edit,
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -471,7 +479,7 @@ private fun ActionButtonsRow(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = strings.delete,
                     tint = MaterialTheme.colorScheme.error
                 )
             }

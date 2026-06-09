@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import com.portfolio.manager.presentation.theme.ChartColors
+import com.portfolio.manager.presentation.theme.LocalAppStrings
 import com.portfolio.manager.presentation.util.CurrencyFormatter
 import com.portfolio.manager.presentation.util.rememberHapticFeedback
 
@@ -71,6 +72,7 @@ fun AllocationPieChart(
 ) {
     if (items.isEmpty()) return
 
+    val strings = LocalAppStrings.current
     var expanded by remember { mutableStateOf(false) }
     val canExpand = items.size > COLLAPSED_ITEM_COUNT
     val remainingCount = items.size - COLLAPSED_ITEM_COUNT
@@ -100,7 +102,7 @@ fun AllocationPieChart(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Allocation",
+                    text = strings.allocation,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -110,13 +112,13 @@ fun AllocationPieChart(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = if (expanded) "Show less" else "+$remainingCount more",
+                            text = if (expanded) strings.showLess else strings.moreItems(remainingCount),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowDown,
-                            contentDescription = if (expanded) "Collapse" else "Expand",
+                            contentDescription = if (expanded) strings.collapse else strings.expand,
                             modifier = Modifier
                                 .size(20.dp)
                                 .rotate(arrowRotation),
